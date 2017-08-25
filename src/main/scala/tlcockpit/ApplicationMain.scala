@@ -1,10 +1,10 @@
-// tlcockpit
+// TLCockpit
 // Copyright 2017 Norbert Preining
 // Licensed according to GPLv3+
 //
 // Front end for tlmgr
 
-package tlcockpit
+package TLCockpit
 
 // import java.util.Date
 
@@ -194,12 +194,7 @@ class TlmgrProcess(updout: String => Unit, upderr: String => Unit) {
 object ApplicationMain extends JFXApp {
 
   val pkgs = ArrayBuffer[TLPackage]()
-
   val viewpkgs = ObservableBuffer[TLPackage]()
-
-  //val newpkg = new TLPackage("aa","bb","cc","dd")
-
-  //pkgs += newpkg
 
 
   def onQuit(event: ActionEvent): Unit = Platform.exit()
@@ -282,9 +277,9 @@ object ApplicationMain extends JFXApp {
   def callback_about(): Unit = {
     new Alert(AlertType.Information) {
       initOwner(stage)
-      title = "About TlmgrGui"
-      headerText = "TlmgrGui version 0.001\nLicense: GPL"
-      contentText = "Brought to you by Norbert"
+      title = "About TLCockpit"
+      headerText = "TLCockpit version 0.1\nLicense: GPL3+"
+      contentText = "Brought to you by Norbert\nSources: https://github.com/TeX-Live/tlcockpit"
     }.showAndWait()
   }
   def callback_show_all() : Unit = {
@@ -338,12 +333,12 @@ object ApplicationMain extends JFXApp {
     dialog.showAndWait()
   }
   stage = new PrimaryStage {
-    title = "Tlmgr Scala Gui"
+    title = "TLCockpit"
     scene = new Scene {
       root = {
         val topBox = new MenuBar {
           useSystemMenuBar = true
-          menus.add(new Menu("Tlmgr") {
+          menus.add(new Menu("TLCockpit") {
             items = List(
               new MenuItem("Load default (from tlpdb) repository") {
                 onAction = (ae: ActionEvent) => callback_load("remote")
