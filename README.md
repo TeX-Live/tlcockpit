@@ -19,7 +19,7 @@ Installing/Running
 ------------------
 
 If you don't want to build your own deployment jar (which I don't recommend),
-download (tlcockpit.jar)[jar/tlcockpit.jar] and run it with
+download [tlcockpit.jar](jar/tlcockpit.jar) and run it with
 
 ```
 java -jar tlcockpit.jar
