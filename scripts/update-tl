@@ -1,0 +1,37 @@
+#!/bin/bash
+
+if [ "x$1" = "x" ] ; then
+  echo "Need location of TeX Live checkout as first argument!" >&2
+  exit 1
+fi
+
+tl="$1"
+
+if [ ! -d "$tl/Master/texmf-dist/scripts/tlcockpit" ] ; then
+  echo "Cannot find $tl/Master/texmf-dist/scripts/tlcockpit, exiting!" >&2
+  exit 1
+fi
+
+# update source files
+mkdir -p "$tl/Master/texmf-dist/source/support/tlcockpit"
+rm -rf "$tl/Master/texmf-dist/source/support/tlcockpit"/*
+git archive --format=tar HEAD | (cd "$tl/Master/texmf-dist/source/support/tlcockpit" && tar xf -)
+
+# build deployment jar
+sbt assembly
+cp target/scala-2.12/tlcockpit-assembly-0.1.jar "$tl/Master/texmf-dist/scripts/tlcockpit/tlcockpit.jar"
+
+# update bin scripts
+for i in "$tl"/Master/bin/* ; do
+  if [ -d "$i" ] ; then
+    bn=`basename "$i"`
+    if [ $bn = win32 ] ; then
+      cp "$i/runscript.exe" "$i/tlcockpit.exe"
+    else
+      if [ -x "$i/pdftex" ] ; then
+        cp scripts/tlcockpit "$i/"
+      fi
+    fi
+  fi
+done
+
