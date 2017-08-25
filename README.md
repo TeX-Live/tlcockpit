@@ -8,7 +8,13 @@ TLCockpit is included in TeX Live, but you need the latest version of tlmgr, see
 Screenshots
 -----------
 
-![Main window](screenshots/mainwindow.jpg)
+Main window
+
+![Main window](screenshots/mainwindow.png)
+
+Package details
+
+![Package details](screenshots/pkg-details.png)
 
 
 License
