@@ -1,6 +1,6 @@
-tlmgr gui written in Scala
-==========================
+tlcockpit - GUI frontend to tlmgr
+=================================
 
-The TeX Live Manager (tlmgr) provides a shell, which can be scripted. This project tries to provide a GUI for tlmgr written in Scala.
+Tlcockpit aims at being a GUI for tlmgr (TeX Live Manager) with a modern look and feel.
 
 
