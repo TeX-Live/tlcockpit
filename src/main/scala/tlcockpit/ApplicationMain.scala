@@ -210,15 +210,16 @@ object ApplicationMain extends JFXApp {
   val cmdline = new TextField()
   val tlmgr = new TlmgrProcess((s:String) => outputfield.text = s,
     (s:String) => errorfield.text = s)
-  tlmgr.start_process()
+//  tlmgr.start_process()
 
   // wait until we got a prompt
-  val foo: Array[String] = tlmgr.get_output_till_prompt()
+//  val foo: Array[String] = tlmgr.get_output_till_prompt()
   // println("current output: ")
   // foo.map(println(_))
 
   // load the initial set of packages
-  val pkglines: Array[String] = tlmgr.send_command("info --only-installed --data name,localrev,shortdesc")
+//  val pkglines: Array[String] = tlmgr.send_command("info --only-installed --data name,localrev,shortdesc")
+  val pkglines = Array("aa,0,1,ffobar", "bb,4,5,fafaf")
   pkglines.map(line => {
     val fields: Array[String] = line.split(",",-1)
     val sd = if (fields(2).isEmpty) "" else fields(2).substring(1).dropRight(1).replace("""\"""",""""""")
