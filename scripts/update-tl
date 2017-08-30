@@ -16,9 +16,24 @@ fi
 mkdir -p "$tl/Master/texmf-dist/source/support/tlcockpit"
 rm -rf "$tl/Master/texmf-dist/source/support/tlcockpit"/*
 git archive --format=tar HEAD | (cd "$tl/Master/texmf-dist/source/support/tlcockpit" && tar xf -)
+rm -rf "$tl/Master/texmf-dist/source/support/tlcockpit"/screenshots
+rm -rf "$tl/Master/texmf-dist/source/support/tlcockpit"/README.md
+rm -rf "$tl/Master/texmf-dist/source/support/tlcockpit"/LICENSE
+rm -rf "$tl/Master/texmf-dist/source/support/tlcockpit"/jar
+rm -rf "$tl/Master/texmf-dist/source/support/tlcockpit"/scripts
+
+
+mkdir -p "$tl/Master/texmf-dist/doc/support/tlcockpit"
+rm -rf "$tl/Master/texmf-dist/doc/support/tlcockpit"/*
+cp README.md LICENSE "$tl/Master/texmf-dist/doc/support/tlcockpit/"
+cp -a screenshots "$tl/Master/texmf-dist/doc/support/tlcockpit/"
+
 
 # build deployment jar
-sbt assembly
+if [ ! -r target/scala-2.12/tlcockpit-assembly-0.1.jar ] ; then
+  echo "Rebuilding tlcockpit assembly"
+  sbt assembly
+fi
 cp target/scala-2.12/tlcockpit-assembly-0.1.jar "$tl/Master/texmf-dist/scripts/tlcockpit/tlcockpit.jar"
 
 # update bin scripts
@@ -29,7 +44,7 @@ for i in "$tl"/Master/bin/* ; do
       cp "$i/runscript.exe" "$i/tlcockpit.exe"
     else
       if [ -x "$i/pdftex" ] ; then
-        cp scripts/tlcockpit "$i/"
+        ln -sf ../../texmf-dist/scripts/tlcockpit/tlcockpit-runner.sh "$i/tlcockpit"
       fi
     fi
   fi
