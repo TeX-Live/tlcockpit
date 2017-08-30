@@ -50,8 +50,8 @@ import scala.io.Source
 object ApplicationMain extends JFXApp {
 
   var testmode = false
-  if (parameters.unnamed.length > 0) {
-    if (parameters.unnamed(0) == "-test" || parameters.unnamed(0) == "--test") {
+  if (parameters.unnamed.nonEmpty) {
+    if (parameters.unnamed.head == "-test" || parameters.unnamed.head == "--test") {
       println("Testing mode enabled, not actually calling tlmgr!")
       testmode = true
     }
@@ -187,7 +187,7 @@ object ApplicationMain extends JFXApp {
       padding = Insets(20)
     }
     var crow = 0
-    pkginfo.map((line:String) => {
+    pkginfo.foreach((line:String) => {
       val keyval = line.split(":",2).map(_.trim)
       if (keyval.length == 2) {
         val keylabel = new Label(keyval(0))

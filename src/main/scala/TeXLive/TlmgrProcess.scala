@@ -47,7 +47,7 @@ class TlmgrProcess(updout: String => Unit, upderr: String => Unit) {
     // process creation
     if (process == null) {
       val procIO = new ProcessIO(inputFn(_), outputFn(_), errorFn(_))
-      val processBuilder: ProcessBuilder = Seq({if (OsInfo.isWindows) "tlmgr.bat" else "tlmgr"}, "--machine-readable", "shell")
+      val processBuilder: ProcessBuilder = Seq({if (isWindows) "tlmgr.bat" else "tlmgr"}, "--machine-readable", "shell")
       process = processBuilder.run(procIO)
     }
   }
