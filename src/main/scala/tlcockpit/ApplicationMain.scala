@@ -52,6 +52,14 @@ class TLPackage(name_ : String, lrev_ : String, rrev_ : String, shortdesc_ : Str
   val rrev = new StringProperty(this, "revision", rrev_)
 }
 
+
+object OsInfo {
+  val OS = System.getProperty("os.name")
+  def isWindows: Boolean = {
+    OS.startsWith("Windows")
+  }
+}
+
 class TlmgrProcess(updout: String => Unit, upderr: String => Unit) {
   val inputString = new SyncVar[String]                 // used for the tlmgr process input
   val outputString = new SyncVar[String]                // used for the tlmgr process output
@@ -91,7 +99,7 @@ class TlmgrProcess(updout: String => Unit, upderr: String => Unit) {
     // process creation
     if (process == null) {
       val procIO = new ProcessIO(inputFn(_), outputFn(_), errorFn(_))
-      val processBuilder: ProcessBuilder = Seq("tlmgr", "--machine-readable", "shell")
+      val processBuilder: ProcessBuilder = Seq({if (OsInfo.isWindows) "tlmgr.bat" else "tlmgr"}, "--machine-readable", "shell")
       process = processBuilder.run(procIO)
     }
   }
@@ -193,6 +201,14 @@ class TlmgrProcess(updout: String => Unit, upderr: String => Unit) {
 
 object ApplicationMain extends JFXApp {
 
+  var testmode = false
+  if (parameters.unnamed.length > 0) {
+    if (parameters.unnamed(0) == "-test" || parameters.unnamed(0) == "--test") {
+      println("Testing mode enabled, not actually calling tlmgr!")
+      testmode = true
+    }
+  }
+
   val pkgs = ArrayBuffer[TLPackage]()
   val viewpkgs = ObservableBuffer[TLPackage]()
 
@@ -210,16 +226,22 @@ object ApplicationMain extends JFXApp {
   val cmdline = new TextField()
   val tlmgr = new TlmgrProcess((s:String) => outputfield.text = s,
     (s:String) => errorfield.text = s)
-//  tlmgr.start_process()
 
-  // wait until we got a prompt
-//  val foo: Array[String] = tlmgr.get_output_till_prompt()
-  // println("current output: ")
-  // foo.map(println(_))
+  if (!testmode) {
+    tlmgr.start_process()
+
+    // wait until we got a prompt
+    val foo: Array[String] = tlmgr.get_output_till_prompt()
+    // println("current output: ")
+    // foo.map(println(_))
+  }
 
   // load the initial set of packages
-//  val pkglines: Array[String] = tlmgr.send_command("info --only-installed --data name,localrev,shortdesc")
-  val pkglines = Array("aa,0,1,ffobar", "bb,4,5,fafaf")
+  val pkglines = if (testmode) 
+      Array("aa,0,1,ffobar", "bb,4,5,fafaf")
+    else
+      tlmgr.send_command("info --only-installed --data name,localrev,shortdesc")
+
   pkglines.map(line => {
     val fields: Array[String] = line.split(",",-1)
     val sd = if (fields(2).isEmpty) "" else fields(2).substring(1).dropRight(1).replace("""\"""",""""""")
