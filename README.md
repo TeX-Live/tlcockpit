@@ -27,6 +27,22 @@ java -jar tlcockpit.jar
 
 The `tlmgr` program has to be in the PATH, and be the most current version.
 
+Requirements
+------------
+A recent Java installation that included JavaFX is required. If you see
+errors like
+```
+Error: A JNI error has occurred, please check your installation and try again
+Exception in thread "main" java.lang.NoClassDefFoundError: javafx/event/EventTarget
+	at java.lang.ClassLoader.defineClass1(Native Method)
+	at java.lang.ClassLoader.defineClass(ClassLoader.java:763)
+...
+```
+that means that the Java installation does not provides JavaFX.
+
+On Windows the latest JRE from Oracle include JavaFX. On Linux one might
+need to install some extra packages (Debian/Ubuntu: openjfx).
+
 Development
 -----------
 
