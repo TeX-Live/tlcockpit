@@ -257,6 +257,7 @@ object ApplicationMain extends JFXApp {
           })
         }
         val centerBox = new VBox {
+          padding = Insets(10)
           children = List(
             new TitledPane {
               text = "Actions"
@@ -350,6 +351,8 @@ object ApplicationMain extends JFXApp {
                 columns ++= List(col1,col2,col3,col4)
               }
               col4.prefWidth.bind(table.width - col1.width - col2.width - col3.width)
+              table.prefHeight = 300
+              table.vgrow = Priority.Always
               table.rowFactory = { _ =>
                 val row = new TableRow[TLPackage] {}
                 row.onMouseClicked = { (me: MouseEvent) => callback_show_pkg_info(row.item.value.name.value) }
@@ -359,7 +362,8 @@ object ApplicationMain extends JFXApp {
             },
           )
         }
-        val bottomBox = new HBox {
+ /*       val bottomBox = new HBox {
+          padding = Insets(10)
           spacing = 10
           children = List(
             new Button {
@@ -368,13 +372,13 @@ object ApplicationMain extends JFXApp {
             }
           )
         }
-
+*/
         new BorderPane {
-          padding = Insets(20)
+          // padding = Insets(20)
           top = topBox
           // left = leftBox
           center = centerBox
-          bottom = bottomBox
+          // bottom = bottomBox
         }
       }
     }
