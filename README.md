@@ -1,35 +1,41 @@
 TLCockpit - GUI frontend to tlmgr
 =================================
 
-TLCockpit aims at being a GUI for [tlmgr](https://www.tug.org/texlive/tlmgr.html), the [TeX Live](https://www.tug.org/texlive/) Manager, with a modern look and feel.
+TLCockpit aims at being a GUI for [tlmgr](https://www.tug.org/texlive/tlmgr.html),
+the [TeX Live](https://www.tug.org/texlive/) Manager, with a modern look and feel.
 
-TLCockpit is included in TeX Live, but you need the latest version of tlmgr, see the secion on <em>Test versions</em> in the above document.
 
 Supported functionality
 -----------------------
 
-By now only loading of remote repository, listing installed, updated, 
-or all packages. Clicking on a package in the list opens a details
-window.
+While functionality is by now restricted to listing of packages, getting information
+on packages, and updating/installing/removing packages, further features will be added
+over time.
 
-Furthermore, an input field allows entering arbitrary commands of the
+For advanced users there is an input field allowing to enter arbitrary commands of the
 *tlmgr shell*, see [tlmgr manual](https://www.tug.org/texlive/doc/tlmgr.html#shell) for details.
 
 Installing/Running
 ------------------
 
-If you don't want to build your own deployment jar (which I don't recommend),
-download [tlcockpit.jar](jar/tlcockpit.jar) and run it with
+Since TLCockpit is included in TeX Live, it will be probably already installed
+on your system. In case it isn't, a simple call to `tlmgr install tlcockpit`
+should suffice.
 
-```
-java -jar tlcockpit.jar
-```
+We are providing new jar files on a daily bases in the github page, but update
+the copy in TeX Live only at certain intervals. If you want to try out the latest
+and greatest, get [tlcockpit.jar](jar/tlcockpit.jar) and put it into
+`TEXLIVEROOT/temxf-dist/scripts/tlcockpit` replacing the current `tlcockpit.jar`.
 
-The `tlmgr` program has to be in the PATH, and be the most current version.
+After this you can run it by simply typing `tlcockpit`, or via a direct `java`
+call as in `java -jar PATH/TO/tlcockpit.jar`.
 
 Requirements
 ------------
-A recent Java installation that included JavaFX is required. If you see
+You need at least `tlmgr` from after 2017-09-01, in TeX Live language at least
+version 45190 or `texlive.infra`.
+
+A recent Java installation that includes JavaFX is required. If you see
 errors like
 ```
 Error: A JNI error has occurred, please check your installation and try again
@@ -58,6 +64,8 @@ writing Scala and my style is horrible ;-)
 
 Screenshots
 -----------
+
+(permanently outdated)
 
 Main window
 
