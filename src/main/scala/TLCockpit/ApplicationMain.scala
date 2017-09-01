@@ -71,6 +71,18 @@ object ApplicationMain extends JFXApp {
     editable = false
     wrapText = true
   }
+
+  val update_self_button = new Button {
+    text = "Update self"
+    disable = true
+    onAction = (e: ActionEvent) => callback_update_self()
+  }
+  val update_all_button = new Button {
+    text = "Update all"
+    disable = true
+    onAction = (e: ActionEvent) => callback_update_all()
+  }
+
   val cmdline = new TextField()
   val tlmgr = new TlmgrProcess((s:String) => outputfield.text = s,
     (s:String) => errorfield.text = s)
@@ -98,6 +110,17 @@ object ApplicationMain extends JFXApp {
   viewpkgs.clear()
   pkgs.map(viewpkgs += _)
 
+  def update_update_button_state(): Unit = {
+    update_all_button.disable = ! pkgs.foldLeft(false)(
+      (a,b) => a || (if (b.name.value == "texlive.infra") false else b.lrev.value.toInt > 0 && b.lrev.value.toInt < b.rrev.value.toInt)
+    )
+    // TODO we should change pkgs to a Map with keys are the names + repository (for multi repo support)
+    // and the values are llrev/rrev or some combination
+    update_self_button.disable = ! pkgs.foldLeft(false)(
+      (a,b) => a || (if (b.name.value == "texlive.infra") b.lrev.value.toInt < b.rrev.value.toInt else false)
+    )
+  }
+
   def callback_quit(): Unit = {
     tlmgr.cleanup()
     Platform.exit()
@@ -119,7 +142,9 @@ object ApplicationMain extends JFXApp {
       newpkgs.map(pkgs += _)
       viewpkgs.clear()
       pkgs.map(viewpkgs += _)
-    }
+      // check for updates available
+      update_update_button_state()
+     }
     // println("got result from load " + s + ": ")
     // foo.map(println(_))
   }
@@ -143,6 +168,10 @@ object ApplicationMain extends JFXApp {
       headerText = "This functionality is not implemented by now!"
       contentText = "Sorry for the inconveniences."
     }.showAndWait()
+  }
+
+  def callback_run_external(s: String): Unit = {
+    outputfield.text = s.!!
   }
 
   def callback_about(): Unit = {
@@ -171,6 +200,18 @@ object ApplicationMain extends JFXApp {
     )
     viewpkgs.clear()
     newpkgs.map(viewpkgs += _)
+  }
+  def callback_update_all() : Unit = {
+    val output = tlmgr.send_command(s"update --all")
+    update_update_button_state()
+    callback_show_all()
+  }
+  def callback_update_self() : Unit = {
+    val output = tlmgr.send_command(s"update --self")
+    // TODO
+    // should we restart tlmgr here - it might be necessary!!!
+    update_update_button_state()
+    callback_show_all()
   }
   def callback_show_pkg_info(pkg: String): Unit = {
     val pkginfo = tlmgr.send_command(s"info $pkg")
@@ -216,9 +257,11 @@ object ApplicationMain extends JFXApp {
               },
               new MenuItem("Load standard net repository") {
                 onAction = (ae: ActionEvent) => not_implemented_info()
+                disable = true
               },
               new MenuItem("Load other repository ...") {
                 onAction = (ae: ActionEvent) => not_implemented_info()
+                disable = true
               },
               new SeparatorMenuItem,
               new MenuItem("Exit") {
@@ -228,30 +271,30 @@ object ApplicationMain extends JFXApp {
           })
           menus.add(new Menu("Options") {
             items = List(
-              new MenuItem("General ...") { onAction = (ae) => not_implemented_info() },
-              new MenuItem("Paper ...") { onAction = (ae) => not_implemented_info() },
-              new MenuItem("Platforms ...") { onAction = (ae) => not_implemented_info() },
+              new MenuItem("General ...") { disable = true; onAction = (ae) => not_implemented_info() },
+              new MenuItem("Paper ...") { disable = true; onAction = (ae) => not_implemented_info() },
+              new MenuItem("Platforms ...") { disable = true; onAction = (ae) => not_implemented_info() },
               new SeparatorMenuItem,
-              new CheckMenuItem("Expert options"),
-              new CheckMenuItem("Enable debugging options"),
-              new CheckMenuItem("Disable auto-install of new packages"),
-              new CheckMenuItem("Disable auto-removal of server-deleted packages")
+              new CheckMenuItem("Expert options") { disable = true },
+              new CheckMenuItem("Enable debugging options") { disable = true },
+              new CheckMenuItem("Disable auto-install of new packages") { disable = true },
+              new CheckMenuItem("Disable auto-removal of server-deleted packages") { disable = true }
             )
           })
           menus.add(new Menu("Actions") {
             items = List(
-              new MenuItem("Update filename database ...") { onAction = (ae) => not_implemented_info() },
-              new MenuItem("Rebuild all formats ...") { onAction = (ae) => not_implemented_info() },
-              new MenuItem("Update font map database ...") { onAction = (ae) => not_implemented_info() },
-              new MenuItem("Restore packages from backup ...") { onAction = (ae) => not_implemented_info() },
-              new MenuItem("Handle symlinks in system dirs ...") { onAction = (ae) => not_implemented_info() },
+              new MenuItem("Update filename database ...") { onAction = (ae) => callback_run_external("mktexlsr") },
+              new MenuItem("Rebuild all formats ...") { onAction = (ae) => callback_run_external("fmtutil --sys --all") },
+              new MenuItem("Update font map database ...") { onAction = (ae) => callback_run_external("updmap --sys") },
+              new MenuItem("Restore packages from backup ...") { disable = true; onAction = (ae) => not_implemented_info() },
+              new MenuItem("Handle symlinks in system dirs ...") { disable = true; onAction = (ae) => not_implemented_info() },
               new SeparatorMenuItem,
-              new MenuItem("Remove TeX Live ...") { onAction = (ae) => not_implemented_info() }
+              new MenuItem("Remove TeX Live ...") { disable = true; onAction = (ae) => not_implemented_info() }
             )
           })
           menus.add(new Menu("Help") {
             items = List(
-              new MenuItem("Manual") { onAction = (ae) => not_implemented_info() },
+              new MenuItem("Manual") { disable = true; onAction = (ae) => not_implemented_info() },
               new MenuItem("About") { onAction = (ae) => callback_about() },
             )
           })
@@ -293,7 +336,9 @@ object ApplicationMain extends JFXApp {
                       new Button {
                         text = "Show all"
                         onAction = (e: ActionEvent) => callback_show_all()
-                      }
+                      },
+                      update_self_button,
+                      update_all_button
                     )
                   }
                 )
