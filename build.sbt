@@ -11,5 +11,9 @@ libraryDependencies += "org.scalafx" % "scalafx_2.12" % "8.0.102-R11"
 
 mainClass in assembly := Some("TLCockpit.ApplicationMain")
 
+assemblyJarName in assembly := "tlcockpit.jar"
+assemblyOutputPath in assembly := file("jar/tlcockpit.jar")
+
+
 // for scalafx
 fork := true
