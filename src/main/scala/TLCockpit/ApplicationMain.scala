@@ -57,19 +57,9 @@ object ApplicationMain extends JFXApp {
     tlmgr.cleanup()
   }
   
-  var testmode = false
-  if (parameters.unnamed.nonEmpty) {
-    if (parameters.unnamed.head == "-test" || parameters.unnamed.head == "--test") {
-      println("Testing mode enabled, not actually calling tlmgr!")
-      testmode = true
-    }
-  }
 
   val pkgs = ArrayBuffer[TLPackage]()
   val viewpkgs = ObservableBuffer[TLPackage]()
-
-
-  def onQuit(event: ActionEvent): Unit = Platform.exit()
 
   val outputfield = new TextArea {
     editable = false
@@ -130,29 +120,6 @@ object ApplicationMain extends JFXApp {
     outerrpane.expanded = false
     tlmgr.send_command(s)
   }
-
-  if (!testmode) {
-    tlmgr.start_process()
-
-    // wait until we got a prompt
-    val foo: Array[String] = tlmgr.get_output_till_prompt()
-    // println("current output: ")
-    // foo.map(println(_))
-  }
-
-  // load the initial set of packages
-  val pkglines = if (testmode) 
-      Array("aa,0,1,ffobar", "bb,4,5,fafaf")
-    else
-      tlmgr_command("info --only-installed --data name,localrev,shortdesc")
-
-  pkglines.map(line => {
-    val fields: Array[String] = line.split(",",-1)
-    val sd = if (fields(2).isEmpty) "" else fields(2).substring(1).dropRight(1).replace("""\"""",""""""")
-    pkgs += new TLPackage(fields(0),fields(1),"0",sd)
-  })
-  viewpkgs.clear()
-  pkgs.map(viewpkgs += _)
 
   def update_update_button_state(): Unit = {
     update_all_button.disable = ! pkgs.foldLeft(false)(
@@ -292,6 +259,25 @@ object ApplicationMain extends JFXApp {
     dialog.width = 500
     dialog.showAndWait()
   }
+
+
+  var testmode = false
+  if (parameters.unnamed.nonEmpty) {
+    if (parameters.unnamed.head == "-test" || parameters.unnamed.head == "--test") {
+      println("Testing mode enabled, not actually calling tlmgr!")
+      testmode = true
+    }
+  }
+
+  if (!testmode) {
+    tlmgr.start_process()
+
+    // wait until we got a prompt
+    val foo: Array[String] = tlmgr.get_output_till_prompt()
+    // println("current output: ")
+    // foo.map(println(_))
+  }
+
   stage = new PrimaryStage {
     title = "TLCockpit"
     scene = new Scene {
@@ -449,17 +435,17 @@ object ApplicationMain extends JFXApp {
             },
           )
         }
- /*       val bottomBox = new HBox {
-          padding = Insets(10)
-          spacing = 10
-          children = List(
-            new Button {
-              text = "Quit"
-              onAction = (event: ActionEvent) => callback_quit()
-            }
-          )
-        }
-*/
+        /*       val bottomBox = new HBox {
+                 padding = Insets(10)
+                 spacing = 10
+                 children = List(
+                   new Button {
+                     text = "Quit"
+                     onAction = (event: ActionEvent) => callback_quit()
+                   }
+                 )
+               }
+       */
         new BorderPane {
           // padding = Insets(20)
           top = topBox
@@ -470,6 +456,30 @@ object ApplicationMain extends JFXApp {
       }
     }
   }
+
+  /* val startalert = new Alert(AlertType.Information)
+  startalert.setTitle("Loading package database ...")
+  startalert.setContentText("Loading package database, this might take a while. Please wait!")
+  startalert.show()
+  */
+
+  // load the initial set of packages
+  val pkglines = if (testmode)
+    Array("aa,0,1,ffobar", "bb,4,5,fafaf")
+  else
+    tlmgr_command("info --only-installed --data name,localrev,shortdesc")
+
+
+  pkglines.map(line => {
+    val fields: Array[String] = line.split(",",-1)
+    val sd = if (fields(2).isEmpty) "" else fields(2).substring(1).dropRight(1).replace("""\"""",""""""")
+    pkgs += new TLPackage(fields(0),fields(1),"0",sd)
+  })
+  viewpkgs.clear()
+  pkgs.map(viewpkgs += _)
+
+  // startalert.close()
+
 }  // object ApplicationMain
 
 // vim:set tabstop=2 expandtab : //
