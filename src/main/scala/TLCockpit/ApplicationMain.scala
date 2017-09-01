@@ -8,19 +8,19 @@ package TLCockpit
 
 // import java.util.Date
 
-import java.io.InputStream
-import java.io.OutputStream
-import java.io.InputStreamReader
-import java.io.OutputStreamWriter
-import java.io.BufferedWriter
-import java.io.BufferedReader
+// import java.io.InputStream
+// import java.io.OutputStream
+// import java.io.InputStreamReader
+// import java.io.OutputStreamWriter
+// import java.io.BufferedWriter
+// import java.io.BufferedReader
 
 import TeXLive.{TLPackage, TlmgrProcess}
 
-import scalafx.beans.property.ObjectProperty
+// import scalafx.beans.property.ObjectProperty
 import scalafx.geometry.HPos
 import scalafx.scene.control.Alert.AlertType
-import scalafx.scene.input.MouseButton._
+// import scalafx.scene.input.MouseButton._
 
 // needed see https://github.com/scalafx/scalafx/issues/137
 import scalafx.scene.control.TableColumn._
@@ -32,21 +32,21 @@ import scalafx.geometry.Insets
 import scalafx.scene.Scene
 import scalafx.scene.layout._
 import scalafx.scene.control._
-import scalafx.scene.text._
+// import scalafx.scene.text._
 import scalafx.event.ActionEvent
 import scalafx.collections.ObservableBuffer
-import scalafx.beans.property.StringProperty
-import scalafx.scene.input.{KeyCode, KeyEvent, MouseEvent, MouseButton}
-import scalafx.stage.Popup
+// import scalafx.beans.property.StringProperty
+// import scalafx.scene.input.{KeyCode, KeyEvent, MouseEvent, MouseButton}
+// import scalafx.stage.Popup
 
 //import com.sun.xml.internal.bind.WhiteSpaceProcessor
 
 import scala.sys.process._
-import scala.concurrent.SyncVar
+// import scala.concurrent.SyncVar
 import scala.collection.mutable.ArrayBuffer
-import scala.collection.mutable.ArrayBuilder
+// import scala.collection.mutable.ArrayBuilder
 
-import scala.io.Source
+// import scala.io.Source
 //import scala.swing._
 
 
