@@ -26,6 +26,7 @@ class TlmgrProcess(updout: String => Unit, upderr: String => Unit) {
       // pass the input and wait for the output
       assert(!inputString.isSet)
       assert(!outputString.isSet)
+      errorBuffer.setLength(0)
       inputString.put(input)
       var ret = if (input != "quit") {
         get_output_till_prompt()

@@ -119,6 +119,13 @@ object ApplicationMain extends JFXApp {
       }
     })
 
+  def tlmgr_command(s: String): Array[String] = {
+    errorfield.text = ""
+    outputfield.text = ""
+    outerrpane.expanded = false
+    tlmgr.send_command(s)
+  }
+
   if (!testmode) {
     tlmgr.start_process()
 
@@ -132,7 +139,7 @@ object ApplicationMain extends JFXApp {
   val pkglines = if (testmode) 
       Array("aa,0,1,ffobar", "bb,4,5,fafaf")
     else
-      tlmgr.send_command("info --only-installed --data name,localrev,shortdesc")
+      tlmgr_command("info --only-installed --data name,localrev,shortdesc")
 
   pkglines.map(line => {
     val fields: Array[String] = line.split(",",-1)
@@ -160,9 +167,9 @@ object ApplicationMain extends JFXApp {
   }
 
   def callback_load(s: String): Unit = {
-    val foo = tlmgr.send_command("load " + s)
+    val foo = tlmgr_command("load " + s)
     if (s == "remote") {
-      val pkglines: Array[String] = tlmgr.send_command("info --data name,localrev,remoterev,shortdesc")
+      val pkglines: Array[String] = tlmgr_command("info --data name,localrev,remoterev,shortdesc")
       val newpkgs = ArrayBuffer[TLPackage]()
       pkglines.map(line => {
         val fields: Array[String] = line.split(",", -1)
@@ -182,14 +189,14 @@ object ApplicationMain extends JFXApp {
   }
 
   def callback_run_text(s: String): Unit = {
-    tlmgr.send_command(s)
+    tlmgr_command(s)
   }
   def callback_run_cmdline(): Unit = {
     callback_run_text(cmdline.text.value)
   }
 
   def callback_list_collections(): Unit = {
-    val foo = tlmgr.send_command("info collections")
+    val foo = tlmgr_command("info collections")
     // println("got result from info collections: ")
     // foo.map(println(_))
     outputfield.text = foo.mkString("\n")
@@ -237,12 +244,12 @@ object ApplicationMain extends JFXApp {
     newpkgs.map(viewpkgs += _)
   }
   def callback_update_all() : Unit = {
-    val output = tlmgr.send_command(s"update --all")
+    val output = tlmgr_command(s"update --all")
     update_update_button_state()
     callback_show_all()
   }
   def callback_update_self() : Unit = {
-    val output = tlmgr.send_command(s"update --self")
+    val output = tlmgr_command(s"update --self")
     // TODO
     // should we restart tlmgr here - it might be necessary!!!
     update_update_button_state()
@@ -250,7 +257,7 @@ object ApplicationMain extends JFXApp {
   }
 
   def callback_show_pkg_info(pkg: String): Unit = {
-    val pkginfo = tlmgr.send_command(s"info $pkg")
+    val pkginfo = tlmgr_command(s"info $pkg")
     val dialog = new Dialog() {
       initOwner(stage)
       title = s"Package Information for $pkg"
