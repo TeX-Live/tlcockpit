@@ -52,6 +52,11 @@ import scala.io.Source
 
 object ApplicationMain extends JFXApp {
 
+  // necessary action when Window is closed with X or some other operation
+  override def stopApp(): Unit = {
+    tlmgr.cleanup()
+  }
+  
   var testmode = false
   if (parameters.unnamed.nonEmpty) {
     if (parameters.unnamed.head == "-test" || parameters.unnamed.head == "--test") {
