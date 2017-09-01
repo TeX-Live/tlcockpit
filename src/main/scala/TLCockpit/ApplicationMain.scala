@@ -20,6 +20,7 @@ import TeXLive.{TLPackage, TlmgrProcess}
 import scalafx.beans.property.ObjectProperty
 import scalafx.geometry.HPos
 import scalafx.scene.control.Alert.AlertType
+import scalafx.scene.input.MouseButton._
 
 // needed see https://github.com/scalafx/scalafx/issues/137
 import scalafx.scene.control.TableColumn._
@@ -31,10 +32,12 @@ import scalafx.geometry.Insets
 import scalafx.scene.Scene
 import scalafx.scene.layout._
 import scalafx.scene.control._
+import scalafx.scene.text._
 import scalafx.event.ActionEvent
 import scalafx.collections.ObservableBuffer
 import scalafx.beans.property.StringProperty
-import scalafx.scene.input.{KeyCode, KeyEvent, MouseEvent}
+import scalafx.scene.input.{KeyCode, KeyEvent, MouseEvent, MouseButton}
+import scalafx.stage.Popup
 
 //import com.sun.xml.internal.bind.WhiteSpaceProcessor
 
@@ -83,9 +86,38 @@ object ApplicationMain extends JFXApp {
     onAction = (e: ActionEvent) => callback_update_all()
   }
 
+  val outerrtabs = new TabPane {
+    minWidth = 400
+    tabs = Seq(
+      new Tab {
+        text = "Output"
+        closable = false
+        content = outputfield
+      },
+      new Tab {
+        text = "Error"
+        closable = false
+        content = errorfield
+      }
+    )
+  }
+  val outerrpane = new TitledPane {
+    text = "Debug"
+    collapsible = true
+    expanded = false
+    content = outerrtabs
+  }
+
   val cmdline = new TextField()
   val tlmgr = new TlmgrProcess((s:String) => outputfield.text = s,
-    (s:String) => errorfield.text = s)
+    (s:String) => {
+      errorfield.text = s
+      if (s != "") {
+        outerrpane.expanded = true
+        val selmod = outerrtabs.selectionModel()
+        selmod.select(1)
+      }
+    })
 
   if (!testmode) {
     tlmgr.start_process()
@@ -149,8 +181,11 @@ object ApplicationMain extends JFXApp {
     // foo.map(println(_))
   }
 
+  def callback_run_text(s: String): Unit = {
+    tlmgr.send_command(s)
+  }
   def callback_run_cmdline(): Unit = {
-    tlmgr.send_command(cmdline.text.value)
+    callback_run_text(cmdline.text.value)
   }
 
   def callback_list_collections(): Unit = {
@@ -213,6 +248,7 @@ object ApplicationMain extends JFXApp {
     update_update_button_state()
     callback_show_all()
   }
+
   def callback_show_pkg_info(pkg: String): Unit = {
     val pkginfo = tlmgr.send_command(s"info $pkg")
     val dialog = new Dialog() {
@@ -344,26 +380,8 @@ object ApplicationMain extends JFXApp {
                 )
               }
             },
-            new TitledPane {
-              text = "Debug"
-              collapsible = true
-              expanded = false
-              content = new TabPane {
-                minWidth = 400
-                tabs = Seq(
-                  new Tab {
-                    text = "Output"
-                    closable = false
-                    content = outputfield
-                  },
-                  new Tab {
-                    text = "Error"
-                    closable = false
-                    content = errorfield
-                  }
-                )
-              }
-            }, {
+            outerrpane,
+            {
               val col1 = new TableColumn[TLPackage, String] {
                 text = "Package"
                 cellValueFactory = {
@@ -400,7 +418,19 @@ object ApplicationMain extends JFXApp {
               table.vgrow = Priority.Always
               table.rowFactory = { _ =>
                 val row = new TableRow[TLPackage] {}
-                row.onMouseClicked = { (me: MouseEvent) => callback_show_pkg_info(row.item.value.name.value) }
+                val ctm = new ContextMenu(
+                  new MenuItem("Info") { onAction = (ae) => callback_show_pkg_info(row.item.value.name.value) },
+                  new MenuItem("Install") {
+                    onAction = (ae) => callback_run_text("install " + row.item.value.name.value)
+                  },
+                  new MenuItem("Remove") {
+                    onAction = (ae) => callback_run_text("remove " + row.item.value.name.value)
+                  },
+                  new MenuItem("Update") {
+                    onAction = (ae) => callback_run_text("update " + row.item.value.name.value)
+                  }
+                )
+                row.contextMenu = ctm
                 row
               }
               table
