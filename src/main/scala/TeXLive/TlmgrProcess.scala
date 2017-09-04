@@ -8,6 +8,9 @@ import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.SyncVar
 import scala.sys.process.{Process, ProcessBuilder, ProcessIO}
 
+// TODO line by line update of stdout/stderr via an update function passed in
+// otherwise we don't see any update while a long running command like update --all
+// is executed!
 class TlmgrProcess(updout: String => Unit, upderr: String => Unit) {
   val inputString = new SyncVar[String]                 // used for the tlmgr process input
   val outputString = new SyncVar[String]                // used for the tlmgr process output
