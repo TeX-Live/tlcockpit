@@ -299,16 +299,24 @@ object ApplicationMain extends JFXApp {
 
   val mainMenu = new Menu("TLCockpit") {
     items = List(
-      new MenuItem("Load default (from tlpdb) repository") {
-        onAction = (ae: ActionEvent) => callback_load("remote")
+      new MenuItem("Update filename database ...") {
+        onAction = (ae) => callback_run_external("mktexlsr")
       },
-      new MenuItem("Load standard net repository") {
-        onAction = (ae: ActionEvent) => not_implemented_info()
-        disable = true
+      // calling fmtutil kills JavaFX when the first sub-process (format) is called
+      // I get loads of Exception in thread "JavaFX Application Thread" java.lang.ArrayIndexOutOfBoundsException
+      // new MenuItem("Rebuild all formats ...") { onAction = (ae) => callback_run_external("fmtutil --sys --all") },
+      new MenuItem("Update font map database ...") {
+        onAction = (ae) => callback_run_external("updmap --sys")
       },
-      new MenuItem("Load other repository ...") {
-        onAction = (ae: ActionEvent) => not_implemented_info()
-        disable = true
+      new MenuItem("Restore packages from backup ...") {
+        disable = true; onAction = (ae) => not_implemented_info()
+      },
+      new MenuItem("Handle symlinks in system dirs ...") {
+        disable = true; onAction = (ae) => not_implemented_info()
+      },
+      new SeparatorMenuItem,
+      new MenuItem("Remove TeX Live ...") {
+        disable = true; onAction = (ae) => not_implemented_info()
       },
       new SeparatorMenuItem,
       new MenuItem("Exit") {
@@ -338,29 +346,6 @@ object ApplicationMain extends JFXApp {
       },
       new CheckMenuItem("Disable auto-removal of server-deleted packages") {
         disable = true
-      }
-    )
-  }
-  val actionsMenu = new Menu("Actions") {
-    items = List(
-      new MenuItem("Update filename database ...") {
-        onAction = (ae) => callback_run_external("mktexlsr")
-      },
-      // calling fmtutil kills JavaFX when the first sub-process (format) is called
-      // I get loads of Exception in thread "JavaFX Application Thread" java.lang.ArrayIndexOutOfBoundsException
-      // new MenuItem("Rebuild all formats ...") { onAction = (ae) => callback_run_external("fmtutil --sys --all") },
-      new MenuItem("Update font map database ...") {
-        onAction = (ae) => callback_run_external("updmap --sys")
-      },
-      new MenuItem("Restore packages from backup ...") {
-        disable = true; onAction = (ae) => not_implemented_info()
-      },
-      new MenuItem("Handle symlinks in system dirs ...") {
-        disable = true; onAction = (ae) => not_implemented_info()
-      },
-      new SeparatorMenuItem,
-      new MenuItem("Remove TeX Live ...") {
-        disable = true; onAction = (ae) => not_implemented_info()
       }
     )
   }
@@ -479,7 +464,7 @@ object ApplicationMain extends JFXApp {
       root = {
         val topBox = new MenuBar {
           useSystemMenuBar = true
-          menus.addAll(mainMenu, optionsMenu, actionsMenu, helpMenu)
+          menus.addAll(mainMenu, optionsMenu, helpMenu)
         }
         val centerBox = new VBox {
           padding = Insets(10)
