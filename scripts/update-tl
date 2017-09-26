@@ -1,8 +1,7 @@
 #!/bin/bash
 
 if [ "x$1" = "x" ] ; then
-  echo "Need location of TeX Live checkout as first argument!" >&2
-  exit 1
+  tl="$HOME/Development/TeX/texlive.git"
 fi
 
 tl="$1"
@@ -30,18 +29,18 @@ cp -a screenshots "$tl/Master/texmf-dist/doc/support/tlcockpit/"
 
 
 # build deployment jar
-if [ ! -r target/scala-2.12/tlcockpit-assembly-0.1.jar ] ; then
+if [ ! -r jar/tlcockpit.jar ] ; then
   echo "Rebuilding tlcockpit assembly"
   sbt assembly
 fi
-cp target/scala-2.12/tlcockpit-assembly-0.1.jar "$tl/Master/texmf-dist/scripts/tlcockpit/tlcockpit.jar"
+cp jar/tlcockpit.jar "$tl/Master/texmf-dist/scripts/tlcockpit/tlcockpit.jar"
 
 # update bin scripts
 for i in "$tl"/Master/bin/* ; do
   if [ -d "$i" ] ; then
     bn=`basename "$i"`
     if [ $bn = win32 ] ; then
-      cp "$i/runscript.exe" "$i/tlcockpit.exe"
+      cp "$i/wrunscript.exe" "$i/tlcockpit.exe"
     else
       if [ -x "$i/pdftex" ] ; then
         ln -sf ../../texmf-dist/scripts/tlcockpit/tlcockpit-runner.sh "$i/tlcockpit"
