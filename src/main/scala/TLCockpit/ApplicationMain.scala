@@ -198,7 +198,7 @@ object ApplicationMain extends JFXApp {
     }.showAndWait()
   }
 
-  def callback_show_all(): Unit = {
+  /* def callback_show_all(): Unit = {
     viewpkgs.clear()
     pkgs.map(viewpkgs += _)
   }
@@ -219,11 +219,12 @@ object ApplicationMain extends JFXApp {
     viewpkgs.clear()
     newpkgs.map(viewpkgs += _)
   }
+  */
 
   def callback_update_all(): Unit = {
     tlmgr_async_command("update --all", s => {
       update_update_button_state()
-      callback_show_all()
+      // callback_show_all()
     })
   }
 
@@ -232,7 +233,7 @@ object ApplicationMain extends JFXApp {
     // should we restart tlmgr here - it might be necessary!!!
     tlmgr_async_command("update --self", s => {
       update_update_button_state()
-      callback_show_all()
+      // callback_show_all()
     })
   }
 
@@ -353,7 +354,7 @@ object ApplicationMain extends JFXApp {
             }
           )
         },
-        new HBox {
+        /* new HBox {
           spacing = 10
           children = List(
             new Button {
@@ -372,6 +373,7 @@ object ApplicationMain extends JFXApp {
             update_all_button
           )
         }
+        */
       )
     }
   }
@@ -396,9 +398,13 @@ object ApplicationMain extends JFXApp {
       cellValueFactory = { _.value.rrev }
       prefWidth = 100
     }
-
+    val colSize = new TableColumn[TLPackage, String] {
+      text = "Size"
+      cellValueFactory = { _.value.size }
+      prefWidth = 100
+    }
     val table = new TableView[TLPackage](updpkgs) {
-      columns ++= List(colName, colDesc, colLRev, colRRev)
+      columns ++= List(colName, colDesc, colLRev, colRRev, colSize)
     }
     colDesc.prefWidth.bind(table.width - colName.width - colLRev.width - colRRev.width)
     table.prefHeight = 300
@@ -480,6 +486,21 @@ object ApplicationMain extends JFXApp {
     }
     table
   }
+  val pkgstabs = new TabPane {
+    minWidth = 400
+    tabs = Seq(
+      new Tab {
+        text = "Updates"
+        closable = false
+        content = updateTable
+      },
+      new Tab {
+        text = "Packages"
+        closable = false
+        content = packageTable
+      }
+    )
+  }
   stage = new PrimaryStage {
     title = "TLCockpit"
     scene = new Scene {
@@ -490,7 +511,7 @@ object ApplicationMain extends JFXApp {
         }
         val centerBox = new VBox {
           padding = Insets(10)
-          children = List(packageTable, expertPane, outerrpane)
+          children = List(pkgstabs, expertPane, outerrpane)
         }
         new BorderPane {
           // padding = Insets(20)
@@ -539,9 +560,12 @@ object ApplicationMain extends JFXApp {
       val fields: Array[String] = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1)
       val sd = fields(3)
       val shortdesc = if (sd.isEmpty) "" else sd.substring(1).dropRight(1).replace("""\"""",""""""")
-      pkgs += new TLPackage(fields(0), fields(1), fields(2), shortdesc, fields(4).toInt, fields(5).toInt)
+      pkgs += new TLPackage(fields(0), fields(1), fields(2), shortdesc, fields(4), fields(5))
     })
-    pkgs.map(viewpkgs += _)
+    pkgs.map(pkg => {
+      viewpkgs += pkg
+      if (pkg.installed.value == "1" && pkg.lrev.value.toInt < pkg.rrev.value.toInt) updpkgs += pkg
+    })
     // check for updates available
     update_update_button_state()
     // Platform.runLater { startalert.close() }
