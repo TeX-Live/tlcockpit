@@ -40,6 +40,7 @@ object ApplicationMain extends JFXApp {
 
   val pkgs = ArrayBuffer[TLPackage]()
   val viewpkgs = ObservableBuffer[TLPackage]()
+  val updpkgs  = ObservableBuffer[TLPackage]()
 
   val errorText = ObservableBuffer[String]()
   val outputText = ObservableBuffer[String]()
@@ -143,30 +144,6 @@ object ApplicationMain extends JFXApp {
     tlmgr.cleanup()
     Platform.exit()
     sys.exit(0)
-  }
-
-  def callback_load_update_info(s: String, strs: Array[String]): Unit = {
-    if (s == "remote") {
-      tlmgr_async_command("info --data name,localrev,remoterev,shortdesc", (s: Array[String]) => {
-        val newpkgs = ArrayBuffer[TLPackage]()
-        s.map((line: String) => {
-          val fields: Array[String] = line.split(",", -1)
-          val sd = fields(3)
-          val shortdesc = if (sd.isEmpty) "" else sd.substring(1).dropRight(1).replace("""\"""",""""""")
-          newpkgs += new TLPackage(fields(0), fields(1), fields(2), shortdesc)
-        })
-        pkgs.clear()
-        newpkgs.map(pkgs += _)
-        viewpkgs.clear()
-        pkgs.map(viewpkgs += _)
-        // check for updates available
-        update_update_button_state()
-      })
-    }
-  }
-
-  def callback_load(s: String): Unit = {
-    tlmgr_async_command("load " + s, callback_load_update_info(s, _))
   }
 
   def callback_run_text(s: String): Unit = {
@@ -373,10 +350,6 @@ object ApplicationMain extends JFXApp {
             new Button {
               text = "Go"
               onAction = (event: ActionEvent) => callback_run_cmdline()
-            },
-            new Button {
-              text = "Load repository";
-              onAction = (event: ActionEvent) => callback_load("remote")
             }
           )
         },
@@ -401,6 +374,55 @@ object ApplicationMain extends JFXApp {
         }
       )
     }
+  }
+  val updateTable = {
+    val colName = new TableColumn[TLPackage, String] {
+      text = "Package"
+      cellValueFactory = { _.value.name }
+      prefWidth = 150
+    }
+    val colDesc = new TableColumn[TLPackage, String] {
+      text = "Description"
+      cellValueFactory = { _.value.shortdesc }
+      prefWidth = 300
+    }
+    val colLRev = new TableColumn[TLPackage, String] {
+      text = "Local rev"
+      cellValueFactory = { _.value.lrev }
+      prefWidth = 100
+    }
+    val colRRev = new TableColumn[TLPackage, String] {
+      text = "Remote rev"
+      cellValueFactory = { _.value.rrev }
+      prefWidth = 100
+    }
+
+    val table = new TableView[TLPackage](updpkgs) {
+      columns ++= List(colName, colDesc, colLRev, colRRev)
+    }
+    colDesc.prefWidth.bind(table.width - colName.width - colLRev.width - colRRev.width)
+    table.prefHeight = 300
+    table.vgrow = Priority.Always
+    table.rowFactory = { _ =>
+      val row = new TableRow[TLPackage] {}
+      val ctm = new ContextMenu(
+        new MenuItem("Info") {
+          onAction = (ae) => callback_show_pkg_info(row.item.value.name.value)
+        },
+        new MenuItem("Install") {
+          onAction = (ae) => callback_run_text("install " + row.item.value.name.value)
+        },
+        new MenuItem("Remove") {
+          onAction = (ae) => callback_run_text("remove " + row.item.value.name.value)
+        },
+        new MenuItem("Update") {
+          onAction = (ae) => callback_run_text("update " + row.item.value.name.value)
+        }
+      )
+      row.contextMenu = ctm
+      row
+    }
+    table
   }
   val packageTable = {
     val col1 = new TableColumn[TLPackage, String] {
@@ -511,13 +533,13 @@ object ApplicationMain extends JFXApp {
   var pkglines: Array[String] = Array()
 
   // tlmgr loads local and remote if we request localrev and remoterev!
-  tlmgr_async_command("info --data name,localrev,remoterev,shortdesc", (s: Array[String]) => {
+  tlmgr_async_command("info --data name,localrev,remoterev,shortdesc,size,installed", (s: Array[String]) => {
     val newpkgs = ArrayBuffer[TLPackage]()
     s.map((line: String) => {
-      val fields: Array[String] = line.split(",", -1)
+      val fields: Array[String] = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1)
       val sd = fields(3)
       val shortdesc = if (sd.isEmpty) "" else sd.substring(1).dropRight(1).replace("""\"""",""""""")
-      pkgs += new TLPackage(fields(0), fields(1), fields(2), shortdesc)
+      pkgs += new TLPackage(fields(0), fields(1), fields(2), shortdesc, fields(4).toInt, fields(5).toInt)
     })
     pkgs.map(viewpkgs += _)
     // check for updates available
