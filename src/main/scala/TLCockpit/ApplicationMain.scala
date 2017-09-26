@@ -11,7 +11,7 @@ import TeXLive.{TLPackage, TlmgrProcess}
 import scala.concurrent.{Future, SyncVar}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
-import scalafx.geometry.HPos
+import scalafx.geometry.{HPos, Pos, VPos}
 import scalafx.scene.control.Alert.AlertType
 
 // needed see https://github.com/scalafx/scalafx/issues/137
@@ -28,6 +28,7 @@ import scalafx.event.ActionEvent
 import scalafx.collections.ObservableBuffer
 import scala.sys.process._
 import scala.collection.mutable.ArrayBuffer
+import scalafx.scene.text._
 
 
 object ApplicationMain extends JFXApp {
@@ -347,6 +348,10 @@ object ApplicationMain extends JFXApp {
         new HBox {
           spacing = 10
           children = List(
+            new Label("tlmgr shell command:") {
+              // TODO vertical text alignment does not work
+              textAlignment = TextAlignment.Center
+            },
             cmdline,
             new Button {
               text = "Go"
@@ -406,7 +411,7 @@ object ApplicationMain extends JFXApp {
     val table = new TableView[TLPackage](updpkgs) {
       columns ++= List(colName, colDesc, colLRev, colRRev, colSize)
     }
-    colDesc.prefWidth.bind(table.width - colName.width - colLRev.width - colRRev.width)
+    colDesc.prefWidth.bind(table.width - colName.width - colLRev.width - colRRev.width - colSize.width)
     table.prefHeight = 300
     table.vgrow = Priority.Always
     table.rowFactory = { _ =>
@@ -431,38 +436,35 @@ object ApplicationMain extends JFXApp {
     table
   }
   val packageTable = {
-    val col1 = new TableColumn[TLPackage, String] {
+    val colName = new TableColumn[TLPackage, String] {
       text = "Package"
-      cellValueFactory = {
-        _.value.name
-      }
+      cellValueFactory = {  _.value.name }
       prefWidth = 150
     }
-    val col2 = new TableColumn[TLPackage, String] {
+    val colLRev = new TableColumn[TLPackage, String] {
       text = "Local rev"
-      cellValueFactory = {
-        _.value.lrev
-      }
+      cellValueFactory = { _.value.lrev }
       prefWidth = 100
     }
-    val col3 = new TableColumn[TLPackage, String] {
+    val colRRev = new TableColumn[TLPackage, String] {
       text = "Remote rev"
-      cellValueFactory = {
-        _.value.rrev
-      }
+      cellValueFactory = { _.value.rrev }
       prefWidth = 100
     }
-    val col4 = new TableColumn[TLPackage, String] {
+    val colDesc = new TableColumn[TLPackage, String] {
       text = "Description"
-      cellValueFactory = {
-        _.value.shortdesc
-      }
+      cellValueFactory = { _.value.shortdesc }
       prefWidth = 300
     }
-    val table = new TableView[TLPackage](viewpkgs) {
-      columns ++= List(col1, col2, col3, col4)
+    val colInst = new TableColumn[TLPackage, String] {
+      text = "Installed"
+      cellValueFactory = { _.value.installed }
+      prefWidth = 30
     }
-    col4.prefWidth.bind(table.width - col1.width - col2.width - col3.width)
+    val table = new TableView[TLPackage](viewpkgs) {
+      columns ++= List(colName, colDesc, colInst, colLRev, colRRev)
+    }
+    colDesc.prefWidth.bind(table.width - colLRev.width - colRRev.width - colInst.width - colName.width)
     table.prefHeight = 300
     table.vgrow = Priority.Always
     table.rowFactory = { _ =>
@@ -488,6 +490,7 @@ object ApplicationMain extends JFXApp {
   }
   val pkgstabs = new TabPane {
     minWidth = 400
+    vgrow = Priority.Always
     tabs = Seq(
       new Tab {
         text = "Updates"
