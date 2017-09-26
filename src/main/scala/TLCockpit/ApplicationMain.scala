@@ -36,7 +36,7 @@ object ApplicationMain extends JFXApp {
   override def stopApp(): Unit = {
     tlmgr.cleanup()
   }
-  
+
 
   val pkgs = ArrayBuffer[TLPackage]()
   val viewpkgs = ObservableBuffer[TLPackage]()
@@ -99,11 +99,11 @@ object ApplicationMain extends JFXApp {
   val cmdline = new TextField()
   val tlmgr = new TlmgrProcess(
     // (s:String) => outputfield.text = s,
-    (s:Array[String]) => {
+    (s: Array[String]) => {
       outputText.clear()
       outputText.appendAll(s)
     },
-    (s:String) => {
+    (s: String) => {
       errorText.clear()
       errorText.append(s)
       if (s != "") {
@@ -116,7 +116,9 @@ object ApplicationMain extends JFXApp {
     errorText.clear()
     outputText.clear()
     outerrpane.expanded = false
-    val foo = Future { tlmgr.send_command(s) }
+    val foo = Future {
+      tlmgr.send_command(s)
+    }
     foo onComplete {
       case Success(ret) => f(ret)
       case Failure(t) =>
@@ -127,13 +129,13 @@ object ApplicationMain extends JFXApp {
   }
 
   def update_update_button_state(): Unit = {
-    update_all_button.disable = ! pkgs.foldLeft(false)(
-      (a,b) => a || (if (b.name.value == "texlive.infra") false else b.lrev.value.toInt > 0 && b.lrev.value.toInt < b.rrev.value.toInt)
+    update_all_button.disable = !pkgs.foldLeft(false)(
+      (a, b) => a || (if (b.name.value == "texlive.infra") false else b.lrev.value.toInt > 0 && b.lrev.value.toInt < b.rrev.value.toInt)
     )
     // TODO we should change pkgs to a Map with keys are the names + repository (for multi repo support)
     // and the values are llrev/rrev or some combination
-    update_self_button.disable = ! pkgs.foldLeft(false)(
-      (a,b) => a || (if (b.name.value == "texlive.infra") b.lrev.value.toInt < b.rrev.value.toInt else false)
+    update_self_button.disable = !pkgs.foldLeft(false)(
+      (a, b) => a || (if (b.name.value == "texlive.infra") b.lrev.value.toInt < b.rrev.value.toInt else false)
     )
   }
 
@@ -143,11 +145,11 @@ object ApplicationMain extends JFXApp {
     sys.exit(0)
   }
 
-  def callback_load_update_info(s:String, strs: Array[String]): Unit = {
+  def callback_load_update_info(s: String, strs: Array[String]): Unit = {
     if (s == "remote") {
       tlmgr_async_command("info --data name,localrev,remoterev,shortdesc", (s: Array[String]) => {
         val newpkgs = ArrayBuffer[TLPackage]()
-        s.map((line:String) => {
+        s.map((line: String) => {
           val fields: Array[String] = line.split(",", -1)
           val sd = fields(3)
           val shortdesc = if (sd.isEmpty) "" else sd.substring(1).dropRight(1).replace("""\"""",""""""")
@@ -164,11 +166,13 @@ object ApplicationMain extends JFXApp {
   }
 
   def callback_load(s: String): Unit = {
-    tlmgr_async_command("load " + s, callback_load_update_info(s, _) )
+    tlmgr_async_command("load " + s, callback_load_update_info(s, _))
   }
+
   def callback_run_text(s: String): Unit = {
     tlmgr_async_command(s, (s: Array[String]) => {})
   }
+
   def callback_run_cmdline(): Unit = {
     callback_run_text(cmdline.text.value)
     outerrpane.expanded = true
@@ -216,14 +220,17 @@ object ApplicationMain extends JFXApp {
       contentText = "Brought to you by Norbert\nSources: https://github.com/TeX-Live/tlcockpit"
     }.showAndWait()
   }
-  def callback_show_all() : Unit = {
+
+  def callback_show_all(): Unit = {
     viewpkgs.clear()
     pkgs.map(viewpkgs += _)
   }
-  def callback_show_installed() : Unit = {
+
+  def callback_show_installed(): Unit = {
     viewpkgs.clear()
     pkgs.map(p => if (p.lrev.value.toInt > 0) viewpkgs += p)
   }
+
   def callback_show_updates(): Unit = {
     val newpkgs = ArrayBuffer[TLPackage]()
     pkgs.map(p =>
@@ -235,13 +242,15 @@ object ApplicationMain extends JFXApp {
     viewpkgs.clear()
     newpkgs.map(viewpkgs += _)
   }
-  def callback_update_all() : Unit = {
+
+  def callback_update_all(): Unit = {
     tlmgr_async_command("update --all", s => {
       update_update_button_state()
       callback_show_all()
     })
   }
-  def callback_update_self() : Unit = {
+
+  def callback_update_self(): Unit = {
     // TODO
     // should we restart tlmgr here - it might be necessary!!!
     tlmgr_async_command("update --self", s => {
@@ -288,176 +297,194 @@ object ApplicationMain extends JFXApp {
     })
   }
 
+  val mainMenu = new Menu("TLCockpit") {
+    items = List(
+      new MenuItem("Load default (from tlpdb) repository") {
+        onAction = (ae: ActionEvent) => callback_load("remote")
+      },
+      new MenuItem("Load standard net repository") {
+        onAction = (ae: ActionEvent) => not_implemented_info()
+        disable = true
+      },
+      new MenuItem("Load other repository ...") {
+        onAction = (ae: ActionEvent) => not_implemented_info()
+        disable = true
+      },
+      new SeparatorMenuItem,
+      new MenuItem("Exit") {
+        onAction = (ae: ActionEvent) => callback_quit()
+      })
+  }
+  val optionsMenu = new Menu("Options") {
+    items = List(
+      new MenuItem("General ...") {
+        disable = true; onAction = (ae) => not_implemented_info()
+      },
+      new MenuItem("Paper ...") {
+        disable = true; onAction = (ae) => not_implemented_info()
+      },
+      new MenuItem("Platforms ...") {
+        disable = true; onAction = (ae) => not_implemented_info()
+      },
+      new SeparatorMenuItem,
+      new CheckMenuItem("Expert options") {
+        disable = true
+      },
+      new CheckMenuItem("Enable debugging options") {
+        disable = true
+      },
+      new CheckMenuItem("Disable auto-install of new packages") {
+        disable = true
+      },
+      new CheckMenuItem("Disable auto-removal of server-deleted packages") {
+        disable = true
+      }
+    )
+  }
+  val actionsMenu = new Menu("Actions") {
+    items = List(
+      new MenuItem("Update filename database ...") {
+        onAction = (ae) => callback_run_external("mktexlsr")
+      },
+      // calling fmtutil kills JavaFX when the first sub-process (format) is called
+      // I get loads of Exception in thread "JavaFX Application Thread" java.lang.ArrayIndexOutOfBoundsException
+      // new MenuItem("Rebuild all formats ...") { onAction = (ae) => callback_run_external("fmtutil --sys --all") },
+      new MenuItem("Update font map database ...") {
+        onAction = (ae) => callback_run_external("updmap --sys")
+      },
+      new MenuItem("Restore packages from backup ...") {
+        disable = true; onAction = (ae) => not_implemented_info()
+      },
+      new MenuItem("Handle symlinks in system dirs ...") {
+        disable = true; onAction = (ae) => not_implemented_info()
+      },
+      new SeparatorMenuItem,
+      new MenuItem("Remove TeX Live ...") {
+        disable = true; onAction = (ae) => not_implemented_info()
+      }
+    )
+  }
+  val helpMenu = new Menu("Help") {
+    items = List(
+      new MenuItem("Manual") {
+        disable = true; onAction = (ae) => not_implemented_info()
+      },
+      new MenuItem("About") {
+        onAction = (ae) => callback_about()
+      },
+    )
+  }
+  val expertPane = new TitledPane {
+    text = "Experts only"
+    collapsible = true
+    expanded = false
+    content = new VBox {
+      spacing = 10
+      children = List(
+        new HBox {
+          spacing = 10
+          children = List(
+            cmdline,
+            new Button {
+              text = "Go"
+              onAction = (event: ActionEvent) => callback_run_cmdline()
+            },
+            new Button {
+              text = "Load repository";
+              onAction = (event: ActionEvent) => callback_load("remote")
+            }
+          )
+        },
+        new HBox {
+          spacing = 10
+          children = List(
+            new Button {
+              text = "Show updates"
+              onAction = (e: ActionEvent) => callback_show_updates()
+            },
+            new Button {
+              text = "Show installed"
+              onAction = (e: ActionEvent) => callback_show_installed()
+            },
+            new Button {
+              text = "Show all"
+              onAction = (e: ActionEvent) => callback_show_all()
+            },
+            update_self_button,
+            update_all_button
+          )
+        }
+      )
+    }
+  }
+  val packageTable = {
+    val col1 = new TableColumn[TLPackage, String] {
+      text = "Package"
+      cellValueFactory = {
+        _.value.name
+      }
+      prefWidth = 150
+    }
+    val col2 = new TableColumn[TLPackage, String] {
+      text = "Local rev"
+      cellValueFactory = {
+        _.value.lrev
+      }
+      prefWidth = 100
+    }
+    val col3 = new TableColumn[TLPackage, String] {
+      text = "Remote rev"
+      cellValueFactory = {
+        _.value.rrev
+      }
+      prefWidth = 100
+    }
+    val col4 = new TableColumn[TLPackage, String] {
+      text = "Description"
+      cellValueFactory = {
+        _.value.shortdesc
+      }
+      prefWidth = 300
+    }
+    val table = new TableView[TLPackage](viewpkgs) {
+      columns ++= List(col1, col2, col3, col4)
+    }
+    col4.prefWidth.bind(table.width - col1.width - col2.width - col3.width)
+    table.prefHeight = 300
+    table.vgrow = Priority.Always
+    table.rowFactory = { _ =>
+      val row = new TableRow[TLPackage] {}
+      val ctm = new ContextMenu(
+        new MenuItem("Info") {
+          onAction = (ae) => callback_show_pkg_info(row.item.value.name.value)
+        },
+        new MenuItem("Install") {
+          onAction = (ae) => callback_run_text("install " + row.item.value.name.value)
+        },
+        new MenuItem("Remove") {
+          onAction = (ae) => callback_run_text("remove " + row.item.value.name.value)
+        },
+        new MenuItem("Update") {
+          onAction = (ae) => callback_run_text("update " + row.item.value.name.value)
+        }
+      )
+      row.contextMenu = ctm
+      row
+    }
+    table
+  }
   stage = new PrimaryStage {
     title = "TLCockpit"
     scene = new Scene {
       root = {
         val topBox = new MenuBar {
           useSystemMenuBar = true
-          menus.add(new Menu("TLCockpit") {
-            items = List(
-              new MenuItem("Load default (from tlpdb) repository") {
-                onAction = (ae: ActionEvent) => callback_load("remote")
-              },
-              new MenuItem("Load standard net repository") {
-                onAction = (ae: ActionEvent) => not_implemented_info()
-                disable = true
-              },
-              new MenuItem("Load other repository ...") {
-                onAction = (ae: ActionEvent) => not_implemented_info()
-                disable = true
-              },
-              new SeparatorMenuItem,
-              new MenuItem("Exit") {
-                onAction = (ae: ActionEvent) => callback_quit()
-              }
-            )
-          })
-          menus.add(new Menu("Options") {
-            items = List(
-              new MenuItem("General ...") { disable = true; onAction = (ae) => not_implemented_info() },
-              new MenuItem("Paper ...") { disable = true; onAction = (ae) => not_implemented_info() },
-              new MenuItem("Platforms ...") { disable = true; onAction = (ae) => not_implemented_info() },
-              new SeparatorMenuItem,
-              new CheckMenuItem("Expert options") { disable = true },
-              new CheckMenuItem("Enable debugging options") { disable = true },
-              new CheckMenuItem("Disable auto-install of new packages") { disable = true },
-              new CheckMenuItem("Disable auto-removal of server-deleted packages") { disable = true }
-            )
-          })
-          menus.add(new Menu("Actions") {
-            items = List(
-              new MenuItem("Update filename database ...") { onAction = (ae) => callback_run_external("mktexlsr") },
-              // calling fmtutil kills JavaFX when the first sub-process (format) is called
-              // I get loads of Exception in thread "JavaFX Application Thread" java.lang.ArrayIndexOutOfBoundsException
-              // new MenuItem("Rebuild all formats ...") { onAction = (ae) => callback_run_external("fmtutil --sys --all") },
-              new MenuItem("Update font map database ...") { onAction = (ae) => callback_run_external("updmap --sys") },
-              new MenuItem("Restore packages from backup ...") { disable = true; onAction = (ae) => not_implemented_info() },
-              new MenuItem("Handle symlinks in system dirs ...") { disable = true; onAction = (ae) => not_implemented_info() },
-              new SeparatorMenuItem,
-              new MenuItem("Remove TeX Live ...") { disable = true; onAction = (ae) => not_implemented_info() }
-            )
-          })
-          menus.add(new Menu("Help") {
-            items = List(
-              new MenuItem("Manual") { disable = true; onAction = (ae) => not_implemented_info() },
-              new MenuItem("About") { onAction = (ae) => callback_about() },
-            )
-          })
+          menus.addAll(mainMenu, optionsMenu, actionsMenu, helpMenu)
         }
         val centerBox = new VBox {
           padding = Insets(10)
-          children = List(
-            new TitledPane {
-              text = "Actions"
-              collapsible = false
-              content = new VBox {
-                spacing = 10
-                children = List(
-                  new HBox {
-                    spacing = 10
-                    children = List(
-                      cmdline,
-                      new Button {
-                        text = "Go"
-                        onAction = (event: ActionEvent) => callback_run_cmdline()
-                      },
-                      new Button {
-                        text = "Load repository";
-                        onAction = (event: ActionEvent) => callback_load("remote")
-                      }
-                    )
-                  },
-                  new HBox {
-                    spacing = 10
-                    children = List(
-                      new Button {
-                        text = "Show updates"
-                        onAction = (e: ActionEvent) => callback_show_updates()
-                      },
-                      new Button {
-                        text = "Show installed"
-                        onAction = (e: ActionEvent) => callback_show_installed()
-                      },
-                      new Button {
-                        text = "Show all"
-                        onAction = (e: ActionEvent) => callback_show_all()
-                      },
-                      update_self_button,
-                      update_all_button
-                    )
-                  }
-                )
-              }
-            },
-            outerrpane,
-            {
-              val col1 = new TableColumn[TLPackage, String] {
-                text = "Package"
-                cellValueFactory = {
-                  _.value.name
-                }
-                prefWidth = 150
-              }
-              val col2 = new TableColumn[TLPackage, String] {
-                text = "Local rev"
-                cellValueFactory = {
-                  _.value.lrev
-                }
-                prefWidth = 100
-              }
-              val col3 = new TableColumn[TLPackage, String] {
-                text = "Remote rev"
-                cellValueFactory = {
-                  _.value.rrev
-                }
-                prefWidth = 100
-              }
-              val col4 = new TableColumn[TLPackage, String] {
-                text = "Description"
-                cellValueFactory = {
-                  _.value.shortdesc
-                }
-                prefWidth = 300
-              }
-              val table = new TableView[TLPackage](viewpkgs) {
-                columns ++= List(col1,col2,col3,col4)
-              }
-              col4.prefWidth.bind(table.width - col1.width - col2.width - col3.width)
-              table.prefHeight = 300
-              table.vgrow = Priority.Always
-              table.rowFactory = { _ =>
-                val row = new TableRow[TLPackage] {}
-                val ctm = new ContextMenu(
-                  new MenuItem("Info") { onAction = (ae) => callback_show_pkg_info(row.item.value.name.value) },
-                  new MenuItem("Install") {
-                    onAction = (ae) => callback_run_text("install " + row.item.value.name.value)
-                  },
-                  new MenuItem("Remove") {
-                    onAction = (ae) => callback_run_text("remove " + row.item.value.name.value)
-                  },
-                  new MenuItem("Update") {
-                    onAction = (ae) => callback_run_text("update " + row.item.value.name.value)
-                  }
-                )
-                row.contextMenu = ctm
-                row
-              }
-              table
-            },
-          )
+          children = List(packageTable, expertPane, outerrpane)
         }
-        /*       val bottomBox = new HBox {
-                 padding = Insets(10)
-                 spacing = 10
-                 children = List(
-                   new Button {
-                     text = "Quit"
-                     onAction = (event: ActionEvent) => callback_quit()
-                   }
-                 )
-               }
-       */
         new BorderPane {
           // padding = Insets(20)
           top = topBox
@@ -498,17 +525,20 @@ object ApplicationMain extends JFXApp {
   // load the initial set of packages
   var pkglines: Array[String] = Array()
 
-  tlmgr_async_command("info --only-installed --data name,localrev,shortdesc", (s: Array[String]) => {
-    s.map(line => {
+  // tlmgr loads local and remote if we request localrev and remoterev!
+  tlmgr_async_command("info --data name,localrev,remoterev,shortdesc", (s: Array[String]) => {
+    val newpkgs = ArrayBuffer[TLPackage]()
+    s.map((line: String) => {
       val fields: Array[String] = line.split(",", -1)
-      val sd = if (fields(2).isEmpty) "" else fields(2).substring(1).dropRight(1).replace("""\"""",""""""")
-      pkgs += new TLPackage(fields(0), fields(1), "0", sd)
+      val sd = fields(3)
+      val shortdesc = if (sd.isEmpty) "" else sd.substring(1).dropRight(1).replace("""\"""",""""""")
+      pkgs += new TLPackage(fields(0), fields(1), fields(2), shortdesc)
     })
-    viewpkgs.clear()
     pkgs.map(viewpkgs += _)
+    // check for updates available
+    update_update_button_state()
     // Platform.runLater { startalert.close() }
   })
-
 
 }  // object ApplicationMain
 
