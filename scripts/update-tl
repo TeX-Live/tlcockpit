@@ -2,9 +2,10 @@
 
 if [ "x$1" = "x" ] ; then
   tl="$HOME/Development/TeX/texlive.git"
+else 
+  tl="$1"
 fi
 
-tl="$1"
 
 if [ ! -d "$tl/Master/texmf-dist/scripts/tlcockpit" ] ; then
   echo "Cannot find $tl/Master/texmf-dist/scripts/tlcockpit, exiting!" >&2
