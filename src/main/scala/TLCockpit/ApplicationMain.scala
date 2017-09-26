@@ -8,7 +8,7 @@ package TLCockpit
 
 import TeXLive.{TLPackage, TlmgrProcess}
 
-import scala.concurrent.Future
+import scala.concurrent.{Future, SyncVar}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
 import scalafx.geometry.HPos
@@ -41,14 +41,27 @@ object ApplicationMain extends JFXApp {
   val pkgs = ArrayBuffer[TLPackage]()
   val viewpkgs = ObservableBuffer[TLPackage]()
 
+  val errorText = ObservableBuffer[String]()
+  val outputText = ObservableBuffer[String]()
+
   val outputfield = new TextArea {
     editable = false
     wrapText = true
+    text = ""
   }
   val errorfield = new TextArea {
     editable = false
     wrapText = true
+    text = ""
   }
+  errorText.onChange({
+    errorfield.text = errorText.mkString("\n")
+    errorfield.scrollTop = Double.MaxValue
+  })
+  outputText.onChange({
+    outputfield.text = outputText.mkString("\n")
+    outputfield.scrollTop = Double.MaxValue
+  })
 
   val update_self_button = new Button {
     text = "Update self"
@@ -84,24 +97,32 @@ object ApplicationMain extends JFXApp {
   }
 
   val cmdline = new TextField()
-  val tlmgr = new TlmgrProcess((s:String) => outputfield.text = s,
+  val tlmgr = new TlmgrProcess(
+    // (s:String) => outputfield.text = s,
+    (s:Array[String]) => {
+      outputText.clear()
+      outputText.appendAll(s)
+    },
     (s:String) => {
-      errorfield.text = s
+      errorText.clear()
+      errorText.append(s)
       if (s != "") {
         outerrpane.expanded = true
-        val selmod = outerrtabs.selectionModel()
-        selmod.select(1)
+        outerrtabs.selectionModel().select(1)
       }
     })
 
   def tlmgr_async_command(s: String, f: Array[String] => Unit): Unit = {
-    errorfield.text = ""
-    outputfield.text = ""
+    errorText.clear()
+    outputText.clear()
     outerrpane.expanded = false
     val foo = Future { tlmgr.send_command(s) }
     foo onComplete {
       case Success(ret) => f(ret)
-      case Failure(t) => println("An ERROR has occurred: " + t.getMessage)
+      case Failure(t) =>
+        errorText.append("An ERROR has occurred calling tlmgr: " + t.getMessage)
+        outerrpane.expanded = true
+        outerrtabs.selectionModel().select(1)
     }
   }
 
@@ -145,23 +166,13 @@ object ApplicationMain extends JFXApp {
   def callback_load(s: String): Unit = {
     tlmgr_async_command("load " + s, callback_load_update_info(s, _) )
   }
-
   def callback_run_text(s: String): Unit = {
     tlmgr_async_command(s, (s: Array[String]) => {})
-    // tlmgr_command(s)
   }
   def callback_run_cmdline(): Unit = {
     callback_run_text(cmdline.text.value)
-  }
-
-  def callback_list_collections(): Unit = {
-    tlmgr_async_command("info collections", foo => {
-      val foo: Array[String] = Array()
-      // println("got result from info collections: ")
-      // foo.map(println(_))
-      outputfield.text = foo.mkString("\n")
-      errorfield.text = tlmgr.errorBuffer.toString
-    })
+    outerrpane.expanded = true
+    outerrtabs.selectionModel().select(0)
   }
 
   def not_implemented_info(): Unit = {
@@ -174,10 +185,26 @@ object ApplicationMain extends JFXApp {
   }
 
   def callback_run_external(s: String): Unit = {
-    val foo = Future { s.!! }
+    outputText.clear()
+    errorText.clear()
+    outerrpane.expanded = true
+    outerrtabs.selectionModel().select(0)
+    outputText.append(s"Running $s")
+    val foo = Future {
+      s ! ProcessLogger(
+        line => outputText.append(line),
+        line => errorText.append(line)
+      )
+    }
     foo.onComplete {
-      case Success(ret) => outputfield.text = ret.mkString("\n")
-      case Failure(t) => println("An ERROR has occurred: " + t.getMessage)
+      case Success(ret) =>
+        outputText.append("Completed")
+        outputfield.scrollTop = Double.MaxValue
+      case Failure(t) =>
+        errorText.append("An ERROR has occurred running $s: " + t.getMessage)
+        errorfield.scrollTop = Double.MaxValue
+        outerrpane.expanded = true
+        outerrtabs.selectionModel().select(1)
     }
   }
 
@@ -261,23 +288,6 @@ object ApplicationMain extends JFXApp {
     })
   }
 
-  var testmode = false
-  if (parameters.unnamed.nonEmpty) {
-    if (parameters.unnamed.head == "-test" || parameters.unnamed.head == "--test") {
-      println("Testing mode enabled, not actually calling tlmgr!")
-      testmode = true
-    }
-  }
-
-  if (!testmode) {
-    tlmgr.start_process()
-
-    // wait until we got a prompt
-    val foo: Array[String] = tlmgr.get_output_till_prompt()
-    // println("current output: ")
-    // foo.map(println(_))
-  }
-
   stage = new PrimaryStage {
     title = "TLCockpit"
     scene = new Scene {
@@ -318,7 +328,9 @@ object ApplicationMain extends JFXApp {
           menus.add(new Menu("Actions") {
             items = List(
               new MenuItem("Update filename database ...") { onAction = (ae) => callback_run_external("mktexlsr") },
-              new MenuItem("Rebuild all formats ...") { onAction = (ae) => callback_run_external("fmtutil --sys --all") },
+              // calling fmtutil kills JavaFX when the first sub-process (format) is called
+              // I get loads of Exception in thread "JavaFX Application Thread" java.lang.ArrayIndexOutOfBoundsException
+              // new MenuItem("Rebuild all formats ...") { onAction = (ae) => callback_run_external("fmtutil --sys --all") },
               new MenuItem("Update font map database ...") { onAction = (ae) => callback_run_external("updmap --sys") },
               new MenuItem("Restore packages from backup ...") { disable = true; onAction = (ae) => not_implemented_info() },
               new MenuItem("Handle symlinks in system dirs ...") { disable = true; onAction = (ae) => not_implemented_info() },
@@ -457,10 +469,31 @@ object ApplicationMain extends JFXApp {
     }
   }
 
+  /* TODO implement splash screen - see example in ProScalaFX
   val startalert = new Alert(AlertType.Information)
   startalert.setTitle("Loading package database ...")
   startalert.setContentText("Loading package database, this might take a while. Please wait!")
   startalert.show()
+  */
+
+  var testmode = false
+  if (parameters.unnamed.nonEmpty) {
+    if (parameters.unnamed.head == "-test" || parameters.unnamed.head == "--test") {
+      println("Testing mode enabled, not actually calling tlmgr!")
+      testmode = true
+    }
+  }
+
+  // Thread.sleep(3000)
+
+  if (!testmode) {
+    tlmgr.start_process()
+
+    // wait until we got a prompt
+    val foo: Array[String] = tlmgr.get_output_till_prompt()
+    // println("current output: ")
+    // foo.map(println(_))
+  }
 
   // load the initial set of packages
   var pkglines: Array[String] = Array()
@@ -473,7 +506,7 @@ object ApplicationMain extends JFXApp {
     })
     viewpkgs.clear()
     pkgs.map(viewpkgs += _)
-    Platform.runLater { startalert.close() }
+    // Platform.runLater { startalert.close() }
   })
 
 

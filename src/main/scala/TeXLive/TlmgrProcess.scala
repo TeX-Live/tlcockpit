@@ -8,10 +8,7 @@ import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.SyncVar
 import scala.sys.process.{Process, ProcessBuilder, ProcessIO}
 
-// TODO line by line update of stdout/stderr via an update function passed in
-// otherwise we don't see any update while a long running command like update --all
-// is executed!
-class TlmgrProcess(updout: String => Unit, upderr: String => Unit) {
+class TlmgrProcess(updout: Array[String] => Unit, upderr: String => Unit) {
   val inputString = new SyncVar[String]                 // used for the tlmgr process input
   val outputString = new SyncVar[String]                // used for the tlmgr process output
   val errorBuffer: StringBuffer = new StringBuffer()    // buffer used for both tmgr process error console AND logging
@@ -36,7 +33,8 @@ class TlmgrProcess(updout: String => Unit, upderr: String => Unit) {
       } else {
         new Array[String](0)
       }
-      updout(ret.mkString("\n"))
+      // updout(ret.mkString("\n"))
+      updout(ret)
       upderr(errorBuffer.toString)
       ret
     } catch {
