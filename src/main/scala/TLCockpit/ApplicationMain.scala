@@ -287,6 +287,7 @@ object ApplicationMain extends JFXApp {
       new MenuItem("Update font map database ...") {
         onAction = (ae) => callback_run_external("updmap --sys")
       },
+      /*
       new MenuItem("Restore packages from backup ...") {
         disable = true; onAction = (ae) => not_implemented_info()
       },
@@ -297,7 +298,12 @@ object ApplicationMain extends JFXApp {
       new MenuItem("Remove TeX Live ...") {
         disable = true; onAction = (ae) => not_implemented_info()
       },
+      */
       new SeparatorMenuItem,
+      // temporarily move here as we disable the Help menu
+      new MenuItem("About") {
+        onAction = (ae) => callback_about()
+      },
       new MenuItem("Exit") {
         onAction = (ae: ActionEvent) => callback_quit()
       })
@@ -330,9 +336,11 @@ object ApplicationMain extends JFXApp {
   }
   val helpMenu = new Menu("Help") {
     items = List(
+      /*
       new MenuItem("Manual") {
         disable = true; onAction = (ae) => not_implemented_info()
       },
+      */
       new MenuItem("About") {
         onAction = (ae) => callback_about()
       },
@@ -510,7 +518,8 @@ object ApplicationMain extends JFXApp {
       root = {
         val topBox = new MenuBar {
           useSystemMenuBar = true
-          menus.addAll(mainMenu, optionsMenu, helpMenu)
+          // menus.addAll(mainMenu, optionsMenu, helpMenu)
+          menus.addAll(mainMenu)
         }
         val centerBox = new VBox {
           padding = Insets(10)
