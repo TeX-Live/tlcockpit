@@ -13,7 +13,6 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success, Sorting}
 import scalafx.geometry.{HPos, Pos, VPos}
 import scalafx.scene.control.Alert.AlertType
-
 // needed see https://github.com/scalafx/scalafx/issues/137
 import scalafx.scene.control.TableColumn._
 import scalafx.scene.control.Menu._
@@ -27,7 +26,6 @@ import scalafx.scene.control._
 import scalafx.event.ActionEvent
 import scalafx.collections.ObservableBuffer
 import scala.sys.process._
-import scala.collection.mutable.ArrayBuffer
 import scalafx.scene.text._
 
 
@@ -402,17 +400,17 @@ object ApplicationMain extends JFXApp {
       cellValueFactory = { _.value.shortdesc }
       prefWidth = 300
     }
-    val colLRev = new TableColumn[TLPackage, String] {
+    val colLRev = new TableColumn[TLPackage, Int] {
       text = "Local rev"
       cellValueFactory = { _.value.lrev }
       prefWidth = 100
     }
-    val colRRev = new TableColumn[TLPackage, String] {
+    val colRRev = new TableColumn[TLPackage, Int] {
       text = "Remote rev"
       cellValueFactory = { _.value.rrev }
       prefWidth = 100
     }
-    val colSize = new TableColumn[TLPackage, String] {
+    val colSize = new TableColumn[TLPackage, Int] {
       text = "Size"
       cellValueFactory = { _.value.size }
       prefWidth = 100
