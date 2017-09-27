@@ -39,8 +39,8 @@ object ApplicationMain extends JFXApp {
   }
 
 
-  val pkgs = ArrayBuffer[TLPackage]()
-  val viewpkgs = ObservableBuffer[TLPackage]()
+  val pkgs = ObservableBuffer[TLPackage]()
+  // val viewpkgs = ObservableBuffer[TLPackage]()
   val updpkgs  = ObservableBuffer[TLPackage]()
 
   val errorText = ObservableBuffer[String]()
@@ -65,15 +65,13 @@ object ApplicationMain extends JFXApp {
     outputfield.scrollTop = Double.MaxValue
   })
 
-  val update_self_button = new Button {
-    text = "Update self"
+  val update_all_menu = new MenuItem("Update all") {
+    onAction = (ae) => callback_update_all()
     disable = true
-    onAction = (e: ActionEvent) => callback_update_self()
   }
-  val update_all_button = new Button {
-    text = "Update all"
+  val update_self_menu = new MenuItem("Update self") {
+    onAction = (ae) => callback_update_self()
     disable = true
-    onAction = (e: ActionEvent) => callback_update_all()
   }
 
   val outerrtabs = new TabPane {
@@ -102,8 +100,10 @@ object ApplicationMain extends JFXApp {
   val tlmgr = new TlmgrProcess(
     // (s:String) => outputfield.text = s,
     (s: Array[String]) => {
-      outputText.clear()
-      outputText.appendAll(s)
+      // we don't wont normal output to be displayed
+      // as it is anyway returned
+      // outputText.clear()
+      // outputText.appendAll(s)
     },
     (s: String) => {
       errorText.clear()
@@ -130,15 +130,31 @@ object ApplicationMain extends JFXApp {
     }
   }
 
-  def update_update_button_state(): Unit = {
-    update_all_button.disable = !pkgs.foldLeft(false)(
+  def update_update_menu_state(): Unit = {
+    update_all_menu.disable = !pkgs.foldLeft(false)(
       (a, b) => a || (if (b.name.value == "texlive.infra") false else b.lrev.value.toInt > 0 && b.lrev.value.toInt < b.rrev.value.toInt)
     )
     // TODO we should change pkgs to a Map with keys are the names + repository (for multi repo support)
     // and the values are llrev/rrev or some combination
-    update_self_button.disable = !pkgs.foldLeft(false)(
+    update_self_menu.disable = !pkgs.foldLeft(false)(
       (a, b) => a || (if (b.name.value == "texlive.infra") b.lrev.value.toInt < b.rrev.value.toInt else false)
     )
+  }
+
+  def update_pkg_lists(): Unit = {
+    tlmgr_async_command("info --data name,localrev,remoterev,shortdesc,size,installed", (s: Array[String]) => {
+      pkgs.clear()
+      s.map((line: String) => {
+        val fields: Array[String] = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1)
+        val sd = fields(3)
+        val shortdesc = if (sd.isEmpty) "" else sd.substring(1).dropRight(1).replace("""\"""",""""""")
+        pkgs += new TLPackage(fields(0), fields(1), fields(2), shortdesc, fields(4), fields(5))
+      })
+      pkgs.map(pkg => {
+        if (pkg.installed.value == "1" && pkg.lrev.value.toInt < pkg.rrev.value.toInt) updpkgs += pkg
+      })
+      update_update_menu_state()
+    })
   }
 
   def callback_quit(): Unit = {
@@ -224,7 +240,7 @@ object ApplicationMain extends JFXApp {
 
   def callback_update_all(): Unit = {
     tlmgr_async_command("update --all", s => {
-      update_update_button_state()
+      update_update_menu_state()
       // callback_show_all()
     })
   }
@@ -233,7 +249,7 @@ object ApplicationMain extends JFXApp {
     // TODO
     // should we restart tlmgr here - it might be necessary!!!
     tlmgr_async_command("update --self", s => {
-      update_update_button_state()
+      update_update_menu_state()
       // callback_show_all()
     })
   }
@@ -276,8 +292,17 @@ object ApplicationMain extends JFXApp {
     })
   }
 
+  def do_one_pkg(what: String, pkg: String) = {
+    tlmgr_async_command(s"$what $pkg", (s: Array[String]) => {
+      Platform.runLater { update_pkg_lists() }
+    })
+  }
+
   val mainMenu = new Menu("TLCockpit") {
     items = List(
+      update_all_menu,
+      update_self_menu,
+      new SeparatorMenuItem,
       new MenuItem("Update filename database ...") {
         onAction = (ae) => callback_run_external("mktexlsr")
       },
@@ -422,6 +447,7 @@ object ApplicationMain extends JFXApp {
     colDesc.prefWidth.bind(table.width - colName.width - colLRev.width - colRRev.width - colSize.width)
     table.prefHeight = 300
     table.vgrow = Priority.Always
+    table.placeholder = new Label("No updates available")
     table.rowFactory = { _ =>
       val row = new TableRow[TLPackage] {}
       val ctm = new ContextMenu(
@@ -429,13 +455,16 @@ object ApplicationMain extends JFXApp {
           onAction = (ae) => callback_show_pkg_info(row.item.value.name.value)
         },
         new MenuItem("Install") {
-          onAction = (ae) => callback_run_text("install " + row.item.value.name.value)
+          // onAction = (ae) => callback_run_text("install " + row.item.value.name.value)
+          onAction = (ae) => do_one_pkg("install", row.item.value.name.value)
         },
         new MenuItem("Remove") {
-          onAction = (ae) => callback_run_text("remove " + row.item.value.name.value)
+          // onAction = (ae) => callback_run_text("remove " + row.item.value.name.value)
+          onAction = (ae) => do_one_pkg("remove", row.item.value.name.value)
         },
         new MenuItem("Update") {
-          onAction = (ae) => callback_run_text("update " + row.item.value.name.value)
+          // onAction = (ae) => callback_run_text("update " + row.item.value.name.value)
+          onAction = (ae) => do_one_pkg("update", row.item.value.name.value)
         }
       )
       row.contextMenu = ctm
@@ -469,7 +498,7 @@ object ApplicationMain extends JFXApp {
       cellValueFactory = { _.value.installed }
       prefWidth = 30
     }
-    val table = new TableView[TLPackage](viewpkgs) {
+    val table = new TableView[TLPackage](pkgs) {
       columns ++= List(colName, colDesc, colInst, colLRev, colRRev)
     }
     colDesc.prefWidth.bind(table.width - colLRev.width - colRRev.width - colInst.width - colName.width)
@@ -482,13 +511,13 @@ object ApplicationMain extends JFXApp {
           onAction = (ae) => callback_show_pkg_info(row.item.value.name.value)
         },
         new MenuItem("Install") {
-          onAction = (ae) => callback_run_text("install " + row.item.value.name.value)
+          onAction = (ae) => do_one_pkg("install", row.item.value.name.value)
         },
         new MenuItem("Remove") {
-          onAction = (ae) => callback_run_text("remove " + row.item.value.name.value)
+          onAction = (ae) => do_one_pkg("remove", row.item.value.name.value)
         },
         new MenuItem("Update") {
-          onAction = (ae) => callback_run_text("update " + row.item.value.name.value)
+          onAction = (ae) => do_one_pkg("update", row.item.value.name.value)
         }
       )
       row.contextMenu = ctm
@@ -565,23 +594,7 @@ object ApplicationMain extends JFXApp {
   // load the initial set of packages
   var pkglines: Array[String] = Array()
 
-  // tlmgr loads local and remote if we request localrev and remoterev!
-  tlmgr_async_command("info --data name,localrev,remoterev,shortdesc,size,installed", (s: Array[String]) => {
-    val newpkgs = ArrayBuffer[TLPackage]()
-    s.map((line: String) => {
-      val fields: Array[String] = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1)
-      val sd = fields(3)
-      val shortdesc = if (sd.isEmpty) "" else sd.substring(1).dropRight(1).replace("""\"""",""""""")
-      pkgs += new TLPackage(fields(0), fields(1), fields(2), shortdesc, fields(4), fields(5))
-    })
-    pkgs.map(pkg => {
-      viewpkgs += pkg
-      if (pkg.installed.value == "1" && pkg.lrev.value.toInt < pkg.rrev.value.toInt) updpkgs += pkg
-    })
-    // check for updates available
-    update_update_button_state()
-    // Platform.runLater { startalert.close() }
-  })
+  update_pkg_lists()
 
 }  // object ApplicationMain
 
