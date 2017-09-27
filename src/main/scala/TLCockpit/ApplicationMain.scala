@@ -420,7 +420,7 @@ object ApplicationMain extends JFXApp {
     val table = new TableView[TLPackage](updpkgs) {
       columns ++= List(colName, colDesc, colLRev, colRRev, colSize)
     }
-    colDesc.prefWidth.bind(table.width - colName.width - colLRev.width - colRRev.width - colSize.width)
+    colDesc.prefWidth.bind(table.width - colName.width - colLRev.width - colRRev.width - colSize.width - 15)
     table.prefHeight = 300
     table.vgrow = Priority.Always
     table.placeholder = new Label("No updates available")
@@ -454,6 +454,7 @@ object ApplicationMain extends JFXApp {
       cellValueFactory = {  _.value.name }
       prefWidth = 150
     }
+    /*
     val colLRev = new TableColumn[TLPackage, String] {
       text = "Local rev"
       cellValueFactory = { _.value.lrev }
@@ -464,6 +465,7 @@ object ApplicationMain extends JFXApp {
       cellValueFactory = { _.value.rrev }
       prefWidth = 100
     }
+    */
     val colDesc = new TableColumn[TLPackage, String] {
       text = "Description"
       cellValueFactory = { _.value.shortdesc }
@@ -475,9 +477,9 @@ object ApplicationMain extends JFXApp {
       prefWidth = 100
     }
     val table = new TableView[TLPackage](pkgs) {
-      columns ++= List(colName, colDesc, colInst, colLRev, colRRev)
+      columns ++= List(colName, colDesc, colInst)
     }
-    colDesc.prefWidth.bind(table.width - colLRev.width - colRRev.width - colInst.width - colName.width)
+    colDesc.prefWidth.bind(table.width - colInst.width - colName.width - 15)
     table.prefHeight = 300
     table.vgrow = Priority.Always
     table.rowFactory = { _ =>
