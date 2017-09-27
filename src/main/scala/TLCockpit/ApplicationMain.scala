@@ -10,7 +10,7 @@ import TeXLive.{TLPackage, TlmgrProcess}
 
 import scala.concurrent.{Future, SyncVar}
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Sorting}
 import scalafx.geometry.{HPos, Pos, VPos}
 import scalafx.scene.control.Alert.AlertType
 
@@ -38,7 +38,7 @@ object ApplicationMain extends JFXApp {
     tlmgr.cleanup()
   }
 
-
+  var pkglines: Array[String] = Array()
   val pkgs = ObservableBuffer[TLPackage]()
   // val viewpkgs = ObservableBuffer[TLPackage]()
   val updpkgs  = ObservableBuffer[TLPackage]()
@@ -139,11 +139,15 @@ object ApplicationMain extends JFXApp {
     update_self_menu.disable = !pkgs.foldLeft(false)(
       (a, b) => a || (if (b.name.value == "texlive.infra") b.lrev.value.toInt < b.rrev.value.toInt else false)
     )
+    updateTable.refresh()
+    packageTable.refresh()
   }
 
   def update_pkg_lists(): Unit = {
     tlmgr_async_command("info --data name,localrev,remoterev,shortdesc,size,installed", (s: Array[String]) => {
       pkgs.clear()
+      updpkgs.clear()
+      // Sorting.quickSort(s)
       s.map((line: String) => {
         val fields: Array[String] = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1)
         val sd = fields(3)
@@ -151,8 +155,11 @@ object ApplicationMain extends JFXApp {
         pkgs += new TLPackage(fields(0), fields(1), fields(2), shortdesc, fields(4), fields(5))
       })
       pkgs.map(pkg => {
-        if (pkg.installed.value == "1" && pkg.lrev.value.toInt < pkg.rrev.value.toInt) updpkgs += pkg
+        if (pkg.lrev.value.toInt > 0 && pkg.lrev.value.toInt < pkg.rrev.value.toInt) updpkgs += pkg
       })
+      // println("Calling table refresh")
+      updateTable.refresh
+      packageTable.refresh
       update_update_menu_state()
     })
   }
@@ -168,9 +175,11 @@ object ApplicationMain extends JFXApp {
   }
 
   def callback_run_cmdline(): Unit = {
-    callback_run_text(cmdline.text.value)
-    outerrpane.expanded = true
-    outerrtabs.selectionModel().select(0)
+    tlmgr_async_command(cmdline.text.value, s => {
+      outputText.appendAll(s)
+      outerrpane.expanded = true
+      outerrtabs.selectionModel().select(0)
+    })
   }
 
   def not_implemented_info(): Unit = {
@@ -215,48 +224,20 @@ object ApplicationMain extends JFXApp {
     }.showAndWait()
   }
 
-  /* def callback_show_all(): Unit = {
-    viewpkgs.clear()
-    pkgs.map(viewpkgs += _)
-  }
-
-  def callback_show_installed(): Unit = {
-    viewpkgs.clear()
-    pkgs.map(p => if (p.lrev.value.toInt > 0) viewpkgs += p)
-  }
-
-  def callback_show_updates(): Unit = {
-    val newpkgs = ArrayBuffer[TLPackage]()
-    pkgs.map(p =>
-      // TODO we are not dealing with not integer values by now!
-      if (p.lrev.value.toInt > 0 && p.lrev.value.toInt < p.rrev.value.toInt) {
-        newpkgs += p
-      }
-    )
-    viewpkgs.clear()
-    newpkgs.map(viewpkgs += _)
-  }
-  */
-
   def callback_update_all(): Unit = {
-    tlmgr_async_command("update --all", s => {
-      update_update_menu_state()
-      // callback_show_all()
-    })
+    tlmgr_async_command("update --all", _ => { Platform.runLater { update_pkg_lists() } })
   }
 
   def callback_update_self(): Unit = {
-    // TODO
-    // should we restart tlmgr here - it might be necessary!!!
-    tlmgr_async_command("update --self", s => {
-      update_update_menu_state()
-      // callback_show_all()
-    })
+    // TODO should we restart tlmgr here - it might be necessary!!!
+    tlmgr_async_command("update --self", _ => { Platform.runLater { update_pkg_lists() } })
   }
 
+  def do_one_pkg(what: String, pkg: String): Unit = {
+    tlmgr_async_command(s"$what $pkg", _ => { Platform.runLater { update_pkg_lists() } })
+  }
 
   def callback_show_pkg_info(pkg: String): Unit = {
-    // val pkginfo = tlmgr_command(s"info $pkg")
     tlmgr_async_command(s"info $pkg", pkginfo => {
       // need to call runLater to go back to main thread!
       Platform.runLater {
@@ -292,11 +273,6 @@ object ApplicationMain extends JFXApp {
     })
   }
 
-  def do_one_pkg(what: String, pkg: String) = {
-    tlmgr_async_command(s"$what $pkg", (s: Array[String]) => {
-      Platform.runLater { update_pkg_lists() }
-    })
-  }
 
   val mainMenu = new Menu("TLCockpit") {
     items = List(
@@ -495,8 +471,8 @@ object ApplicationMain extends JFXApp {
     }
     val colInst = new TableColumn[TLPackage, String] {
       text = "Installed"
-      cellValueFactory = { _.value.installed }
-      prefWidth = 30
+      cellValueFactory = { _.value.installed  }
+      prefWidth = 100
     }
     val table = new TableView[TLPackage](pkgs) {
       columns ++= List(colName, colDesc, colInst, colLRev, colRRev)
@@ -572,6 +548,7 @@ object ApplicationMain extends JFXApp {
   startalert.show()
   */
 
+  /*
   var testmode = false
   if (parameters.unnamed.nonEmpty) {
     if (parameters.unnamed.head == "-test" || parameters.unnamed.head == "--test") {
@@ -579,22 +556,11 @@ object ApplicationMain extends JFXApp {
       testmode = true
     }
   }
+  */
 
-  // Thread.sleep(3000)
-
-  if (!testmode) {
-    tlmgr.start_process()
-
-    // wait until we got a prompt
-    val foo: Array[String] = tlmgr.get_output_till_prompt()
-    // println("current output: ")
-    // foo.map(println(_))
-  }
-
-  // load the initial set of packages
-  var pkglines: Array[String] = Array()
-
-  update_pkg_lists()
+  tlmgr.start_process()
+  tlmgr.get_output_till_prompt()
+  update_pkg_lists() // this is async done
 
 }  // object ApplicationMain
 

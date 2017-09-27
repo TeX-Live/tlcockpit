@@ -10,5 +10,5 @@ class TLPackage(name_ : String, lrev_ : String, rrev_ : String, shortdesc_ : Str
   val lrev = new StringProperty(this, "revision", lrev_)
   val rrev = new StringProperty(this, "revision", rrev_)
   val size = new StringProperty(this, "size", size_)
-  val installed = new StringProperty(this, "installed", installed_)
+  val installed = new StringProperty(this, "installed", if (installed_ == "1") "Installed" else "Not installed")
 }
