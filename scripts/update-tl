@@ -21,6 +21,7 @@ rm -rf "$tl/Master/texmf-dist/source/support/tlcockpit"/README.md
 rm -rf "$tl/Master/texmf-dist/source/support/tlcockpit"/LICENSE
 rm -rf "$tl/Master/texmf-dist/source/support/tlcockpit"/jar
 rm -rf "$tl/Master/texmf-dist/source/support/tlcockpit"/scripts
+rm -rf "$tl/Master/texmf-dist/source/support/tlcockpit"/logo
 
 
 mkdir -p "$tl/Master/texmf-dist/doc/support/tlcockpit"
