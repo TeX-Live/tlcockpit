@@ -42,7 +42,7 @@ class TlmgrProcess(updout: Array[String] => Unit, upderr: String => Unit) {
       // errorBuffer.setLength(0)
       synchronized(isBusy = true)
       inputString.put(input)
-      var ret = if (input != "quit") {
+      val ret = if (input != "quit") {
         get_output_till_prompt()
       } else {
         new Array[String](0)
@@ -95,10 +95,6 @@ class TlmgrProcess(updout: Array[String] => Unit, upderr: String => Unit) {
     if (process != null) {
       send_command("quit")
       process.destroy()
-      // we'll need to unblock the input again
-      // TODO what is that needed for???
-      // if (!inputString.isSet) inputString.put("")
-      // if (outputString.isSet) outputString.take()
     }
   }
 
@@ -128,7 +124,6 @@ class TlmgrProcess(updout: Array[String] => Unit, upderr: String => Unit) {
 
   private[this] def outputFn(stdOut: InputStream): Unit = {
     val reader = new BufferedReader(new InputStreamReader(stdOut))
-    val buffer: StringBuilder = new StringBuilder()
     try {
       var line: String = ""
       while (true) {
