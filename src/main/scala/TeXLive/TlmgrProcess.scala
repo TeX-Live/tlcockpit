@@ -17,16 +17,30 @@ class TlmgrProcess(updout: Array[String] => Unit, upderr: String => Unit) {
   var process: Process = _
   var lastInput: String = ""
   var lastOk: Boolean = false
+  var isBusy = false
+
 
   def send_command(input: String): Array[String] = {
 
     lastInput = input
 
+    val maxWaitTime = 5000
+    var waited = 0
+    while (isBusy) {
+      // do busy waiting here in case some other tlmgr command is running
+      // println("Debug: waiting for tlmgr being ready, want to send " + input)
+      Thread.sleep(300)
+      waited += 300
+      if (waited > maxWaitTime) {
+        throw new Exception("tlmgr busy, waited too long, aborting calling: " + input)
+      }
+    }
     try {
       // pass the input and wait for the output
       assert(!inputString.isSet)
       assert(!outputString.isSet)
-      errorBuffer.setLength(0)
+      // errorBuffer.setLength(0)
+      synchronized(isBusy = true)
       inputString.put(input)
       var ret = if (input != "quit") {
         get_output_till_prompt()
@@ -36,6 +50,7 @@ class TlmgrProcess(updout: Array[String] => Unit, upderr: String => Unit) {
       // updout(ret.mkString("\n"))
       updout(ret)
       upderr(errorBuffer.toString)
+      synchronized( isBusy = false )
       ret
     } catch {
       case exc: Throwable =>
@@ -58,6 +73,7 @@ class TlmgrProcess(updout: Array[String] => Unit, upderr: String => Unit) {
     var ret = ArrayBuffer[String]()
     var result = ""
     var found = false
+    synchronized(isBusy = true)
     while (!found) {
       result = outputString.take()
       if (result == "tlmgr> ") {
@@ -71,6 +87,7 @@ class TlmgrProcess(updout: Array[String] => Unit, upderr: String => Unit) {
         ret += result
       }
     }
+    synchronized(isBusy = false)
     ret.toArray
   }
 

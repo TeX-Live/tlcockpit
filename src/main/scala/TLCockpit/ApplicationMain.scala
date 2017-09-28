@@ -109,7 +109,7 @@ object ApplicationMain extends JFXApp {
       // outputText.appendAll(s)
     },
     (s: String) => {
-      errorText.clear()
+      // errorText.clear()
       errorText.append(s)
       if (s != "") {
         outerrpane.expanded = true
