@@ -9,7 +9,7 @@ package TLCockpit
 import javafx.collections.ObservableList
 import javafx.scene.control
 
-import TeXLive.{TLPackage, TlmgrProcess}
+import TeXLive.{TLPackage, TLBackup, TlmgrProcess}
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -299,6 +299,35 @@ object ApplicationMain extends JFXApp {
     tlmgr_async_command(s"$what $pkg", _ => { Platform.runLater { update_pkg_lists() } })
   }
 
+  def callback_restore_pkg(str: String, rev: String): Unit = {
+    not_implemented_info()
+  }
+
+  def callback_populate_backup_tab(): Unit = {
+    tlmgr_async_command("restore", lines => {
+      // lines.drop(1).foreach(println(_))
+      val foo = lines.drop(1).map { l =>
+        val fields = l.split("[ ():]", -1).filter(_.nonEmpty)
+        val pkgname = fields(0)
+        val rests: Array[Array[String]] = fields.drop(1).sliding(4,4).toArray
+        if (rests.length == 1) {
+          val p = rests(0)
+          new TreeItem[TLBackup](new TLBackup(pkgname, p(0), p(1) + " " + p(2) + ":" + p(3)))
+        } else {
+          new TreeItem[TLBackup](new TLBackup(pkgname, "", "")) {
+            children = rests.map(p => new TreeItem[TLBackup](
+              new TLBackup(pkgname, p(0), p(1) + " " + p(2) + ":" + p(3))
+            )).toSeq
+          }
+        }
+      }
+      val newroot = new TreeItem[TLBackup](new TLBackup("root","","")) {
+        children = foo
+      }
+      Platform.runLater { backupTable.root = newroot }
+    })
+  }
+
   def callback_show_pkg_info(pkg: String): Unit = {
     tlmgr_async_command(s"info $pkg", pkginfo => {
       // need to call runLater to go back to main thread!
@@ -576,6 +605,47 @@ object ApplicationMain extends JFXApp {
     }
     table
   }
+  val backupTable = {
+    val colName = new TreeTableColumn[TLBackup, String] {
+      text = "Package"
+      cellValueFactory = {  _.value.value.value.name }
+      prefWidth = 150
+    }
+    val colRev = new TreeTableColumn[TLBackup, String] {
+      text = "Revision"
+      cellValueFactory = { _.value.value.value.rev }
+      prefWidth = 100
+    }
+    val colDate = new TreeTableColumn[TLBackup, String] {
+      text = "Date"
+      cellValueFactory = { _.value.value.value.date }
+      prefWidth = 300
+    }
+    val table = new TreeTableView[TLBackup](
+      new TreeItem[TLBackup](new TLBackup("root","","")) {
+        expanded = false
+      }) {
+      columns ++= List(colName, colRev, colDate)
+    }
+    colDate.prefWidth.bind(table.width - colRev.width - colName.width - 15)
+    table.prefHeight = 300
+    table.showRoot = false
+    table.vgrow = Priority.Always
+    table.rowFactory = { _ =>
+      val row = new TreeTableRow[TLBackup] {}
+      val ctm = new ContextMenu(
+        new MenuItem("Info") {
+          onAction = (ae) => callback_show_pkg_info(row.item.value.name.value)
+        },
+        new MenuItem("Restore") {
+          onAction = (ae) => callback_restore_pkg(row.item.value.name.value, row.item.value.rev.value)
+        }
+      )
+      row.contextMenu = ctm
+      row
+    }
+    table
+  }
   val pkgstabs = new TabPane {
     minWidth = 400
     vgrow = Priority.Always
@@ -589,9 +659,22 @@ object ApplicationMain extends JFXApp {
         text = "Packages"
         closable = false
         content = packageTable
+      },
+      new Tab {
+        text = "Backups"
+        closable = false
+        content = backupTable
       }
     )
   }
+  pkgstabs.selectionModel().selectedItem.onChange(
+    (a,b,c) => {
+      if (a.value.text() == "Backups") {
+        callback_populate_backup_tab()
+        // println("Entering Backup Tab")
+      }
+    }
+  )
   val menuBar = new MenuBar {
     useSystemMenuBar = true
     // menus.addAll(mainMenu, optionsMenu, helpMenu)
