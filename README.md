@@ -1,3 +1,4 @@
+![TLCockpit Logo](src/main/resources/TLCockpit/tlcockpit-128.jpg){:style="float: right;margin-right: 7px;margin-top: 7px;"}
 TLCockpit - GUI frontend to tlmgr
 =================================
 
