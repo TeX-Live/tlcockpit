@@ -39,6 +39,8 @@ import scalafx.collections.ObservableBuffer
 
 object ApplicationMain extends JFXApp {
 
+  val version: String = getClass.getPackage.getImplementationVersion
+
   // necessary action when Window is closed with X or some other operation
   override def stopApp(): Unit = {
     tlmgr.cleanup()
@@ -280,7 +282,7 @@ object ApplicationMain extends JFXApp {
     new Alert(AlertType.Information) {
       initOwner(stage)
       title = "About TLCockpit"
-      headerText = "TLCockpit version 0.2\nLicense: GPL3+"
+      headerText = "TLCockpit version " + version + "\nLicense: GPL3+"
       contentText = "Brought to you by Norbert\nSources: https://github.com/TeX-Live/tlcockpit"
     }.showAndWait()
   }
