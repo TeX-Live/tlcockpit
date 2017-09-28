@@ -9,6 +9,7 @@ package TLCockpit
 import javafx.collections.ObservableList
 import javafx.scene.control
 
+import TLCockpit.ApplicationMain.getClass
 import TeXLive.{TLBackup, TLPackage, TlmgrProcess}
 
 import scala.collection.mutable
@@ -20,6 +21,7 @@ import scalafx.beans.Observable
 import scalafx.beans.property.{ObjectProperty, ReadOnlyStringWrapper}
 import scalafx.geometry.{HPos, Pos, VPos}
 import scalafx.scene.control.Alert.AlertType
+import scalafx.scene.image.{Image, ImageView}
 import scalafx.scene.input.{KeyCode, KeyEvent}
 // needed see https://github.com/scalafx/scalafx/issues/137
 import scalafx.scene.control.TableColumn._
@@ -46,6 +48,9 @@ object ApplicationMain extends JFXApp {
   override def stopApp(): Unit = {
     tlmgr.cleanup()
   }
+
+  val iconImage = new Image(getClass.getResourceAsStream("tlcockpit-48.jpg"))
+  val logoImage = new Image(getClass.getResourceAsStream("tlcockpit-128.jpg"))
 
   val pkgs: ArrayBuffer[TLPackage] = ArrayBuffer()
 
@@ -286,8 +291,9 @@ object ApplicationMain extends JFXApp {
     new Alert(AlertType.Information) {
       initOwner(stage)
       title = "About TLCockpit"
-      headerText = "TLCockpit version " + version + "\nLicense: GPL3+"
-      contentText = "Brought to you by Norbert\nSources: https://github.com/TeX-Live/tlcockpit"
+      graphic = new ImageView(logoImage)
+      headerText = "TLCockpit version " + version + "\n\nManage your TeX Live with speed!"
+      contentText = "Copyright 2017 Norbert Preining\nLicense: GPL3+\nSources: https://github.com/TeX-Live/tlcockpit"
     }.showAndWait()
   }
 
@@ -714,6 +720,7 @@ object ApplicationMain extends JFXApp {
         }
       }
     }
+    icons.add(iconImage)
   }
 
   /* TODO implement splash screen - see example in ProScalaFX
