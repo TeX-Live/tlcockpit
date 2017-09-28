@@ -1,5 +1,7 @@
-TLCockpit - GUI frontend to tlmgr <img align="right" width="100" height="100" src="src/main/resources/TLCockpit/tlcockpit-128.jpg">
+TLCockpit - GUI frontend to tlmgr
 =================================
+
+<img align="right" width="100" height="100" src="src/main/resources/TLCockpit/tlcockpit-128.jpg">
 
 TLCockpit aims at being a GUI for [tlmgr](https://www.tug.org/texlive/tlmgr.html),
 the [TeX Live](https://www.tug.org/texlive/) Manager, with a modern look and feel.
