@@ -3,17 +3,8 @@ TLCockpit - GUI frontend to tlmgr
 
 TLCockpit aims at being a GUI for [tlmgr](https://www.tug.org/texlive/tlmgr.html),
 the [TeX Live](https://www.tug.org/texlive/) Manager, with a modern look and feel.
+We take inspiration from the [TeX Live Utility](http://amaxwell.github.io/tlutility/).
 
-
-Supported functionality
------------------------
-
-While functionality is by now restricted to listing of packages, getting information
-on packages, and updating/installing/removing packages, further features will be added
-over time.
-
-For advanced users there is an input field allowing to enter arbitrary commands of the
-*tlmgr shell*, see [tlmgr manual](https://www.tug.org/texlive/doc/tlmgr.html#shell) for details.
 
 Installing/Running
 ------------------
@@ -25,7 +16,7 @@ should suffice.
 We are providing new jar files on a daily bases in the github page, but update
 the copy in TeX Live only at certain intervals. If you want to try out the latest
 and greatest, get [tlcockpit.jar](jar/tlcockpit.jar) and put it into
-`TEXLIVEROOT/temxf-dist/scripts/tlcockpit` replacing the current `tlcockpit.jar`.
+`TEXLIVEROOT/texmf-dist/scripts/tlcockpit` replacing the current `tlcockpit.jar`.
 
 After this you can run it by simply typing `tlcockpit`, or via a direct `java`
 call as in `java -jar PATH/TO/tlcockpit.jar`.
@@ -67,9 +58,17 @@ Screenshots
 
 (permanently outdated)
 
-Main window
+Package listing
 
-![Main window](screenshots/mainwindow.png)
+![Package listing view](screenshots/pkgs-view.jpg)
+
+Updates listing
+
+![Updates listing view](screenshots/update-view.jpg)
+
+Backup/Restore listing
+
+![Backup listing view](screenshots/backup-view.jpg)
 
 Package details
 
