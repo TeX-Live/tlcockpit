@@ -304,28 +304,34 @@ object ApplicationMain extends JFXApp {
   }
 
   def callback_populate_backup_tab(): Unit = {
-    tlmgr_async_command("restore", lines => {
-      // lines.drop(1).foreach(println(_))
-      val foo = lines.drop(1).map { l =>
-        val fields = l.split("[ ():]", -1).filter(_.nonEmpty)
-        val pkgname = fields(0)
-        val rests: Array[Array[String]] = fields.drop(1).sliding(4,4).toArray
-        if (rests.length == 1) {
-          val p = rests(0)
-          new TreeItem[TLBackup](new TLBackup(pkgname, p(0), p(1) + " " + p(2) + ":" + p(3)))
-        } else {
-          new TreeItem[TLBackup](new TLBackup(pkgname, "", "")) {
-            children = rests.map(p => new TreeItem[TLBackup](
-              new TLBackup(pkgname, p(0), p(1) + " " + p(2) + ":" + p(3))
-            )).toSeq
+    // only run the restore command once
+    if (backupTable.root.value.children.length == 0) {
+
+      tlmgr_async_command("restore", lines => {
+        // lines.drop(1).foreach(println(_))
+        val foo = lines.drop(1).map { l =>
+          val fields = l.split("[ ():]", -1).filter(_.nonEmpty)
+          val pkgname = fields(0)
+          val rests: Array[Array[String]] = fields.drop(1).sliding(4, 4).toArray
+          if (rests.length == 1) {
+            val p = rests(0)
+            new TreeItem[TLBackup](new TLBackup(pkgname, p(0), p(1) + " " + p(2) + ":" + p(3)))
+          } else {
+            new TreeItem[TLBackup](new TLBackup(pkgname, "", "")) {
+              children = rests.map(p => new TreeItem[TLBackup](
+                new TLBackup(pkgname, p(0), p(1) + " " + p(2) + ":" + p(3))
+              )).toSeq
+            }
           }
         }
-      }
-      val newroot = new TreeItem[TLBackup](new TLBackup("root","","")) {
-        children = foo
-      }
-      Platform.runLater { backupTable.root = newroot }
-    })
+        val newroot = new TreeItem[TLBackup](new TLBackup("root", "", "")) {
+          children = foo
+        }
+        Platform.runLater {
+          backupTable.root = newroot
+        }
+      })
+    }
   }
 
   def callback_show_pkg_info(pkg: String): Unit = {
