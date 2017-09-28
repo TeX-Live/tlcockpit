@@ -9,7 +9,7 @@ package TLCockpit
 import javafx.collections.ObservableList
 import javafx.scene.control
 
-import TeXLive.{TLPackage, TLBackup, TlmgrProcess}
+import TeXLive.{TLBackup, TLPackage, TlmgrProcess}
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -20,6 +20,7 @@ import scalafx.beans.Observable
 import scalafx.beans.property.{ObjectProperty, ReadOnlyStringWrapper}
 import scalafx.geometry.{HPos, Pos, VPos}
 import scalafx.scene.control.Alert.AlertType
+import scalafx.scene.input.{KeyCode, KeyEvent}
 // needed see https://github.com/scalafx/scalafx/issues/137
 import scalafx.scene.control.TableColumn._
 import scalafx.scene.control.Menu._
@@ -102,6 +103,9 @@ object ApplicationMain extends JFXApp {
   }
 
   val cmdline = new TextField()
+  cmdline.onKeyPressed = {
+    (ae: KeyEvent) => if (ae.code == KeyCode.Enter) callback_run_cmdline()
+  }
   val tlmgr = new TlmgrProcess(
     // (s:String) => outputfield.text = s,
     (s: Array[String]) => {
@@ -458,11 +462,9 @@ object ApplicationMain extends JFXApp {
       children = List(
         new HBox {
           spacing = 10
+          alignment = Pos.CenterLeft
           children = List(
-            new Label("tlmgr shell command:") {
-              // TODO vertical text alignment does not work
-              textAlignment = TextAlignment.Center
-            },
+            new Label("tlmgr shell command:"),
             cmdline,
             new Button {
               text = "Go"
