@@ -6,11 +6,18 @@
 
 package TLCockpit
 
+import javafx.collections.ObservableList
+import javafx.scene.control
+
 import TeXLive.{TLPackage, TlmgrProcess}
 
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.{Future, SyncVar}
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.{Failure, Success, Sorting}
+import scala.util.{Failure, Sorting, Success}
+import scalafx.beans.Observable
+import scalafx.beans.property.{ObjectProperty, ReadOnlyStringWrapper}
 import scalafx.geometry.{HPos, Pos, VPos}
 import scalafx.scene.control.Alert.AlertType
 // needed see https://github.com/scalafx/scalafx/issues/137
@@ -27,6 +34,7 @@ import scalafx.event.ActionEvent
 import scalafx.collections.ObservableBuffer
 import scala.sys.process._
 import scalafx.scene.text._
+import scalafx.collections.ObservableBuffer
 
 
 object ApplicationMain extends JFXApp {
@@ -36,20 +44,17 @@ object ApplicationMain extends JFXApp {
     tlmgr.cleanup()
   }
 
-  var pkglines: Array[String] = Array()
-  val pkgs = ObservableBuffer[TLPackage]()
-  // val viewpkgs = ObservableBuffer[TLPackage]()
-  val updpkgs  = ObservableBuffer[TLPackage]()
+  val pkgs: ArrayBuffer[TLPackage] = ArrayBuffer()
 
-  val errorText = ObservableBuffer[String]()
-  val outputText = ObservableBuffer[String]()
+  val errorText: ObservableBuffer[String] = ObservableBuffer[String]()
+  val outputText: ObservableBuffer[String] = ObservableBuffer[String]()
 
-  val outputfield = new TextArea {
+  val outputfield: TextArea = new TextArea {
     editable = false
     wrapText = true
     text = ""
   }
-  val errorfield = new TextArea {
+  val errorfield: TextArea = new TextArea {
     editable = false
     wrapText = true
     text = ""
@@ -63,16 +68,16 @@ object ApplicationMain extends JFXApp {
     outputfield.scrollTop = Double.MaxValue
   })
 
-  val update_all_menu = new MenuItem("Update all") {
+  val update_all_menu: MenuItem = new MenuItem("Update all") {
     onAction = (ae) => callback_update_all()
     disable = true
   }
-  val update_self_menu = new MenuItem("Update self") {
+  val update_self_menu: MenuItem = new MenuItem("Update self") {
     onAction = (ae) => callback_update_self()
     disable = true
   }
 
-  val outerrtabs = new TabPane {
+  val outerrtabs: TabPane = new TabPane {
     minWidth = 400
     tabs = Seq(
       new Tab {
@@ -87,7 +92,7 @@ object ApplicationMain extends JFXApp {
       }
     )
   }
-  val outerrpane = new TitledPane {
+  val outerrpane: TitledPane = new TitledPane {
     text = "Debug"
     collapsible = true
     expanded = false
@@ -116,15 +121,19 @@ object ApplicationMain extends JFXApp {
     errorText.clear()
     outputText.clear()
     outerrpane.expanded = false
+    statusMenu.text = "Status: Busy"
     val foo = Future {
       tlmgr.send_command(s)
     }
     foo onComplete {
-      case Success(ret) => f(ret)
+      case Success(ret) =>
+        f(ret)
+        Platform.runLater { statusMenu.text = "Status: Idle" }
       case Failure(t) =>
         errorText.append("An ERROR has occurred calling tlmgr: " + t.getMessage)
         outerrpane.expanded = true
         outerrtabs.selectionModel().select(1)
+        Platform.runLater { statusMenu.text = "Status: Idle" }
     }
   }
 
@@ -144,20 +153,74 @@ object ApplicationMain extends JFXApp {
   def update_pkg_lists(): Unit = {
     tlmgr_async_command("info --data name,localrev,remoterev,shortdesc,size,installed", (s: Array[String]) => {
       pkgs.clear()
-      updpkgs.clear()
-      // Sorting.quickSort(s)
       s.map((line: String) => {
         val fields: Array[String] = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1)
         val sd = fields(3)
         val shortdesc = if (sd.isEmpty) "" else sd.substring(1).dropRight(1).replace("""\"""",""""""")
-        pkgs += new TLPackage(fields(0), fields(1), fields(2), shortdesc, fields(4), fields(5))
+        val inst = if (fields(5) == "1") "Installed" else "Not installed"
+        pkgs += new TLPackage(fields(0), fields(1), fields(2), shortdesc, fields(4), inst)
       })
-      pkgs.map(pkg => {
-        if (pkg.lrev.value.toInt > 0 && pkg.lrev.value.toInt < pkg.rrev.value.toInt) updpkgs += pkg
+      val pkgbuf: ArrayBuffer[TLPackage] = ArrayBuffer.empty[TLPackage]
+      val binbuf = scala.collection.mutable.Map.empty[String, ArrayBuffer[TLPackage]]
+      val updbuf: ArrayBuffer[TLPackage] = ArrayBuffer.empty[TLPackage]
+      pkgs.foreach(pkg => {
+        if (pkg.lrev.value > 0 && pkg.lrev.value < pkg.rrev.value) {
+          // easy part: in the update tab show all packages in raw format
+          // TODO if the main package is updated, too, use a child item?
+          updbuf += pkg
+        }
+        // complicated part, determine whether it is a sub package or not!
+        // we strip of initial texlive. prefixes to make sure we deal
+        // with real packages
+        if (pkg.name.value.stripPrefix("texlive.").contains(".")) {
+          val foo: Array[String] = pkg.name.value.stripPrefix("texlive.infra").split('.')
+          val pkgname = foo(0)
+          val binname = foo(1)
+          if (binbuf.keySet.contains(pkgname)) {
+            binbuf(pkgname) += pkg
+          } else {
+            binbuf(pkgname) = ArrayBuffer[TLPackage](pkg)
+          }
+        } else {
+          pkgbuf += pkg
+        }
       })
-      // println("Calling table refresh")
-      updateTable.refresh
-      packageTable.refresh
+      // now we have all normal packages in pkgbuf, and its sub-packages in binbuf
+      // we need to create TreeItems
+      val viewkids = pkgbuf.map { p => {
+          val kids: Seq[TLPackage] = if (binbuf.keySet.contains(p.name.value)) {
+            binbuf(p.name.value)
+          } else {
+            Seq()
+          }
+          // for ismixed we && all the installed status. If all are installed, we get true
+          val allinstalled = (kids :+ p).foldRight[Boolean](true)((k,b) => k.installed.value == "Installed" && b)
+          if (!allinstalled) {
+            // replace installed status with "Mixed"
+            new TreeItem[TLPackage](new TreeItem[TLPackage](
+              new TLPackage(p.name.value, p.lrev.value.toString, p.rrev.value.toString, p.shortdesc.value, p.size.value.toString, "Mixed")
+            )) {
+              children = kids.map(new TreeItem[TLPackage](_))
+            }
+          } else {
+            new TreeItem[TLPackage](p) {
+              children = kids.map(new TreeItem[TLPackage](_))
+            }
+          }
+        }}
+      val updkids = updbuf.map { p => new TreeItem[TLPackage](p) }
+      Platform.runLater {
+        packageTable.root = new TreeItem[TLPackage](new TLPackage("root","0","0","","0","")) {
+          expanded = true
+          children = viewkids
+        }
+        updateTable.root = new TreeItem[TLPackage](new TLPackage("root","0","0","","0","")) {
+          expanded = true
+          children = updkids
+        }
+      }
+      updateTable.refresh()
+      packageTable.refresh()
       update_update_menu_state()
     })
   }
@@ -223,6 +286,7 @@ object ApplicationMain extends JFXApp {
   }
 
   def callback_update_all(): Unit = {
+    // TODO parse table and update line by line
     tlmgr_async_command("update --all", _ => { Platform.runLater { update_pkg_lists() } })
   }
 
@@ -345,6 +409,9 @@ object ApplicationMain extends JFXApp {
       },
     )
   }
+  val statusMenu = new Menu("Status: Idle") {
+    disable = true
+  }
   val expertPane = new TitledPane {
     text = "Experts only"
     collapsible = true
@@ -390,40 +457,44 @@ object ApplicationMain extends JFXApp {
     }
   }
   val updateTable = {
-    val colName = new TableColumn[TLPackage, String] {
+    val colName = new TreeTableColumn[TLPackage, String] {
       text = "Package"
-      cellValueFactory = { _.value.name }
+      cellValueFactory = { _.value.value.value.name }
       prefWidth = 150
     }
-    val colDesc = new TableColumn[TLPackage, String] {
+    val colDesc = new TreeTableColumn[TLPackage, String] {
       text = "Description"
-      cellValueFactory = { _.value.shortdesc }
+      cellValueFactory = { _.value.value.value.shortdesc }
       prefWidth = 300
     }
-    val colLRev = new TableColumn[TLPackage, Int] {
+    val colLRev = new TreeTableColumn[TLPackage, Int] {
       text = "Local rev"
-      cellValueFactory = { _.value.lrev }
+      cellValueFactory = { _.value.value.value.lrev }
       prefWidth = 100
     }
-    val colRRev = new TableColumn[TLPackage, Int] {
+    val colRRev = new TreeTableColumn[TLPackage, Int] {
       text = "Remote rev"
-      cellValueFactory = { _.value.rrev }
+      cellValueFactory = { _.value.value.value.rrev }
       prefWidth = 100
     }
-    val colSize = new TableColumn[TLPackage, Int] {
+    val colSize = new TreeTableColumn[TLPackage, Int] {
       text = "Size"
-      cellValueFactory = { _.value.size }
+      cellValueFactory = { _.value.value.value.size }
       prefWidth = 100
     }
-    val table = new TableView[TLPackage](updpkgs) {
+    val table = new TreeTableView[TLPackage](
+      new TreeItem[TLPackage](new TLPackage("root","0","0","","0","")) {
+        expanded = false
+      }) {
       columns ++= List(colName, colDesc, colLRev, colRRev, colSize)
     }
     colDesc.prefWidth.bind(table.width - colName.width - colLRev.width - colRRev.width - colSize.width - 15)
     table.prefHeight = 300
     table.vgrow = Priority.Always
     table.placeholder = new Label("No updates available")
+    table.showRoot = false
     table.rowFactory = { _ =>
-      val row = new TableRow[TLPackage] {}
+      val row = new TreeTableRow[TLPackage] {}
       val ctm = new ContextMenu(
         new MenuItem("Info") {
           onAction = (ae) => callback_show_pkg_info(row.item.value.name.value)
@@ -447,9 +518,9 @@ object ApplicationMain extends JFXApp {
     table
   }
   val packageTable = {
-    val colName = new TableColumn[TLPackage, String] {
+    val colName = new TreeTableColumn[TLPackage, String] {
       text = "Package"
-      cellValueFactory = {  _.value.name }
+      cellValueFactory = {  _.value.value.value.name }
       prefWidth = 150
     }
     /*
@@ -464,24 +535,28 @@ object ApplicationMain extends JFXApp {
       prefWidth = 100
     }
     */
-    val colDesc = new TableColumn[TLPackage, String] {
+    val colDesc = new TreeTableColumn[TLPackage, String] {
       text = "Description"
-      cellValueFactory = { _.value.shortdesc }
+      cellValueFactory = { _.value.value.value.shortdesc }
       prefWidth = 300
     }
-    val colInst = new TableColumn[TLPackage, String] {
+    val colInst = new TreeTableColumn[TLPackage, String] {
       text = "Installed"
-      cellValueFactory = { _.value.installed  }
+      cellValueFactory = { _.value.value.value.installed  }
       prefWidth = 100
     }
-    val table = new TableView[TLPackage](pkgs) {
+    val table = new TreeTableView[TLPackage](
+      new TreeItem[TLPackage](new TLPackage("root","0","0","","0","")) {
+        expanded = false
+      }) {
       columns ++= List(colName, colDesc, colInst)
     }
     colDesc.prefWidth.bind(table.width - colInst.width - colName.width - 15)
     table.prefHeight = 300
+    table.showRoot = false
     table.vgrow = Priority.Always
     table.rowFactory = { _ =>
-      val row = new TableRow[TLPackage] {}
+      val row = new TreeTableRow[TLPackage] {}
       val ctm = new ContextMenu(
         new MenuItem("Info") {
           onAction = (ae) => callback_show_pkg_info(row.item.value.name.value)
@@ -517,15 +592,22 @@ object ApplicationMain extends JFXApp {
       }
     )
   }
+  val menuBar = new MenuBar {
+    useSystemMenuBar = true
+    // menus.addAll(mainMenu, optionsMenu, helpMenu)
+    menus.addAll(mainMenu, statusMenu)
+  }
+
   stage = new PrimaryStage {
     title = "TLCockpit"
     scene = new Scene {
       root = {
-        val topBox = new MenuBar {
-          useSystemMenuBar = true
-          // menus.addAll(mainMenu, optionsMenu, helpMenu)
-          menus.addAll(mainMenu)
-        }
+        // val topBox = new HBox {
+        //   children = List(menuBar, statusLabel)
+        // }
+        // topBox.hgrow = Priority.Always
+        // topBox.maxWidth = Double.MaxValue
+        val topBox = menuBar
         val centerBox = new VBox {
           padding = Insets(10)
           children = List(pkgstabs, expertPane, outerrpane)
