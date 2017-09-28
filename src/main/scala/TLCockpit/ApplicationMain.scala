@@ -229,10 +229,8 @@ object ApplicationMain extends JFXApp {
           expanded = true
           children = updkids
         }
+        update_update_menu_state()
       }
-      updateTable.refresh()
-      packageTable.refresh()
-      update_update_menu_state()
     })
   }
 
