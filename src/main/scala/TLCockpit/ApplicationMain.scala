@@ -52,8 +52,7 @@ object ApplicationMain extends JFXApp {
   val iconImage = new Image(getClass.getResourceAsStream("tlcockpit-48.jpg"))
   val logoImage = new Image(getClass.getResourceAsStream("tlcockpit-128.jpg"))
 
-  val pkgs: ArrayBuffer[TLPackage] = ArrayBuffer()
-  // val pkgs = scala.collection.mutable.Map.empty[String, ArrayBuffer[TLPackage]]
+  val pkgs = scala.collection.mutable.Map.empty[String, TLPackage]
 
   val errorText: ObservableBuffer[String] = ObservableBuffer[String]()
   val outputText: ObservableBuffer[String] = ObservableBuffer[String]()
@@ -157,7 +156,8 @@ object ApplicationMain extends JFXApp {
         val sd = fields(3)
         val shortdesc = if (sd.isEmpty) "" else sd.substring(1).dropRight(1).replace("""\"""",""""""")
         val inst = if (fields(5) == "1") "Installed" else "Not installed"
-        pkgs += new TLPackage(fields(0), fields(1), fields(2), shortdesc, fields(4), inst)
+        val tlpkg = new TLPackage(fields(0), fields(1), fields(2), shortdesc, fields(4), inst)
+        pkgs += ((fields(0), tlpkg))
       })
       val pkgbuf: ArrayBuffer[TLPackage] = ArrayBuffer.empty[TLPackage]
       val binbuf = scala.collection.mutable.Map.empty[String, ArrayBuffer[TLPackage]]
@@ -165,22 +165,22 @@ object ApplicationMain extends JFXApp {
         // complicated part, determine whether it is a sub package or not!
         // we strip of initial texlive. prefixes to make sure we deal
         // with real packages
-        if (pkg.name.value.stripPrefix("texlive.").contains(".")) {
-          val foo: Array[String] = pkg.name.value.stripPrefix("texlive.infra").split('.')
+        if (pkg._1.stripPrefix("texlive.").contains(".")) {
+          val foo: Array[String] = pkg._1.stripPrefix("texlive.infra").split('.')
           val pkgname = foo(0)
           val binname = foo(1)
           if (binbuf.keySet.contains(pkgname)) {
-            binbuf(pkgname) += pkg
+            binbuf(pkgname) += pkg._2
           } else {
-            binbuf(pkgname) = ArrayBuffer[TLPackage](pkg)
+            binbuf(pkgname) = ArrayBuffer[TLPackage](pkg._2)
           }
         } else {
-          pkgbuf += pkg
+          pkgbuf += pkg._2
         }
       })
       // now we have all normal packages in pkgbuf, and its sub-packages in binbuf
       // we need to create TreeItems
-      val viewkids = pkgbuf.map { p => {
+      val viewkids: ArrayBuffer[TreeItem[TLPackage]] = pkgbuf.map { p => {
           val kids: Seq[TLPackage] = if (binbuf.keySet.contains(p.name.value)) {
             binbuf(p.name.value)
           } else {
@@ -204,7 +204,7 @@ object ApplicationMain extends JFXApp {
       Platform.runLater {
         packageTable.root = new TreeItem[TLPackage](new TLPackage("root","0","0","","0","")) {
           expanded = true
-          children = viewkids
+          children = viewkids.sortBy(_.value.value.name.value)
         }
       }
     })
@@ -311,7 +311,7 @@ object ApplicationMain extends JFXApp {
           }
         }
         val newroot = new TreeItem[TLBackup](new TLBackup("root", "", "")) {
-          children = foo
+          children = foo.sortBy(_.value.value.name.value)
         }
         Platform.runLater {
           backupTable.root = newroot
@@ -341,10 +341,10 @@ object ApplicationMain extends JFXApp {
           val pkgname = fields(0)
           val status  = fields(1) match {
             case "d" => "Removed on server"
-            case "f" => "Forcibly removed locally"
+            case "f" => "Forcibly removed"
             case "u" => "Update available"
-            case "r" => "Local version is newer"
-            case "a" => "New package on server"
+            case "r" => "Local is newer"
+            case "a" => "New on server"
             case "i" => "Not installed"
             case "I" => "Reinstall"
           }
@@ -356,7 +356,8 @@ object ApplicationMain extends JFXApp {
           val tag = fields(7)
           val lctanv = fields(8)
           val rctanv = fields(9)
-          val shortdesc = "" // TODO convert pkgs to map and get shortdesc from there!
+          val tlpkg: TLPackage = pkgs(pkgname)
+          val shortdesc = tlpkg.shortdesc.value
           if (pkgname.startsWith("texlive.infra"))
             infraAvailable = true
           else
@@ -367,7 +368,7 @@ object ApplicationMain extends JFXApp {
                                               shortdesc, size))
         }}
         val newroot = new TreeItem[TLUpdate](new TLUpdate("root", "", "", "", "", "")) {
-          children = foo
+          children = foo.sortBy(_.value.value.name.value)
         }
         Platform.runLater {
           update_self_menu.disable = !infraAvailable
@@ -554,7 +555,7 @@ object ApplicationMain extends JFXApp {
     val colStatus = new TreeTableColumn[TLUpdate, String] {
       text = "Status"
       cellValueFactory = { _.value.value.value.status }
-      prefWidth = 200
+      prefWidth = 120
     }
     val colDesc = new TreeTableColumn[TLUpdate, String] {
       text = "Description"
@@ -574,7 +575,7 @@ object ApplicationMain extends JFXApp {
     val colSize = new TreeTableColumn[TLUpdate, String] {
       text = "Size"
       cellValueFactory = { _.value.value.value.size }
-      prefWidth = 100
+      prefWidth = 70
     }
     val table = new TreeTableView[TLUpdate](
       new TreeItem[TLUpdate](new TLUpdate("root","","","","","")) {
