@@ -53,6 +53,7 @@ object ApplicationMain extends JFXApp {
   val logoImage = new Image(getClass.getResourceAsStream("tlcockpit-128.jpg"))
 
   val pkgs: ArrayBuffer[TLPackage] = ArrayBuffer()
+  // val pkgs = scala.collection.mutable.Map.empty[String, ArrayBuffer[TLPackage]]
 
   val errorText: ObservableBuffer[String] = ObservableBuffer[String]()
   val outputText: ObservableBuffer[String] = ObservableBuffer[String]()
@@ -148,19 +149,6 @@ object ApplicationMain extends JFXApp {
     }
   }
 
-  def update_update_menu_state(): Unit = {
-    update_all_menu.disable = !pkgs.foldLeft(false)(
-      (a, b) => a || (if (b.name.value == "texlive.infra") false else b.lrev.value.toInt > 0 && b.lrev.value.toInt < b.rrev.value.toInt)
-    )
-    // TODO we should change pkgs to a Map with keys are the names + repository (for multi repo support)
-    // and the values are llrev/rrev or some combination
-    update_self_menu.disable = !pkgs.foldLeft(false)(
-      (a, b) => a || (if (b.name.value == "texlive.infra") b.lrev.value.toInt < b.rrev.value.toInt else false)
-    )
-    updateTable.refresh()
-    packageTable.refresh()
-  }
-
   def update_pkg_lists(): Unit = {
     tlmgr_async_command("info --data name,localrev,remoterev,shortdesc,size,installed", (s: Array[String]) => {
       pkgs.clear()
@@ -218,7 +206,6 @@ object ApplicationMain extends JFXApp {
           expanded = true
           children = viewkids
         }
-        update_update_menu_state()
       }
     })
   }
@@ -339,6 +326,8 @@ object ApplicationMain extends JFXApp {
 
       tlmgr_async_command("update --list", lines => {
         // lines.drop(1).foreach(println(_))
+        var updatesAvailable = false
+        var infraAvailable = false
         val foo = lines.filter { l =>
           l match {
             case u if u.startsWith("location-url") => false
@@ -368,6 +357,10 @@ object ApplicationMain extends JFXApp {
           val lctanv = fields(8)
           val rctanv = fields(9)
           val shortdesc = "" // TODO convert pkgs to map and get shortdesc from there!
+          if (pkgname.startsWith("texlive.infra"))
+            infraAvailable = true
+          else
+            updatesAvailable = true
           new TreeItem[TLUpdate](new TLUpdate(pkgname,status,
                                               localrev + { if (lctanv != "-") s" ($lctanv)" else "" },
                                               serverrev + { if (rctanv != "-") s" ($rctanv)" else "" },
@@ -377,6 +370,8 @@ object ApplicationMain extends JFXApp {
           children = foo
         }
         Platform.runLater {
+          update_self_menu.disable = !infraAvailable
+          update_all_menu.disable = !updatesAvailable
           updateTable.root = newroot
         }
       })
