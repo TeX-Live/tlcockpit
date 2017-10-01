@@ -10,7 +10,7 @@ import javafx.collections.ObservableList
 import javafx.scene.control
 
 import TLCockpit.ApplicationMain.getClass
-import TeXLive.{TLBackup, TLPackage, TlmgrProcess}
+import TeXLive.{TLBackup, TLPackage, TLUpdate, TlmgrProcess}
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
@@ -173,13 +173,7 @@ object ApplicationMain extends JFXApp {
       })
       val pkgbuf: ArrayBuffer[TLPackage] = ArrayBuffer.empty[TLPackage]
       val binbuf = scala.collection.mutable.Map.empty[String, ArrayBuffer[TLPackage]]
-      val updbuf: ArrayBuffer[TLPackage] = ArrayBuffer.empty[TLPackage]
       pkgs.foreach(pkg => {
-        if (pkg.lrev.value > 0 && pkg.lrev.value < pkg.rrev.value) {
-          // easy part: in the update tab show all packages in raw format
-          // TODO if the main package is updated, too, use a child item?
-          updbuf += pkg
-        }
         // complicated part, determine whether it is a sub package or not!
         // we strip of initial texlive. prefixes to make sure we deal
         // with real packages
@@ -219,15 +213,10 @@ object ApplicationMain extends JFXApp {
             }
           }
         }}
-      val updkids = updbuf.map { p => new TreeItem[TLPackage](p) }
       Platform.runLater {
         packageTable.root = new TreeItem[TLPackage](new TLPackage("root","0","0","","0","")) {
           expanded = true
           children = viewkids
-        }
-        updateTable.root = new TreeItem[TLPackage](new TLPackage("root","0","0","","0","")) {
-          expanded = true
-          children = updkids
         }
         update_update_menu_state()
       }
@@ -344,6 +333,55 @@ object ApplicationMain extends JFXApp {
     }
   }
 
+  def callback_populate_update_tab(): Unit = {
+    // only run the restore command once
+    if (updateTable.root.value.children.length == 0) {
+
+      tlmgr_async_command("update --list", lines => {
+        // lines.drop(1).foreach(println(_))
+        val foo = lines.filter { l =>
+          l match {
+            case u if u.startsWith("location-url") => false
+            case u if u.startsWith("total-bytes") => false
+            case u if u.startsWith("end-of-header") => false
+            case u if u.startsWith("end-of-updates") => false
+            case u => true
+          }
+        }.map { l => {
+          val fields = l.split("\t")
+          val pkgname = fields(0)
+          val status  = fields(1) match {
+            case "d" => "Removed on server"
+            case "f" => "Forcibly removed locally"
+            case "u" => "Update available"
+            case "r" => "Local version is newer"
+            case "a" => "New package on server"
+            case "i" => "Not installed"
+            case "I" => "Reinstall"
+          }
+          val localrev = fields(2)
+          val serverrev = fields(3)
+          val size = humanReadableByteSize(fields(4).toLong)
+          val runtime = fields(5)
+          val esttot = fields(6)
+          val tag = fields(7)
+          val lctanv = fields(8)
+          val rctanv = fields(9)
+          val shortdesc = "" // TODO convert pkgs to map and get shortdesc from there!
+          new TreeItem[TLUpdate](new TLUpdate(pkgname,status,
+                                              localrev + { if (lctanv != "-") s" ($lctanv)" else "" },
+                                              serverrev + { if (rctanv != "-") s" ($rctanv)" else "" },
+                                              shortdesc, size))
+        }}
+        val newroot = new TreeItem[TLUpdate](new TLUpdate("root", "", "", "", "", "")) {
+          children = foo
+        }
+        Platform.runLater {
+          updateTable.root = newroot
+        }
+      })
+    }
+  }
   def callback_show_pkg_info(pkg: String): Unit = {
     tlmgr_async_command(s"info $pkg", pkginfo => {
       // need to call runLater to go back to main thread!
@@ -380,6 +418,19 @@ object ApplicationMain extends JFXApp {
     })
   }
 
+  /**
+    * @see https://stackoverflow.com/questions/3263892/format-file-size-as-mb-gb-etc
+    * @see https://en.wikipedia.org/wiki/Zettabyte
+    * @param fileSize Up to Exabytes
+    * @return
+    */
+  def humanReadableByteSize(fileSize: Long): String = {
+    if(fileSize <= 0) return "0 B"
+    // kilo, Mega, Giga, Tera, Peta, Exa, Zetta, Yotta
+    val units: Array[String] = Array("B", "kB", "MB", "GB", "TB", "PB", "EB", "ZB", "YB")
+    val digitGroup: Int = (Math.log10(fileSize)/Math.log10(1024)).toInt
+    f"${fileSize/Math.pow(1024, digitGroup)}%3.1f ${units(digitGroup)}"
+  }
 
   val mainMenu = new Menu("TLCockpit") {
     items = List(
@@ -500,44 +551,49 @@ object ApplicationMain extends JFXApp {
     }
   }
   val updateTable = {
-    val colName = new TreeTableColumn[TLPackage, String] {
+    val colName = new TreeTableColumn[TLUpdate, String] {
       text = "Package"
       cellValueFactory = { _.value.value.value.name }
       prefWidth = 150
     }
-    val colDesc = new TreeTableColumn[TLPackage, String] {
+    val colStatus = new TreeTableColumn[TLUpdate, String] {
+      text = "Status"
+      cellValueFactory = { _.value.value.value.status }
+      prefWidth = 200
+    }
+    val colDesc = new TreeTableColumn[TLUpdate, String] {
       text = "Description"
       cellValueFactory = { _.value.value.value.shortdesc }
       prefWidth = 300
     }
-    val colLRev = new TreeTableColumn[TLPackage, Int] {
+    val colLRev = new TreeTableColumn[TLUpdate, String] {
       text = "Local rev"
       cellValueFactory = { _.value.value.value.lrev }
       prefWidth = 100
     }
-    val colRRev = new TreeTableColumn[TLPackage, Int] {
+    val colRRev = new TreeTableColumn[TLUpdate, String] {
       text = "Remote rev"
       cellValueFactory = { _.value.value.value.rrev }
       prefWidth = 100
     }
-    val colSize = new TreeTableColumn[TLPackage, Int] {
+    val colSize = new TreeTableColumn[TLUpdate, String] {
       text = "Size"
       cellValueFactory = { _.value.value.value.size }
       prefWidth = 100
     }
-    val table = new TreeTableView[TLPackage](
-      new TreeItem[TLPackage](new TLPackage("root","0","0","","0","")) {
+    val table = new TreeTableView[TLUpdate](
+      new TreeItem[TLUpdate](new TLUpdate("root","","","","","")) {
         expanded = false
       }) {
-      columns ++= List(colName, colDesc, colLRev, colRRev, colSize)
+      columns ++= List(colName, colStatus, colDesc, colLRev, colRRev, colSize)
     }
-    colDesc.prefWidth.bind(table.width - colName.width - colLRev.width - colRRev.width - colSize.width - 15)
+    colDesc.prefWidth.bind(table.width - colName.width - colLRev.width - colRRev.width - colSize.width - colStatus. width - 15)
     table.prefHeight = 300
     table.vgrow = Priority.Always
     table.placeholder = new Label("No updates available")
     table.showRoot = false
     table.rowFactory = { _ =>
-      val row = new TreeTableRow[TLPackage] {}
+      val row = new TreeTableRow[TLUpdate] {}
       val ctm = new ContextMenu(
         new MenuItem("Info") {
           onAction = (ae) => callback_show_pkg_info(row.item.value.name.value)
@@ -665,14 +721,14 @@ object ApplicationMain extends JFXApp {
     vgrow = Priority.Always
     tabs = Seq(
       new Tab {
-        text = "Updates"
-        closable = false
-        content = updateTable
-      },
-      new Tab {
         text = "Packages"
         closable = false
         content = packageTable
+      },
+      new Tab {
+        text = "Updates"
+        closable = false
+        content = updateTable
       },
       new Tab {
         text = "Backups"
@@ -685,6 +741,8 @@ object ApplicationMain extends JFXApp {
     (a,b,c) => {
       if (a.value.text() == "Backups") {
         callback_populate_backup_tab()
+      } else if (a.value.text() == "Updates") {
+        callback_populate_update_tab()
         // println("Entering Backup Tab")
       }
     }
