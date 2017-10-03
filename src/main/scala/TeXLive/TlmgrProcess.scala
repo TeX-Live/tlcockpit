@@ -82,7 +82,6 @@ class TlmgrProcess(updout: Array[String] => Unit, upderr: String => Unit, updlin
     synchronized(isBusy = true)
     while (!found) {
       result = outputString.take()
-      println("DEBUG get_output_till_prompt = " + result)
       if (result == "tlmgr> ") {
         found = true
       } else if (result == "OK") {
@@ -141,11 +140,8 @@ class TlmgrProcess(updout: Array[String] => Unit, upderr: String => Unit, updlin
           // error = true
         } else {
           // println("did read " + line + " from process")
-          println("DDD: before outputString.put " + line)
           outputString.put(line)
-          println("DDD: after outputString.put ")
           updline(line)
-          println("DDD: after updline")
         }
       }
       stdOut.close()

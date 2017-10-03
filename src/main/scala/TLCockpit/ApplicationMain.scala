@@ -77,11 +77,11 @@ object ApplicationMain extends JFXApp {
   })
 
   val update_all_menu: MenuItem = new MenuItem("Update all") {
-    onAction = (ae) => callback_update_all()
+    onAction = (ae) => callback_update("--all")
     disable = true
   }
   val update_self_menu: MenuItem = new MenuItem("Update self") {
-    onAction = (ae) => callback_update_self()
+    onAction = (ae) => callback_update("--self")
     disable = true
   }
 
@@ -221,62 +221,30 @@ object ApplicationMain extends JFXApp {
     }.showAndWait()
   }
 
-  def callback_update_all(): Unit = {
+  def callback_update(s: String): Unit = {
     lineUpdateFunc = (l:String) => {
+      // println("line update: " + l + "=")
       l match {
         case u if u.startsWith("location-url") => None
         case u if u.startsWith("total-bytes") => None
         case u if u.startsWith("end-of-header") => None
         case u if u.startsWith("end-of-updates") => None
-        case u =>
-          val foo = parse_one_update_line(l)
-          println("DEBUG: removing " + foo.name.value + " from upds")
-          upds.remove(foo.name.value)
-          pkgs(foo.name.value) = new TLPackage(foo.name.value, foo.rrev.value, foo.rrev.value, foo.shortdesc.value, foo.size.value, "Installed")
-          trigger_update("upds")
-          trigger_update("pkgs")
-      }
-    }
-    tlmgr_async_command("update --all", _ => {
-      Platform.runLater { lineUpdateFunc = { (s: String) => } }
-    })
-  }
-
-  def callback_update_one(pkg: String): Unit = {
-    lineUpdateFunc = (l:String) => {
-      l match {
-        case u if u.startsWith("location-url") => None
-        case u if u.startsWith("total-bytes") => None
-        case u if u.startsWith("end-of-header") => None
-        case u if u.startsWith("end-of-updates") => None
+        case u if u == "OK" => None
+        case u if u.startsWith("tlmgr>") => None
         case u =>
           val foo = parse_one_update_line(l)
           upds.remove(foo.name.value)
-          println("Before package creating")
           val op = pkgs(foo.name.value)
-          val bbb = new TLPackage(foo.name.value, op.rrev.value.toString, op.rrev.value.toString, foo.shortdesc.value, op.size.value.toString, "Installed")
-          println("DEBUG: after new TLPackage definition")
-          pkgs(foo.name.value) = bbb
-          println("DEBUG: after update of package")
+          pkgs(foo.name.value) = new TLPackage(foo.name.value, op.rrev.value.toString, op.rrev.value.toString, foo.shortdesc.value, op.size.value.toString, "Installed")
           Platform.runLater {
-            println("triggering updates to upds and pkgs")
-             trigger_update("upds")
-             trigger_update("pkgs")
+            trigger_update("upds")
+            trigger_update("pkgs")
           }
       }
-      println("DEBUG: end of update lineUpdateFunc")
     }
-    tlmgr_async_command(s"update $pkg", _ => {
-      Platform.runLater {
-        println("resetting update function")
-        lineUpdateFunc = { (s: String) => }
-      }
+    tlmgr_async_command(s"update $s", _ => {
+      Platform.runLater { lineUpdateFunc = { (s: String) => } }
     })
-  }
-
-  def callback_update_self(): Unit = {
-    // TODO should we restart tlmgr here - it might be necessary!!!
-    tlmgr_async_command("update --self", _ => { Platform.runLater { update_pkgs_lists() } })
   }
 
   def do_one_pkg(what: String, pkg: String): Unit = {
@@ -317,15 +285,12 @@ object ApplicationMain extends JFXApp {
     }
   })
   pkgs.onChange( (obs,chs) => {
-    println("Entering pkgs.onChange")
     var doit = chs match {
       case ObservableMap.Add(k, v) => k.toString == "root"
       case ObservableMap.Replace(k, va, vr) => k.toString == "root"
       case ObservableMap.Remove(k, v) => k.toString == "root"
     }
-    println("doit is " + doit)
     if (doit) {
-      println("DEBUG pkgs.onChange called new length = " + pkgs.keys.toArray.length)
       val pkgbuf: ArrayBuffer[TLPackage] = ArrayBuffer.empty[TLPackage]
       val binbuf = scala.collection.mutable.Map.empty[String, ArrayBuffer[TLPackage]]
       pkgs.foreach(pkg => {
@@ -387,7 +352,6 @@ object ApplicationMain extends JFXApp {
       case ObservableMap.Remove(k, v) => k.toString == "root"
     }
     if (doit) {
-      // println("DEBUG upds.onChange called new length = " + upds.keys.toArray.length)
       val infraAvailable = upds.keys.exists(_.startsWith("texlive.infra"))
       val updatesAvailable = upds.keys.exists(p => !p.startsWith("texlive.infra"))
       val newroot = new TreeItem[TLUpdate](new TLUpdate("root", "", "", "", "", "")) {
@@ -478,7 +442,10 @@ object ApplicationMain extends JFXApp {
           case u if u.startsWith("end-of-updates") => false
           case u => true
         }
-      }.map { l => (l , parse_one_update_line(l) ) }.toMap
+      }.map { l =>
+        val foo = parse_one_update_line(l)
+        (foo.name.value, foo)
+      }.toMap
       upds.clear()
       upds ++= newupds
       trigger_update("upds")
@@ -486,6 +453,7 @@ object ApplicationMain extends JFXApp {
   }
 
   def trigger_update(s:String): Unit = {
+    // println("Triggering update of " + s)
     if (s == "pkgs")
       pkgs("root") = new TLPackage("root","0","0","","0","")
     else if (s == "upds")
@@ -724,7 +692,7 @@ object ApplicationMain extends JFXApp {
         },
         new MenuItem("Update") {
           // onAction = (ae) => callback_run_text("update " + row.item.value.name.value)
-          onAction = (ae) => callback_update_one(row.item.value.name.value)
+          onAction = (ae) => callback_update(row.item.value.name.value)
         }
       )
       row.contextMenu = ctm
@@ -915,15 +883,12 @@ object ApplicationMain extends JFXApp {
 
   val bar = Future {
     while (true) {
-      println("outputline thread: before get output line")
       val s = outputLine.take
-      println("outputline thread: after got " + s)
       try {
         lineUpdateFunc(s)
       } catch {
         case e: Exception => println("SOMETHING BAD IN lineUpdateFUnc happened: " + e + "\n")
       }
-      println("after calling lineUpdateFunc")
     }
   }
   tlmgr.start_process()
