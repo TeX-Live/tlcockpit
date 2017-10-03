@@ -51,8 +51,8 @@ object ApplicationMain extends JFXApp {
   val logoImage = new Image(getClass.getResourceAsStream("tlcockpit-128.jpg"))
 
   val pkgs = scala.collection.mutable.Map.empty[String, TLPackage]
-  val upds: ObservableMap[String, TLUpdate] = ObservableMap[String, TLUpdate]()
-  val bkps = scala.collection.mutable.Map.empty[String, TLBackup]
+  val upds = ObservableMap[String, TLUpdate]()
+  val bkps = ObservableMap[String, Map[String,TLBackup]]()  // pkgname -> (version -> TLBackup)*
 
   val errorText: ObservableBuffer[String] = ObservableBuffer[String]()
   val outputText: ObservableBuffer[String] = ObservableBuffer[String]()
@@ -296,35 +296,52 @@ object ApplicationMain extends JFXApp {
     not_implemented_info()
   }
 
-  def callback_populate_backup_tab(): Unit = {
-    // only run the restore command once
-    if (backupTable.root.value.children.length == 0) {
+  bkps.onChange( {
+    val newroot = new TreeItem[TLBackup](new TLBackup("root", "", "")) {
+      children = bkps
+        .map( p => {
+          val pkgname: String = p._1
+          // we sort by negative of revision number, which give inverse sort
+          val versmap: Array[(String, TLBackup)] = p._2.toArray.sortBy(-_._2.rev.value.toInt)
 
-      tlmgr_async_command("restore", lines => {
-        // lines.drop(1).foreach(println(_))
-        val foo = lines.drop(1).map { l =>
-          val fields = l.split("[ ():]", -1).filter(_.nonEmpty)
-          val pkgname = fields(0)
-          val rests: Array[Array[String]] = fields.drop(1).sliding(4, 4).toArray
-          if (rests.length == 1) {
-            val p = rests(0)
-            new TreeItem[TLBackup](new TLBackup(pkgname, p(0), p(1) + " " + p(2) + ":" + p(3)))
-          } else {
-            new TreeItem[TLBackup](new TLBackup(pkgname, "", "")) {
-              children = rests.map(p => new TreeItem[TLBackup](
-                new TLBackup(pkgname, p(0), p(1) + " " + p(2) + ":" + p(3))
-              )).toSeq
-            }
-          }
-        }
-        val newroot = new TreeItem[TLBackup](new TLBackup("root", "", "")) {
-          children = foo.sortBy(_.value.value.name.value)
-        }
-        Platform.runLater {
-          backupTable.root = newroot
-        }
-      })
+          val foo: Seq[TreeItem[TLBackup]] = versmap.tail.sortBy(-_._2.rev.value.toInt).map { q =>
+             new TreeItem[TLBackup](q._2)
+          }.toSeq
+          new TreeItem[TLBackup](versmap.head._2) { children = foo }
+        }).toArray.sortBy(_.value.value.name.value)
     }
+    Platform.runLater {
+      backupTable.root = newroot
+    }
+  })
+  upds.onChange( {
+    val infraAvailable = upds.keys.exists(_.startsWith("texlive.infra"))
+    val updatesAvailable = upds.keys.exists(p => !p.startsWith("texlive.infra"))
+    val newroot = new TreeItem[TLUpdate](new TLUpdate("root", "", "", "", "", "")) {
+      children = upds
+        .map( p => new TreeItem[TLUpdate](p._2))
+        .toArray
+        .sortBy(_.value.value.name.value)
+    }
+    Platform.runLater {
+      update_self_menu.disable = !infraAvailable
+      update_all_menu.disable = !updatesAvailable
+      updateTable.root = newroot
+    }
+  })
+
+  def update_bkps_list(): Unit = {
+    tlmgr_async_command("restore", lines => {
+      // lines.drop(1).foreach(println(_))
+      val newbkps: Map[String, Map[String, TLBackup]] = lines.drop(1).map { (l: String) =>
+        val fields = l.split("[ ():]", -1).filter(_.nonEmpty)
+        val pkgname = fields(0)
+        val rests: Array[Array[String]] = fields.drop(1).sliding(4, 4).toArray
+        (pkgname, rests.map({ p => (p(1), new TLBackup(pkgname, p(0), p(1) + " " + p(2) + ":" + p(3)))}).toMap)
+      }.toMap
+      bkps.clear()
+      bkps ++= newbkps
+    })
   }
 
   def update_upds_list(): Unit = {
@@ -376,21 +393,7 @@ object ApplicationMain extends JFXApp {
     })
   }
 
-  upds.onChange( {
-    val infraAvailable = upds.keys.exists(_.startsWith("texlive.infra"))
-    val updatesAvailable = upds.keys.exists(p => !p.startsWith("texlive.infra"))
-    val newroot = new TreeItem[TLUpdate](new TLUpdate("root", "", "", "", "", "")) {
-      children = upds
-        .map( p => new TreeItem[TLUpdate](p._2))
-        .toArray
-        .sortBy(_.value.value.name.value)
-    }
-    Platform.runLater {
-      update_self_menu.disable = !infraAvailable
-      update_all_menu.disable = !updatesAvailable
-      updateTable.root = newroot
-    }
-  })
+
 
   def callback_show_pkg_info(pkg: String): Unit = {
     tlmgr_async_command(s"info $pkg", pkginfo => {
@@ -750,7 +753,8 @@ object ApplicationMain extends JFXApp {
   pkgstabs.selectionModel().selectedItem.onChange(
     (a,b,c) => {
       if (a.value.text() == "Backups") {
-        callback_populate_backup_tab()
+        if (backupTable.root.value.children.length == 0)
+          update_bkps_list()
       } else if (a.value.text() == "Updates") {
         // only update if not done already
         if (updateTable.root.value.children.length == 0)
