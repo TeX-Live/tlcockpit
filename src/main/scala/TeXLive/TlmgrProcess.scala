@@ -136,13 +136,16 @@ class TlmgrProcess(updout: Array[String] => Unit, upderr: String => Unit, updlin
       while (true) {
         line = reader.readLine
         if (line == null) {
+          // println("DDD: got null line")
           // println("Did read NULL from stdin giving up")
           // error = true
         } else {
           // println("did read " + line + " from process")
+          println("DDD: before outputString.put " + line)
           outputString.put(line)
-          println("DEBUG tlmgr process: calling updline function with " + line)
+          println("DDD: after outputString.put ")
           updline(line)
+          println("DDD: after updline")
         }
       }
       stdOut.close()

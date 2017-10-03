@@ -244,7 +244,6 @@ object ApplicationMain extends JFXApp {
 
   def callback_update_one(pkg: String): Unit = {
     lineUpdateFunc = (l:String) => {
-      println("DEBUG callback update one line update got line: " + l)
       l match {
         case u if u.startsWith("location-url") => None
         case u if u.startsWith("total-bytes") => None
@@ -252,15 +251,20 @@ object ApplicationMain extends JFXApp {
         case u if u.startsWith("end-of-updates") => None
         case u =>
           val foo = parse_one_update_line(l)
-          println("DEBUG: removing " + foo.name.value + " from upds")
           upds.remove(foo.name.value)
-          pkgs(foo.name.value) = new TLPackage(foo.name.value, foo.rrev.value, foo.rrev.value, foo.shortdesc.value, foo.size.value, "Installed")
+          println("Before package creating")
+          val op = pkgs(foo.name.value)
+          val bbb = new TLPackage(foo.name.value, op.rrev.value.toString, op.rrev.value.toString, foo.shortdesc.value, op.size.value.toString, "Installed")
+          println("DEBUG: after new TLPackage definition")
+          pkgs(foo.name.value) = bbb
+          println("DEBUG: after update of package")
           Platform.runLater {
             println("triggering updates to upds and pkgs")
-            trigger_update("upds")
-            trigger_update("pkgs")
+             trigger_update("upds")
+             trigger_update("pkgs")
           }
       }
+      println("DEBUG: end of update lineUpdateFunc")
     }
     tlmgr_async_command(s"update $pkg", _ => {
       Platform.runLater {
@@ -313,13 +317,15 @@ object ApplicationMain extends JFXApp {
     }
   })
   pkgs.onChange( (obs,chs) => {
+    println("Entering pkgs.onChange")
     var doit = chs match {
       case ObservableMap.Add(k, v) => k.toString == "root"
       case ObservableMap.Replace(k, va, vr) => k.toString == "root"
       case ObservableMap.Remove(k, v) => k.toString == "root"
     }
+    println("doit is " + doit)
     if (doit) {
-      // println("DEBUG pkgs.onChange called new length = " + pkgs.keys.toArray.length)
+      println("DEBUG pkgs.onChange called new length = " + pkgs.keys.toArray.length)
       val pkgbuf: ArrayBuffer[TLPackage] = ArrayBuffer.empty[TLPackage]
       val binbuf = scala.collection.mutable.Map.empty[String, ArrayBuffer[TLPackage]]
       pkgs.foreach(pkg => {
@@ -908,21 +914,17 @@ object ApplicationMain extends JFXApp {
   var lineUpdateFunc = { (l: String) => } // println(s"DEBUG: got ==$l== from tlmgr") }
 
   val bar = Future {
-    // busy waiting for output ...
     while (true) {
-      /* synchronized(
-        if (outputLine.nonEmpty) {
-          val s = outputLine.dequeue()
-          println(s"DEBUG: read ==$s== from shell")
-        }
-      )
-      Thread.sleep(100) */
-      while (true) {
-        val s = outputLine.take
+      println("outputline thread: before get output line")
+      val s = outputLine.take
+      println("outputline thread: after got " + s)
+      try {
         lineUpdateFunc(s)
+      } catch {
+        case e: Exception => println("SOMETHING BAD IN lineUpdateFUnc happened: " + e + "\n")
       }
+      println("after calling lineUpdateFunc")
     }
-
   }
   tlmgr.start_process()
   tlmgr.get_output_till_prompt()
