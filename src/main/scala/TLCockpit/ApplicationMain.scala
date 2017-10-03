@@ -6,19 +6,13 @@
 
 package TLCockpit
 
-import javafx.collections.ObservableList
-import javafx.scene.control
-
 import TLCockpit.ApplicationMain.getClass
 import TeXLive.{TLBackup, TLPackage, TLUpdate, TlmgrProcess}
 
-import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.{Future, SyncVar}
 import scala.concurrent.ExecutionContext.Implicits.global
-import scala.util.{Failure, Sorting, Success}
-import scalafx.beans.Observable
-import scalafx.beans.property.{ObjectProperty, ReadOnlyStringWrapper}
+import scala.util.{Failure, Success}
 import scalafx.geometry.{HPos, Pos, VPos}
 import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.image.{Image, ImageView}
@@ -34,11 +28,15 @@ import scalafx.scene.Scene
 import scalafx.scene.layout._
 import scalafx.scene.control._
 import scalafx.event.ActionEvent
-import scalafx.collections.ObservableBuffer
 import scala.sys.process._
-import scalafx.scene.text._
 import scalafx.collections.ObservableBuffer
+import scalafx.collections.ObservableMap
 
+
+// TODO update listings when package is updated/installed/removed ...
+// TODO line by line reading/action of shell output
+// TODO TreeTableView indentation is lazy
+// TODO pkg info - access to doc files
 
 object ApplicationMain extends JFXApp {
 
@@ -53,6 +51,8 @@ object ApplicationMain extends JFXApp {
   val logoImage = new Image(getClass.getResourceAsStream("tlcockpit-128.jpg"))
 
   val pkgs = scala.collection.mutable.Map.empty[String, TLPackage]
+  val upds: ObservableMap[String, TLUpdate] = ObservableMap[String, TLUpdate]()
+  val bkps = scala.collection.mutable.Map.empty[String, TLBackup]
 
   val errorText: ObservableBuffer[String] = ObservableBuffer[String]()
   val outputText: ObservableBuffer[String] = ObservableBuffer[String]()
@@ -111,6 +111,7 @@ object ApplicationMain extends JFXApp {
   cmdline.onKeyPressed = {
     (ae: KeyEvent) => if (ae.code == KeyCode.Enter) callback_run_cmdline()
   }
+  val outputLine = new SyncVar[String]
   val tlmgr = new TlmgrProcess(
     // (s:String) => outputfield.text = s,
     (s: Array[String]) => {
@@ -126,7 +127,9 @@ object ApplicationMain extends JFXApp {
         outerrpane.expanded = true
         outerrtabs.selectionModel().select(1)
       }
-    })
+    },
+    (s: String) => outputLine.put(s)
+  )
 
   def tlmgr_async_command(s: String, f: Array[String] => Unit): Unit = {
     errorText.clear()
@@ -273,6 +276,10 @@ object ApplicationMain extends JFXApp {
 
   def callback_update_all(): Unit = {
     // TODO parse table and update line by line
+    lineUpdateFunc = (l:String) => {
+      // TODO update the updPkg map (to be created)
+      // TODO and set the root of the table
+    }
     tlmgr_async_command("update --all", _ => { Platform.runLater { update_pkg_lists() } })
   }
 
@@ -320,26 +327,22 @@ object ApplicationMain extends JFXApp {
     }
   }
 
-  def callback_populate_update_tab(): Unit = {
-    // only run the restore command once
-    if (updateTable.root.value.children.length == 0) {
-
-      tlmgr_async_command("update --list", lines => {
-        // lines.drop(1).foreach(println(_))
-        var updatesAvailable = false
-        var infraAvailable = false
-        val foo = lines.filter { l =>
-          l match {
-            case u if u.startsWith("location-url") => false
-            case u if u.startsWith("total-bytes") => false
-            case u if u.startsWith("end-of-header") => false
-            case u if u.startsWith("end-of-updates") => false
-            case u => true
-          }
-        }.map { l => {
+  def update_upds_list(): Unit = {
+    tlmgr_async_command("update --list", lines => {
+      // val newupds = scala.collection.mutable.Map.empty[String,TLUpdate]
+      val newupds: Map[String, TLUpdate] = lines.filter { l =>
+        l match {
+          case u if u.startsWith("location-url") => false
+          case u if u.startsWith("total-bytes") => false
+          case u if u.startsWith("end-of-header") => false
+          case u if u.startsWith("end-of-updates") => false
+          case u => true
+        }
+      }.map {
+        l => {
           val fields = l.split("\t")
           val pkgname = fields(0)
-          val status  = fields(1) match {
+          val status = fields(1) match {
             case "d" => "Removed on server"
             case "f" => "Forcibly removed"
             case "u" => "Update available"
@@ -358,26 +361,37 @@ object ApplicationMain extends JFXApp {
           val rctanv = fields(9)
           val tlpkg: TLPackage = pkgs(pkgname)
           val shortdesc = tlpkg.shortdesc.value
-          if (pkgname.startsWith("texlive.infra"))
-            infraAvailable = true
-          else
-            updatesAvailable = true
-          new TreeItem[TLUpdate](new TLUpdate(pkgname,status,
-                                              localrev + { if (lctanv != "-") s" ($lctanv)" else "" },
-                                              serverrev + { if (rctanv != "-") s" ($rctanv)" else "" },
-                                              shortdesc, size))
-        }}
-        val newroot = new TreeItem[TLUpdate](new TLUpdate("root", "", "", "", "", "")) {
-          children = foo.sortBy(_.value.value.name.value)
+          (pkgname, new TLUpdate(pkgname, status,
+            localrev + {
+              if (lctanv != "-") s" ($lctanv)" else ""
+            },
+            serverrev + {
+              if (rctanv != "-") s" ($rctanv)" else ""
+            },
+            shortdesc, size))
         }
-        Platform.runLater {
-          update_self_menu.disable = !infraAvailable
-          update_all_menu.disable = !updatesAvailable
-          updateTable.root = newroot
-        }
-      })
-    }
+      }.toMap
+      upds.clear()
+      upds ++= newupds
+    })
   }
+
+  upds.onChange( {
+    val infraAvailable = upds.keys.exists(_.startsWith("texlive.infra"))
+    val updatesAvailable = upds.keys.exists(p => !p.startsWith("texlive.infra"))
+    val newroot = new TreeItem[TLUpdate](new TLUpdate("root", "", "", "", "", "")) {
+      children = upds
+        .map( p => new TreeItem[TLUpdate](p._2))
+        .toArray
+        .sortBy(_.value.value.name.value)
+    }
+    Platform.runLater {
+      update_self_menu.disable = !infraAvailable
+      update_all_menu.disable = !updatesAvailable
+      updateTable.root = newroot
+    }
+  })
+
   def callback_show_pkg_info(pkg: String): Unit = {
     tlmgr_async_command(s"info $pkg", pkginfo => {
       // need to call runLater to go back to main thread!
@@ -738,8 +752,9 @@ object ApplicationMain extends JFXApp {
       if (a.value.text() == "Backups") {
         callback_populate_backup_tab()
       } else if (a.value.text() == "Updates") {
-        callback_populate_update_tab()
-        // println("Entering Backup Tab")
+        // only update if not done already
+        if (updateTable.root.value.children.length == 0)
+          update_upds_list()
       }
     }
   )
@@ -792,6 +807,25 @@ object ApplicationMain extends JFXApp {
   }
   */
 
+  var lineUpdateFunc = { (l: String) => println(s"DEBUG: got ==$l== from tlmgr") }
+
+  val bar = Future {
+    // busy waiting for output ...
+    while (true) {
+      /* synchronized(
+        if (outputLine.nonEmpty) {
+          val s = outputLine.dequeue()
+          println(s"DEBUG: read ==$s== from shell")
+        }
+      )
+      Thread.sleep(100) */
+      while (true) {
+        val s = outputLine.take
+        lineUpdateFunc(s)
+      }
+    }
+
+  }
   tlmgr.start_process()
   tlmgr.get_output_till_prompt()
   update_pkg_lists() // this is async done

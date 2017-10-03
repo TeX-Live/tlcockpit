@@ -8,7 +8,7 @@ import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.SyncVar
 import scala.sys.process.{Process, ProcessBuilder, ProcessIO}
 
-class TlmgrProcess(updout: Array[String] => Unit, upderr: String => Unit) {
+class TlmgrProcess(updout: Array[String] => Unit, upderr: String => Unit, updline: String => Unit) {
   val inputString = new SyncVar[String]                 // used for the tlmgr process input
   val outputString = new SyncVar[String]                // used for the tlmgr process output
   val errorBuffer: StringBuffer = new StringBuffer()    // buffer used for both tmgr process error console AND logging
@@ -134,6 +134,7 @@ class TlmgrProcess(updout: Array[String] => Unit, upderr: String => Unit) {
         } else {
           // println("did read " + line + " from process")
           outputString.put(line)
+          updline(line)
         }
       }
       stdOut.close()
