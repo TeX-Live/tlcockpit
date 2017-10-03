@@ -50,7 +50,7 @@ object ApplicationMain extends JFXApp {
   val iconImage = new Image(getClass.getResourceAsStream("tlcockpit-48.jpg"))
   val logoImage = new Image(getClass.getResourceAsStream("tlcockpit-128.jpg"))
 
-  val pkgs = scala.collection.mutable.Map.empty[String, TLPackage]
+  val pkgs = ObservableMap[String, TLPackage]()
   val upds = ObservableMap[String, TLUpdate]()
   val bkps = ObservableMap[String, Map[String,TLBackup]]()  // pkgname -> (version -> TLBackup)*
 
@@ -151,68 +151,6 @@ object ApplicationMain extends JFXApp {
     }
   }
 
-  def update_pkg_lists(): Unit = {
-    tlmgr_async_command("info --data name,localrev,remoterev,shortdesc,size,installed", (s: Array[String]) => {
-      pkgs.clear()
-      s.map((line: String) => {
-        val fields: Array[String] = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1)
-        val sd = fields(3)
-        val shortdesc = if (sd.isEmpty) "" else sd.substring(1).dropRight(1).replace("""\"""",""""""")
-        val inst = if (fields(5) == "1") "Installed" else "Not installed"
-        val tlpkg = new TLPackage(fields(0), fields(1), fields(2), shortdesc, fields(4), inst)
-        pkgs += ((fields(0), tlpkg))
-      })
-      val pkgbuf: ArrayBuffer[TLPackage] = ArrayBuffer.empty[TLPackage]
-      val binbuf = scala.collection.mutable.Map.empty[String, ArrayBuffer[TLPackage]]
-      pkgs.foreach(pkg => {
-        // complicated part, determine whether it is a sub package or not!
-        // we strip of initial texlive. prefixes to make sure we deal
-        // with real packages
-        if (pkg._1.stripPrefix("texlive.").contains(".")) {
-          val foo: Array[String] = pkg._1.stripPrefix("texlive.infra").split('.')
-          val pkgname = foo(0)
-          val binname = foo(1)
-          if (binbuf.keySet.contains(pkgname)) {
-            binbuf(pkgname) += pkg._2
-          } else {
-            binbuf(pkgname) = ArrayBuffer[TLPackage](pkg._2)
-          }
-        } else {
-          pkgbuf += pkg._2
-        }
-      })
-      // now we have all normal packages in pkgbuf, and its sub-packages in binbuf
-      // we need to create TreeItems
-      val viewkids: ArrayBuffer[TreeItem[TLPackage]] = pkgbuf.map { p => {
-          val kids: Seq[TLPackage] = if (binbuf.keySet.contains(p.name.value)) {
-            binbuf(p.name.value)
-          } else {
-            Seq()
-          }
-          // for ismixed we && all the installed status. If all are installed, we get true
-          val allinstalled = (kids :+ p).foldRight[Boolean](true)((k,b) => k.installed.value == "Installed" && b)
-          if (!allinstalled) {
-            // replace installed status with "Mixed"
-            new TreeItem[TLPackage](new TreeItem[TLPackage](
-              new TLPackage(p.name.value, p.lrev.value.toString, p.rrev.value.toString, p.shortdesc.value, p.size.value.toString, "Mixed")
-            )) {
-              children = kids.map(new TreeItem[TLPackage](_))
-            }
-          } else {
-            new TreeItem[TLPackage](p) {
-              children = kids.map(new TreeItem[TLPackage](_))
-            }
-          }
-        }}
-      Platform.runLater {
-        packageTable.root = new TreeItem[TLPackage](new TLPackage("root","0","0","","0","")) {
-          expanded = true
-          children = viewkids.sortBy(_.value.value.name.value)
-        }
-      }
-    })
-  }
-
   def callback_quit(): Unit = {
     tlmgr.cleanup()
     Platform.exit()
@@ -280,53 +218,133 @@ object ApplicationMain extends JFXApp {
       // TODO update the updPkg map (to be created)
       // TODO and set the root of the table
     }
-    tlmgr_async_command("update --all", _ => { Platform.runLater { update_pkg_lists() } })
+    tlmgr_async_command("update --all", _ => { Platform.runLater { update_pkgs_lists() } })
   }
 
   def callback_update_self(): Unit = {
     // TODO should we restart tlmgr here - it might be necessary!!!
-    tlmgr_async_command("update --self", _ => { Platform.runLater { update_pkg_lists() } })
+    tlmgr_async_command("update --self", _ => { Platform.runLater { update_pkgs_lists() } })
   }
 
   def do_one_pkg(what: String, pkg: String): Unit = {
-    tlmgr_async_command(s"$what $pkg", _ => { Platform.runLater { update_pkg_lists() } })
+    tlmgr_async_command(s"$what $pkg", _ => { Platform.runLater { update_pkgs_lists() } })
   }
 
   def callback_restore_pkg(str: String, rev: String): Unit = {
     not_implemented_info()
   }
 
-  bkps.onChange( {
-    val newroot = new TreeItem[TLBackup](new TLBackup("root", "", "")) {
-      children = bkps
-        .map( p => {
-          val pkgname: String = p._1
-          // we sort by negative of revision number, which give inverse sort
-          val versmap: Array[(String, TLBackup)] = p._2.toArray.sortBy(-_._2.rev.value.toInt)
-
-          val foo: Seq[TreeItem[TLBackup]] = versmap.tail.sortBy(-_._2.rev.value.toInt).map { q =>
-             new TreeItem[TLBackup](q._2)
-          }.toSeq
-          new TreeItem[TLBackup](versmap.head._2) { children = foo }
-        }).toArray.sortBy(_.value.value.name.value)
+  bkps.onChange( (obs,chs) => {
+    var doit = chs match {
+      case ObservableMap.Add(k, v) => k.toString == "root"
+      case ObservableMap.Replace(k, va, vr) => k.toString == "root"
+      case ObservableMap.Remove(k, v) => k.toString == "root"
     }
-    Platform.runLater {
-      backupTable.root = newroot
+    if (doit) {
+      // println("DEBUG bkps.onChange called new length = " + bkps.keys.toArray.length)
+      val newroot = new TreeItem[TLBackup](new TLBackup("root", "", "")) {
+        children = bkps
+          .map(p => {
+            val pkgname: String = p._1
+            // we sort by negative of revision number, which give inverse sort
+            val versmap: Array[(String, TLBackup)] = p._2.toArray.sortBy(-_._2.rev.value.toInt)
+
+            val foo: Seq[TreeItem[TLBackup]] = versmap.tail.sortBy(-_._2.rev.value.toInt).map { q =>
+              new TreeItem[TLBackup](q._2)
+            }.toSeq
+            new TreeItem[TLBackup](versmap.head._2) {
+              children = foo
+            }
+          }).toArray.sortBy(_.value.value.name.value)
+      }
+      Platform.runLater {
+        backupTable.root = newroot
+      }
     }
   })
-  upds.onChange( {
-    val infraAvailable = upds.keys.exists(_.startsWith("texlive.infra"))
-    val updatesAvailable = upds.keys.exists(p => !p.startsWith("texlive.infra"))
-    val newroot = new TreeItem[TLUpdate](new TLUpdate("root", "", "", "", "", "")) {
-      children = upds
-        .map( p => new TreeItem[TLUpdate](p._2))
-        .toArray
-        .sortBy(_.value.value.name.value)
+  pkgs.onChange( (obs,chs) => {
+    var doit = chs match {
+      case ObservableMap.Add(k, v) => k.toString == "root"
+      case ObservableMap.Replace(k, va, vr) => k.toString == "root"
+      case ObservableMap.Remove(k, v) => k.toString == "root"
     }
-    Platform.runLater {
-      update_self_menu.disable = !infraAvailable
-      update_all_menu.disable = !updatesAvailable
-      updateTable.root = newroot
+    if (doit) {
+      // println("DEBUG pkgs.onChange called new length = " + pkgs.keys.toArray.length)
+      val pkgbuf: ArrayBuffer[TLPackage] = ArrayBuffer.empty[TLPackage]
+      val binbuf = scala.collection.mutable.Map.empty[String, ArrayBuffer[TLPackage]]
+      pkgs.foreach(pkg => {
+        // complicated part, determine whether it is a sub package or not!
+        // we strip of initial texlive. prefixes to make sure we deal
+        // with real packages
+        if (pkg._1.stripPrefix("texlive.").contains(".")) {
+          val foo: Array[String] = pkg._1.stripPrefix("texlive.infra").split('.')
+          val pkgname = foo(0)
+          val binname = foo(1)
+          if (binbuf.keySet.contains(pkgname)) {
+            binbuf(pkgname) += pkg._2
+          } else {
+            binbuf(pkgname) = ArrayBuffer[TLPackage](pkg._2)
+          }
+        } else if (pkg._1 == "root") {
+          // ignore the dummy root element,
+          // only used for speeding up event handling
+        } else {
+          pkgbuf += pkg._2
+        }
+      })
+      // now we have all normal packages in pkgbuf, and its sub-packages in binbuf
+      // we need to create TreeItems
+      val viewkids: ArrayBuffer[TreeItem[TLPackage]] = pkgbuf.map { p => {
+        val kids: Seq[TLPackage] = if (binbuf.keySet.contains(p.name.value)) {
+          binbuf(p.name.value)
+        } else {
+          Seq()
+        }
+        // for ismixed we && all the installed status. If all are installed, we get true
+        val allinstalled = (kids :+ p).foldRight[Boolean](true)((k, b) => k.installed.value == "Installed" && b)
+        if (!allinstalled) {
+          // replace installed status with "Mixed"
+          new TreeItem[TLPackage](new TreeItem[TLPackage](
+            new TLPackage(p.name.value, p.lrev.value.toString, p.rrev.value.toString, p.shortdesc.value, p.size.value.toString, "Mixed")
+          )) {
+            children = kids.map(new TreeItem[TLPackage](_))
+          }
+        } else {
+          new TreeItem[TLPackage](p) {
+            children = kids.map(new TreeItem[TLPackage](_))
+          }
+        }
+      }
+      }
+      Platform.runLater {
+        packageTable.root = new TreeItem[TLPackage](new TLPackage("root", "0", "0", "", "0", "")) {
+          expanded = true
+          children = viewkids.sortBy(_.value.value.name.value)
+        }
+      }
+    }
+  })
+  upds.onChange( (obs, chs) => {
+    var doit = chs match {
+      case ObservableMap.Add(k, v) => k.toString == "root"
+      case ObservableMap.Replace(k, va, vr) => k.toString == "root"
+      case ObservableMap.Remove(k, v) => k.toString == "root"
+    }
+    if (doit) {
+      // println("DEBUG upds.onChange called new length = " + upds.keys.toArray.length)
+      val infraAvailable = upds.keys.exists(_.startsWith("texlive.infra"))
+      val updatesAvailable = upds.keys.exists(p => !p.startsWith("texlive.infra"))
+      val newroot = new TreeItem[TLUpdate](new TLUpdate("root", "", "", "", "", "")) {
+        children = upds
+          .map(p => new TreeItem[TLUpdate](p._2))
+          .toArray
+          .sortBy(_.value.value.name.value)
+      }
+      Platform.runLater {
+        update_self_menu.disable = !infraAvailable
+        update_all_menu.disable = !updatesAvailable
+        updateTable.root = newroot
+      }
     }
   })
 
@@ -341,6 +359,21 @@ object ApplicationMain extends JFXApp {
       }.toMap
       bkps.clear()
       bkps ++= newbkps
+      bkps("root") = Map[String,TLBackup](("0", new TLBackup("root","0","0")))
+    })
+  }
+  def update_pkgs_lists():Unit = {
+    tlmgr_async_command("info --data name,localrev,remoterev,shortdesc,size,installed", (s: Array[String]) => {
+      val newpkgs = s.map { (line: String) =>
+        val fields: Array[String] = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1)
+        val sd = fields(3)
+        val shortdesc = if (sd.isEmpty) "" else sd.substring(1).dropRight(1).replace("""\"""",""""""")
+        val inst = if (fields(5) == "1") "Installed" else "Not installed"
+        (fields(0), new TLPackage(fields(0), fields(1), fields(2), shortdesc, fields(4), inst))
+      }.toMap
+      pkgs.clear()
+      pkgs ++= newpkgs
+      pkgs("root") = new TLPackage("root","0","0","","0","")
     })
   }
 
@@ -390,6 +423,7 @@ object ApplicationMain extends JFXApp {
       }.toMap
       upds.clear()
       upds ++= newupds
+      upds("root") = new TLUpdate("root", "", "", "", "", "")
     })
   }
 
@@ -811,7 +845,7 @@ object ApplicationMain extends JFXApp {
   }
   */
 
-  var lineUpdateFunc = { (l: String) => println(s"DEBUG: got ==$l== from tlmgr") }
+  var lineUpdateFunc = { (l: String) => } // println(s"DEBUG: got ==$l== from tlmgr") }
 
   val bar = Future {
     // busy waiting for output ...
@@ -832,7 +866,8 @@ object ApplicationMain extends JFXApp {
   }
   tlmgr.start_process()
   tlmgr.get_output_till_prompt()
-  update_pkg_lists() // this is async done
+  // update_pkg_lists_to_be_renamed() // this is async done
+  update_pkgs_lists()
 
 }  // object ApplicationMain
 
