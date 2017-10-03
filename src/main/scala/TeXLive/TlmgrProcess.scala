@@ -26,12 +26,18 @@ class TlmgrProcess(updout: Array[String] => Unit, upderr: String => Unit, updlin
 
     val maxWaitTime = 5000
     var waited = 0
+    var sendNL = 0
     while (isBusy) {
       // do busy waiting here in case some other tlmgr command is running
       // println("Debug: waiting for tlmgr being ready, want to send " + input)
       Thread.sleep(300)
       waited += 300
-      if (waited > maxWaitTime) {
+
+      if (waited > maxWaitTime && sendNL < 3) {
+        outputString.put("protocol")
+        sendNL += 1
+      }
+      if (waited > maxWaitTime && sendNL >= 3) {
         throw new Exception("tlmgr busy, waited too long, aborting calling: " + input)
       }
     }
@@ -76,6 +82,7 @@ class TlmgrProcess(updout: Array[String] => Unit, upderr: String => Unit, updlin
     synchronized(isBusy = true)
     while (!found) {
       result = outputString.take()
+      println("DEBUG get_output_till_prompt = " + result)
       if (result == "tlmgr> ") {
         found = true
       } else if (result == "OK") {
@@ -134,6 +141,7 @@ class TlmgrProcess(updout: Array[String] => Unit, upderr: String => Unit, updlin
         } else {
           // println("did read " + line + " from process")
           outputString.put(line)
+          println("DEBUG tlmgr process: calling updline function with " + line)
           updline(line)
         }
       }

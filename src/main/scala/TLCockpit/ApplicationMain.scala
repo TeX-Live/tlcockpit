@@ -185,20 +185,29 @@ object ApplicationMain extends JFXApp {
     outerrtabs.selectionModel().select(0)
     outputText.append(s"Running $s")
     val foo = Future {
+      // this is really a pain because with many lines being shot out
+      // from say fmtutil-sys --all, there are thousands of
+      // calls to Platform.runLater, which makes Java go to 100%
+      // but finally it succeeds.
+      // TODO use buffered update of output
       s ! ProcessLogger(
-        line => outputText.append(line),
-        line => errorText.append(line)
+        line => Platform.runLater( outputText.append(line) ),
+        line => Platform.runLater( errorText.append(line) )
       )
     }
     foo.onComplete {
       case Success(ret) =>
-        outputText.append("Completed")
-        outputfield.scrollTop = Double.MaxValue
+        Platform.runLater {
+          outputText.append("Completed")
+          outputfield.scrollTop = Double.MaxValue
+        }
       case Failure(t) =>
-        errorText.append("An ERROR has occurred running $s: " + t.getMessage)
-        errorfield.scrollTop = Double.MaxValue
-        outerrpane.expanded = true
-        outerrtabs.selectionModel().select(1)
+        Platform.runLater {
+          errorText.append("An ERROR has occurred running $s: " + t.getMessage)
+          errorfield.scrollTop = Double.MaxValue
+          outerrpane.expanded = true
+          outerrtabs.selectionModel().select(1)
+        }
     }
   }
 
@@ -213,12 +222,52 @@ object ApplicationMain extends JFXApp {
   }
 
   def callback_update_all(): Unit = {
-    // TODO parse table and update line by line
     lineUpdateFunc = (l:String) => {
-      // TODO update the updPkg map (to be created)
-      // TODO and set the root of the table
+      l match {
+        case u if u.startsWith("location-url") => None
+        case u if u.startsWith("total-bytes") => None
+        case u if u.startsWith("end-of-header") => None
+        case u if u.startsWith("end-of-updates") => None
+        case u =>
+          val foo = parse_one_update_line(l)
+          println("DEBUG: removing " + foo.name.value + " from upds")
+          upds.remove(foo.name.value)
+          pkgs(foo.name.value) = new TLPackage(foo.name.value, foo.rrev.value, foo.rrev.value, foo.shortdesc.value, foo.size.value, "Installed")
+          trigger_update("upds")
+          trigger_update("pkgs")
+      }
     }
-    tlmgr_async_command("update --all", _ => { Platform.runLater { update_pkgs_lists() } })
+    tlmgr_async_command("update --all", _ => {
+      Platform.runLater { lineUpdateFunc = { (s: String) => } }
+    })
+  }
+
+  def callback_update_one(pkg: String): Unit = {
+    lineUpdateFunc = (l:String) => {
+      println("DEBUG callback update one line update got line: " + l)
+      l match {
+        case u if u.startsWith("location-url") => None
+        case u if u.startsWith("total-bytes") => None
+        case u if u.startsWith("end-of-header") => None
+        case u if u.startsWith("end-of-updates") => None
+        case u =>
+          val foo = parse_one_update_line(l)
+          println("DEBUG: removing " + foo.name.value + " from upds")
+          upds.remove(foo.name.value)
+          pkgs(foo.name.value) = new TLPackage(foo.name.value, foo.rrev.value, foo.rrev.value, foo.shortdesc.value, foo.size.value, "Installed")
+          Platform.runLater {
+            println("triggering updates to upds and pkgs")
+            trigger_update("upds")
+            trigger_update("pkgs")
+          }
+      }
+    }
+    tlmgr_async_command(s"update $pkg", _ => {
+      Platform.runLater {
+        println("resetting update function")
+        lineUpdateFunc = { (s: String) => }
+      }
+    })
   }
 
   def callback_update_self(): Unit = {
@@ -244,6 +293,7 @@ object ApplicationMain extends JFXApp {
       // println("DEBUG bkps.onChange called new length = " + bkps.keys.toArray.length)
       val newroot = new TreeItem[TLBackup](new TLBackup("root", "", "")) {
         children = bkps
+          .filter(_._1 != "root")
           .map(p => {
             val pkgname: String = p._1
             // we sort by negative of revision number, which give inverse sort
@@ -336,6 +386,7 @@ object ApplicationMain extends JFXApp {
       val updatesAvailable = upds.keys.exists(p => !p.startsWith("texlive.infra"))
       val newroot = new TreeItem[TLUpdate](new TLUpdate("root", "", "", "", "", "")) {
         children = upds
+          .filter(_._1 != "root")
           .map(p => new TreeItem[TLUpdate](p._2))
           .toArray
           .sortBy(_.value.value.name.value)
@@ -359,7 +410,7 @@ object ApplicationMain extends JFXApp {
       }.toMap
       bkps.clear()
       bkps ++= newbkps
-      bkps("root") = Map[String,TLBackup](("0", new TLBackup("root","0","0")))
+      trigger_update("bkps")
     })
   }
   def update_pkgs_lists():Unit = {
@@ -373,8 +424,41 @@ object ApplicationMain extends JFXApp {
       }.toMap
       pkgs.clear()
       pkgs ++= newpkgs
-      pkgs("root") = new TLPackage("root","0","0","","0","")
+      trigger_update("pkgs")
     })
+  }
+
+
+  def parse_one_update_line(l: String): TLUpdate = {
+    val fields = l.split("\t")
+    val pkgname = fields(0)
+    val status = fields(1) match {
+      case "d" => "Removed on server"
+      case "f" => "Forcibly removed"
+      case "u" => "Update available"
+      case "r" => "Local is newer"
+      case "a" => "New on server"
+      case "i" => "Not installed"
+      case "I" => "Reinstall"
+    }
+    val localrev = fields(2)
+    val serverrev = fields(3)
+    val size = humanReadableByteSize(fields(4).toLong)
+    val runtime = fields(5)
+    val esttot = fields(6)
+    val tag = fields(7)
+    val lctanv = fields(8)
+    val rctanv = fields(9)
+    val tlpkg: TLPackage = pkgs(pkgname)
+    val shortdesc = tlpkg.shortdesc.value
+    new TLUpdate(pkgname, status,
+      localrev + {
+        if (lctanv != "-") s" ($lctanv)" else ""
+      },
+      serverrev + {
+        if (rctanv != "-") s" ($rctanv)" else ""
+      },
+      shortdesc, size)
   }
 
   def update_upds_list(): Unit = {
@@ -388,45 +472,21 @@ object ApplicationMain extends JFXApp {
           case u if u.startsWith("end-of-updates") => false
           case u => true
         }
-      }.map {
-        l => {
-          val fields = l.split("\t")
-          val pkgname = fields(0)
-          val status = fields(1) match {
-            case "d" => "Removed on server"
-            case "f" => "Forcibly removed"
-            case "u" => "Update available"
-            case "r" => "Local is newer"
-            case "a" => "New on server"
-            case "i" => "Not installed"
-            case "I" => "Reinstall"
-          }
-          val localrev = fields(2)
-          val serverrev = fields(3)
-          val size = humanReadableByteSize(fields(4).toLong)
-          val runtime = fields(5)
-          val esttot = fields(6)
-          val tag = fields(7)
-          val lctanv = fields(8)
-          val rctanv = fields(9)
-          val tlpkg: TLPackage = pkgs(pkgname)
-          val shortdesc = tlpkg.shortdesc.value
-          (pkgname, new TLUpdate(pkgname, status,
-            localrev + {
-              if (lctanv != "-") s" ($lctanv)" else ""
-            },
-            serverrev + {
-              if (rctanv != "-") s" ($rctanv)" else ""
-            },
-            shortdesc, size))
-        }
-      }.toMap
+      }.map { l => (l , parse_one_update_line(l) ) }.toMap
       upds.clear()
       upds ++= newupds
-      upds("root") = new TLUpdate("root", "", "", "", "", "")
+      trigger_update("upds")
     })
   }
 
+  def trigger_update(s:String): Unit = {
+    if (s == "pkgs")
+      pkgs("root") = new TLPackage("root","0","0","","0","")
+    else if (s == "upds")
+      upds("root") = new TLUpdate("root", "", "", "", "", "")
+    else if (s == "bkps")
+      bkps("root") = Map[String,TLBackup](("0", new TLBackup("root","0","0")))
+  }
 
 
   def callback_show_pkg_info(pkg: String): Unit = {
@@ -487,9 +547,12 @@ object ApplicationMain extends JFXApp {
       new MenuItem("Update filename database ...") {
         onAction = (ae) => callback_run_external("mktexlsr")
       },
+      new MenuItem("Update context filename database ...") {
+        onAction = (ae) => callback_run_external("mtxrun --generate")
+      },
       // calling fmtutil kills JavaFX when the first sub-process (format) is called
       // I get loads of Exception in thread "JavaFX Application Thread" java.lang.ArrayIndexOutOfBoundsException
-      // new MenuItem("Rebuild all formats ...") { onAction = (ae) => callback_run_external("fmtutil --sys --all") },
+      new MenuItem("Rebuild all formats ...") { onAction = (ae) => callback_run_external("fmtutil --sys --all") },
       new MenuItem("Update font map database ...") {
         onAction = (ae) => callback_run_external("updmap --sys")
       },
@@ -655,7 +718,7 @@ object ApplicationMain extends JFXApp {
         },
         new MenuItem("Update") {
           // onAction = (ae) => callback_run_text("update " + row.item.value.name.value)
-          onAction = (ae) => do_one_pkg("update", row.item.value.name.value)
+          onAction = (ae) => callback_update_one(row.item.value.name.value)
         }
       )
       row.contextMenu = ctm
@@ -712,9 +775,6 @@ object ApplicationMain extends JFXApp {
         },
         new MenuItem("Remove") {
           onAction = (ae) => do_one_pkg("remove", row.item.value.name.value)
-        },
-        new MenuItem("Update") {
-          onAction = (ae) => do_one_pkg("update", row.item.value.name.value)
         }
       )
       row.contextMenu = ctm
