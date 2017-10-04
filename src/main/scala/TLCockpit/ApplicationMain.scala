@@ -32,9 +32,6 @@ import scala.sys.process._
 import scalafx.collections.ObservableBuffer
 import scalafx.collections.ObservableMap
 
-
-// TODO update listings when package is updated/installed/removed ...
-// TODO line by line reading/action of shell output
 // TODO TreeTableView indentation is lazy
 // TODO pkg info - access to doc files
 
@@ -178,31 +175,54 @@ object ApplicationMain extends JFXApp {
     }.showAndWait()
   }
 
-  def callback_run_external(s: String): Unit = {
+  val OutputBuffer = ObservableBuffer[String]()
+  var OutputBufferIndex:Int = 0
+  val OutputFlushLines = 100
+  OutputBuffer.onChange {
+    // length is number of lines!
+    var foo = ""
+    OutputBuffer.synchronized(
+      if (OutputBuffer.length - OutputBufferIndex > OutputFlushLines) {
+        foo = OutputBuffer.slice(OutputBufferIndex, OutputBufferIndex + OutputFlushLines).mkString("")
+        OutputBufferIndex += OutputFlushLines
+        Platform.runLater {
+          outputText.append(foo)
+        }
+      }
+    )
+  }
+  def reset_output_buffer(): Unit = {
+    OutputBuffer.clear()
+    OutputBufferIndex = 0
+  }
+
+  def callback_run_external(s: String, unbuffered: Boolean = true): Unit = {
     outputText.clear()
     errorText.clear()
     outerrpane.expanded = true
     outerrtabs.selectionModel().select(0)
-    outputText.append(s"Running $s")
+    outputText.append(s"Running $s" + (if (unbuffered) " (unbuffered)" else " (buffered)"))
     val foo = Future {
-      // this is really a pain because with many lines being shot out
-      // from say fmtutil-sys --all, there are thousands of
-      // calls to Platform.runLater, which makes Java go to 100%
-      // but finally it succeeds.
-      // TODO use buffered update of output
       s ! ProcessLogger(
-        line => Platform.runLater( outputText.append(line) ),
+        line => if (unbuffered) Platform.runLater( outputText.append(line) )
+                else OutputBuffer.synchronized( OutputBuffer.append(line + "\n") ),
         line => Platform.runLater( errorText.append(line) )
       )
     }
     foo.onComplete {
       case Success(ret) =>
         Platform.runLater {
+          outputText.append(OutputBuffer.slice(OutputBufferIndex,OutputBuffer.length).mkString(""))
           outputText.append("Completed")
+          reset_output_buffer()
           outputfield.scrollTop = Double.MaxValue
         }
       case Failure(t) =>
         Platform.runLater {
+          outputText.append(OutputBuffer.slice(OutputBufferIndex,OutputBuffer.length).mkString(""))
+          outputText.append("Completed")
+          reset_output_buffer()
+          outputfield.scrollTop = Double.MaxValue
           errorText.append("An ERROR has occurred running $s: " + t.getMessage)
           errorfield.scrollTop = Double.MaxValue
           outerrpane.expanded = true
@@ -518,15 +538,15 @@ object ApplicationMain extends JFXApp {
       update_all_menu,
       update_self_menu,
       new SeparatorMenuItem,
-      new MenuItem("Update filename database ...") {
-        onAction = (ae) => callback_run_external("mktexlsr")
+      new MenuItem("Update filename databases ...") {
+        onAction = (ae) => {
+          callback_run_external("mktexlsr")
+          callback_run_external("mtxrun --generate")
+        }
       },
-      new MenuItem("Update context filename database ...") {
-        onAction = (ae) => callback_run_external("mtxrun --generate")
-      },
-      // calling fmtutil kills JavaFX when the first sub-process (format) is called
-      // I get loads of Exception in thread "JavaFX Application Thread" java.lang.ArrayIndexOutOfBoundsException
-      new MenuItem("Rebuild all formats ...") { onAction = (ae) => callback_run_external("fmtutil --sys --all") },
+      // too many lines are quickly output -> GUI becomes hanging until
+      // all the callbacks are done - call fmtutil with unbuffered = false
+      new MenuItem("Rebuild all formats ...") { onAction = (ae) => callback_run_external("fmtutil --sys --all", false) },
       new MenuItem("Update font map database ...") {
         onAction = (ae) => callback_run_external("updmap --sys")
       },
