@@ -33,7 +33,10 @@ import scalafx.collections.ObservableBuffer
 import scalafx.collections.ObservableMap
 
 // TODO TreeTableView indentation is lazy
-// TODO pkg info - access to doc files
+// TODO pkg info - allow display of PDF doc files
+//    use WebView and pdf.js: https://stackoverflow.com/questions/18207116/displaying-pdf-in-javafx
+//    see https://github.com/scalafx/scalafx-ensemble/blob/master/src/main/scala/scalafx/ensemble/example/web/EnsembleWebView.scala
+// TODO better layout of pkg info
 
 object ApplicationMain extends JFXApp {
 
@@ -484,7 +487,7 @@ object ApplicationMain extends JFXApp {
 
 
   def callback_show_pkg_info(pkg: String): Unit = {
-    tlmgr_async_command(s"info $pkg", pkginfo => {
+    tlmgr_async_command(s"info --list $pkg", pkginfo => {
       // need to call runLater to go back to main thread!
       Platform.runLater {
         val dialog = new Dialog() {
@@ -500,20 +503,68 @@ object ApplicationMain extends JFXApp {
           padding = Insets(20)
         }
         var crow = 0
+        val runFiles = ArrayBuffer[String]()
+        val docFiles = ArrayBuffer[String]()
+        val binFiles = ArrayBuffer[String]()
+        val srcFiles = ArrayBuffer[String]()
+        var whichFiles = "run" // we assume run files if not found!
         pkginfo.foreach((line: String) => {
-          val keyval = line.split(":", 2).map(_.trim)
-          if (keyval.length == 2) {
-            val keylabel = new Label(keyval(0))
-            val vallabel = new Label(keyval(1))
-            vallabel.wrapText = true
-            grid.add(keylabel, 0, crow)
-            grid.add(vallabel, 1, crow)
-            crow += 1
+          if (line.startsWith("  ")) {
+            // files are listed with two spaces in the beginning
+            whichFiles match {
+              case "run" => runFiles += line.trim
+              case "doc" => docFiles += line.trim
+              case "bin" => binFiles += line.trim
+              case "src" => srcFiles += line.trim
+              case _ => println("Don't know what to do?!?!")
+            }
+          } else {
+            val keyval = line.split(":", 2).map(_.trim)
+            whichFiles = if (keyval(0).startsWith("run files")) "run" else
+              if (keyval(0).startsWith("doc files")) "doc" else
+              if (keyval(0).startsWith("source files")) "src" else
+              if (keyval(0).startsWith("bin files (all platforms)")) "bin" else
+              "unknown"
+            if (keyval.length == 2) {
+              if (keyval(0) == "doc files" || keyval(0) == "source files" || keyval(0) == "run files" ||
+                  keyval(0).startsWith("bin files (all platforms)")) {
+                // do nothing
+              } else {
+                val keylabel = new Label(keyval(0))
+                val vallabel = new Label(keyval(1))
+                vallabel.wrapText = true
+                grid.add(keylabel, 0, crow)
+                grid.add(vallabel, 1, crow)
+                crow += 1
+              }
+            }
           }
         })
+        // add files section
+        if (runFiles.length > 0) {
+          grid.add(new Label("run files"), 0, crow)
+          grid.add(new Label(runFiles.mkString("\n")) { wrapText = true },1, crow)
+          crow += 1
+        }
+        if (docFiles.length > 0) {
+          grid.add(new Label("doc files"), 0, crow)
+          grid.add(new Label(docFiles.mkString("\n")) { wrapText = true },1, crow)
+          crow += 1
+        }
+        if (srcFiles.length > 0) {
+          grid.add(new Label("src files"), 0, crow)
+          grid.add(new Label(srcFiles.mkString("\n")) { wrapText = true },1, crow)
+          crow += 1
+        }
+        if (binFiles.length > 0) {
+          grid.add(new Label("bin files"), 0, crow)
+          grid.add(new Label(binFiles.mkString("\n")) { wrapText = true },1, crow)
+          crow += 1
+        }
         grid.columnConstraints = Seq(new ColumnConstraints(100, 150, 200), new ColumnConstraints(100, 300, 5000, Priority.Always, new HPos(HPos.Left), true))
         dialog.dialogPane().content = grid
-        dialog.width = 500
+        // dialog.width = 500
+        // dialog.height = 800
         dialog.showAndWait()
       }
     })
@@ -630,27 +681,7 @@ object ApplicationMain extends JFXApp {
               onAction = (event: ActionEvent) => callback_run_cmdline()
             }
           )
-        },
-        /* new HBox {
-          spacing = 10
-          children = List(
-            new Button {
-              text = "Show updates"
-              onAction = (e: ActionEvent) => callback_show_updates()
-            },
-            new Button {
-              text = "Show installed"
-              onAction = (e: ActionEvent) => callback_show_installed()
-            },
-            new Button {
-              text = "Show all"
-              onAction = (e: ActionEvent) => callback_show_all()
-            },
-            update_self_button,
-            update_all_button
-          )
         }
-        */
       )
     }
   }
@@ -726,18 +757,6 @@ object ApplicationMain extends JFXApp {
       cellValueFactory = {  _.value.value.value.name }
       prefWidth = 150
     }
-    /*
-    val colLRev = new TableColumn[TLPackage, String] {
-      text = "Local rev"
-      cellValueFactory = { _.value.lrev }
-      prefWidth = 100
-    }
-    val colRRev = new TableColumn[TLPackage, String] {
-      text = "Remote rev"
-      cellValueFactory = { _.value.rrev }
-      prefWidth = 100
-    }
-    */
     val colDesc = new TreeTableColumn[TLPackage, String] {
       text = "Description"
       cellValueFactory = { _.value.value.value.shortdesc }
