@@ -33,7 +33,10 @@ import scalafx.collections.ObservableBuffer
 import scalafx.collections.ObservableMap
 
 // TODO TreeTableView indentation is lazy
-// TODO pkg info - allow display of PDF doc files
+// TODO line by line update better done with start - end indication
+//    when line for <pkg> is read -> mark as *being*processed*
+//    when next line or <end-of-updates> lines -> actually remove!
+// TODO pkg info - allow opening (maybe preview) of doc files
 //    use WebView and pdf.js: https://stackoverflow.com/questions/18207116/displaying-pdf-in-javafx
 //    see https://github.com/scalafx/scalafx-ensemble/blob/master/src/main/scala/scalafx/ensemble/example/web/EnsembleWebView.scala
 // TODO better layout of pkg info
@@ -50,9 +53,9 @@ object ApplicationMain extends JFXApp {
   val iconImage = new Image(getClass.getResourceAsStream("tlcockpit-48.jpg"))
   val logoImage = new Image(getClass.getResourceAsStream("tlcockpit-128.jpg"))
 
-  val pkgs = ObservableMap[String, TLPackage]()
-  val upds = ObservableMap[String, TLUpdate]()
-  val bkps = ObservableMap[String, Map[String,TLBackup]]()  // pkgname -> (version -> TLBackup)*
+  val pkgs: ObservableMap[String, TLPackage] = ObservableMap[String, TLPackage]()
+  val upds: ObservableMap[String, TLUpdate] = ObservableMap[String, TLUpdate]()
+  val bkps: ObservableMap[String, Map[String, TLBackup]] = ObservableMap[String, Map[String,TLBackup]]()  // pkgname -> (version -> TLBackup)*
 
   val errorText: ObservableBuffer[String] = ObservableBuffer[String]()
   val outputText: ObservableBuffer[String] = ObservableBuffer[String]()
@@ -123,7 +126,7 @@ object ApplicationMain extends JFXApp {
     (s: String) => {
       // errorText.clear()
       errorText.append(s)
-      if (s != "") {
+      if (s.trim != "") {
         outerrpane.expanded = true
         outerrtabs.selectionModel().select(1)
       }
@@ -178,7 +181,7 @@ object ApplicationMain extends JFXApp {
     }.showAndWait()
   }
 
-  val OutputBuffer = ObservableBuffer[String]()
+  val OutputBuffer: ObservableBuffer[String] = ObservableBuffer[String]()
   var OutputBufferIndex:Int = 0
   val OutputFlushLines = 100
   OutputBuffer.onChange {
@@ -541,22 +544,22 @@ object ApplicationMain extends JFXApp {
           }
         })
         // add files section
-        if (runFiles.length > 0) {
+        if (runFiles.nonEmpty) {
           grid.add(new Label("run files"), 0, crow)
           grid.add(new Label(runFiles.mkString("\n")) { wrapText = true },1, crow)
           crow += 1
         }
-        if (docFiles.length > 0) {
+        if (docFiles.nonEmpty) {
           grid.add(new Label("doc files"), 0, crow)
           grid.add(new Label(docFiles.mkString("\n")) { wrapText = true },1, crow)
           crow += 1
         }
-        if (srcFiles.length > 0) {
+        if (srcFiles.nonEmpty) {
           grid.add(new Label("src files"), 0, crow)
           grid.add(new Label(srcFiles.mkString("\n")) { wrapText = true },1, crow)
           crow += 1
         }
-        if (binFiles.length > 0) {
+        if (binFiles.nonEmpty) {
           grid.add(new Label("bin files"), 0, crow)
           grid.add(new Label(binFiles.mkString("\n")) { wrapText = true },1, crow)
           crow += 1
@@ -584,7 +587,7 @@ object ApplicationMain extends JFXApp {
     f"${fileSize/Math.pow(1024, digitGroup)}%3.1f ${units(digitGroup)}"
   }
 
-  val mainMenu = new Menu("TLCockpit") {
+  val mainMenu: Menu = new Menu("TLCockpit") {
     items = List(
       update_all_menu,
       update_self_menu,
@@ -622,33 +625,18 @@ object ApplicationMain extends JFXApp {
         onAction = (ae: ActionEvent) => callback_quit()
       })
   }
-  val optionsMenu = new Menu("Options") {
-    items = List(
-      new MenuItem("General ...") {
-        disable = true; onAction = (ae) => not_implemented_info()
-      },
-      new MenuItem("Paper ...") {
-        disable = true; onAction = (ae) => not_implemented_info()
-      },
-      new MenuItem("Platforms ...") {
-        disable = true; onAction = (ae) => not_implemented_info()
-      },
+  val optionsMenu: Menu = new Menu("Options") {
+    items = List( new MenuItem("General ...") { disable = true; onAction = (ae) => not_implemented_info() },
+      new MenuItem("Paper ...") { disable = true; onAction = (ae) => not_implemented_info() },
+      new MenuItem("Platforms ...") { disable = true; onAction = (ae) => not_implemented_info() },
       new SeparatorMenuItem,
-      new CheckMenuItem("Expert options") {
-        disable = true
-      },
-      new CheckMenuItem("Enable debugging options") {
-        disable = true
-      },
-      new CheckMenuItem("Disable auto-install of new packages") {
-        disable = true
-      },
-      new CheckMenuItem("Disable auto-removal of server-deleted packages") {
-        disable = true
-      }
+      new CheckMenuItem("Expert options") { disable = true },
+      new CheckMenuItem("Enable debugging options") { disable = true },
+      new CheckMenuItem("Disable auto-install of new packages") { disable = true },
+      new CheckMenuItem("Disable auto-removal of server-deleted packages") { disable = true }
     )
   }
-  val helpMenu = new Menu("Help") {
+  val helpMenu: Menu = new Menu("Help") {
     items = List(
       /*
       new MenuItem("Manual") {
@@ -660,10 +648,10 @@ object ApplicationMain extends JFXApp {
       },
     )
   }
-  val statusMenu = new Menu("Status: Idle") {
+  val statusMenu: Menu = new Menu("Status: Idle") {
     disable = true
   }
-  val expertPane = new TitledPane {
+  val expertPane: TitledPane = new TitledPane {
     text = "Experts only"
     collapsible = true
     expanded = false
@@ -685,7 +673,7 @@ object ApplicationMain extends JFXApp {
       )
     }
   }
-  val updateTable = {
+  val updateTable: TreeTableView[TLUpdate] = {
     val colName = new TreeTableColumn[TLUpdate, String] {
       text = "Package"
       cellValueFactory = { _.value.value.value.name }
@@ -751,7 +739,7 @@ object ApplicationMain extends JFXApp {
     }
     table
   }
-  val packageTable = {
+  val packageTable: TreeTableView[TLPackage] = {
     val colName = new TreeTableColumn[TLPackage, String] {
       text = "Package"
       cellValueFactory = {  _.value.value.value.name }
@@ -795,7 +783,7 @@ object ApplicationMain extends JFXApp {
     }
     table
   }
-  val backupTable = {
+  val backupTable: TreeTableView[TLBackup] = {
     val colName = new TreeTableColumn[TLBackup, String] {
       text = "Package"
       cellValueFactory = {  _.value.value.value.name }
@@ -836,7 +824,7 @@ object ApplicationMain extends JFXApp {
     }
     table
   }
-  val pkgstabs = new TabPane {
+  val pkgstabs: TabPane = new TabPane {
     minWidth = 400
     vgrow = Priority.Always
     tabs = Seq(
@@ -869,7 +857,7 @@ object ApplicationMain extends JFXApp {
       }
     }
   )
-  val menuBar = new MenuBar {
+  val menuBar: MenuBar = new MenuBar {
     useSystemMenuBar = true
     // menus.addAll(mainMenu, optionsMenu, helpMenu)
     menus.addAll(mainMenu, statusMenu)
@@ -918,7 +906,7 @@ object ApplicationMain extends JFXApp {
   }
   */
 
-  var lineUpdateFunc = { (l: String) => } // println(s"DEBUG: got ==$l== from tlmgr") }
+  var lineUpdateFunc: String => Unit = { (l: String) => } // println(s"DEBUG: got ==$l== from tlmgr") }
 
   val bar = Future {
     while (true) {
