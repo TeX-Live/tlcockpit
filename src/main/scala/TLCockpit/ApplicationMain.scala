@@ -6,19 +6,24 @@
 
 package TLCockpit
 
+import javafx.collections.ObservableList
+import javafx.scene.control
+
 import TLCockpit.ApplicationMain.getClass
 import TeXLive.{TLBackup, TLPackage, TLUpdate, TlmgrProcess}
-
+import scalafx.beans.property.StringProperty
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.{Future, SyncVar}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
+import scalafx.beans.property.ObjectProperty
 import scalafx.geometry.{HPos, Pos, VPos}
 import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.image.{Image, ImageView}
 import scalafx.scene.input.{KeyCode, KeyEvent}
 // needed see https://github.com/scalafx/scalafx/issues/137
 import scalafx.scene.control.TableColumn._
+import scalafx.scene.control.TreeItem
 import scalafx.scene.control.Menu._
 import scalafx.Includes._
 import scalafx.application.{JFXApp, Platform}
@@ -33,9 +38,6 @@ import scalafx.collections.ObservableBuffer
 import scalafx.collections.ObservableMap
 
 // TODO TreeTableView indentation is lazy
-// TODO line by line update better done with start - end indication
-//    when line for <pkg> is read -> mark as *being*processed*
-//    when next line or <end-of-updates> lines -> actually remove!
 // TODO pkg info - allow opening (maybe preview) of doc files
 //    use WebView and pdf.js: https://stackoverflow.com/questions/18207116/displaying-pdf-in-javafx
 //    see https://github.com/scalafx/scalafx-ensemble/blob/master/src/main/scala/scalafx/ensemble/example/web/EnsembleWebView.scala
@@ -248,23 +250,49 @@ object ApplicationMain extends JFXApp {
   }
 
   def callback_update(s: String): Unit = {
+    var prevUpdName = ""
+    var prevUpdPkg  = new TLUpdate("","","","","","")
     lineUpdateFunc = (l:String) => {
       // println("line update: " + l + "=")
       l match {
         case u if u.startsWith("location-url") => None
         case u if u.startsWith("total-bytes") => None
         case u if u.startsWith("end-of-header") => None
-        case u if u.startsWith("end-of-updates") => None
+        // case u if u.startsWith("end-of-updates") => None
         case u if u == "OK" => None
         case u if u.startsWith("tlmgr>") => None
         case u =>
-          val foo = parse_one_update_line(l)
-          upds.remove(foo.name.value)
-          val op = pkgs(foo.name.value)
-          pkgs(foo.name.value) = new TLPackage(foo.name.value, op.rrev.value.toString, op.rrev.value.toString, foo.shortdesc.value, op.size.value.toString, "Installed")
-          Platform.runLater {
-            trigger_update("upds")
-            trigger_update("pkgs")
+          if (prevUpdName != "") {
+            // println("Removing " + prevUpdName + " from list!")
+            upds.remove(prevUpdName)
+            val op = pkgs(prevUpdName)
+            pkgs(prevUpdName) = new TLPackage(prevUpdPkg.name.value, op.rrev.value.toString, op.rrev.value.toString,
+              prevUpdPkg.shortdesc.value, op.size.value.toString, "Installed")
+            Platform.runLater {
+              trigger_update("upds")
+              trigger_update("pkgs")
+            }
+          }
+          if (u.startsWith("end-of-updates")) {
+            // nothing to be done, all has been done above
+            // println("got end of updates")
+          } else {
+            // println("getting update line")
+            val foo = parse_one_update_line(l)
+            val pkgname = foo.name.value
+            val PkgTreeItemOption = updateTable.root.value.children.find(_.value.value.name.value == pkgname)
+            PkgTreeItemOption match {
+              case Some(p) =>
+                prevUpdName = pkgname
+                prevUpdPkg  = p.getValue
+                // println("Setting status to Updating ... for " + pkgname)
+                prevUpdPkg.status = StringProperty("Updating ...")
+                Platform.runLater {
+                  // println("calling updateTable refresh")
+                  updateTable.refresh()
+                }
+              case None => println("Very strange: Cannot find TreeItem for upd package" + pkgname)
+            }
           }
       }
     }
