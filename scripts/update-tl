@@ -18,6 +18,7 @@ rm -rf "$tl/Master/texmf-dist/source/support/tlcockpit"/*
 git archive --format=tar HEAD | (cd "$tl/Master/texmf-dist/source/support/tlcockpit" && tar xf -)
 rm -rf "$tl/Master/texmf-dist/source/support/tlcockpit"/screenshots
 rm -rf "$tl/Master/texmf-dist/source/support/tlcockpit"/README.md
+rm -rf "$tl/Master/texmf-dist/source/support/tlcockpit"/NEWS
 rm -rf "$tl/Master/texmf-dist/source/support/tlcockpit"/LICENSE
 rm -rf "$tl/Master/texmf-dist/source/support/tlcockpit"/jar
 rm -rf "$tl/Master/texmf-dist/source/support/tlcockpit"/scripts
@@ -26,7 +27,7 @@ rm -rf "$tl/Master/texmf-dist/source/support/tlcockpit"/logo
 
 mkdir -p "$tl/Master/texmf-dist/doc/support/tlcockpit"
 rm -rf "$tl/Master/texmf-dist/doc/support/tlcockpit"/*
-cp README.md LICENSE "$tl/Master/texmf-dist/doc/support/tlcockpit/"
+cp README.md NEWS LICENSE "$tl/Master/texmf-dist/doc/support/tlcockpit/"
 cp -a screenshots "$tl/Master/texmf-dist/doc/support/tlcockpit/"
 
 
