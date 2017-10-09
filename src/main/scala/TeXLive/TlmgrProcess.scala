@@ -2,16 +2,20 @@ package TeXLive
 
 import java.io._
 
-import OsInfo._
+import OsTools._
 
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.SyncVar
-import scala.sys.process.{Process, ProcessBuilder, ProcessIO}
+// import scala.sys.process.{Process, ProcessBuilder, ProcessIO}
+import scala.sys.process._
 
 class TlmgrProcess(updout: Array[String] => Unit, upderr: String => Unit, updline: String => Unit) {
   val inputString = new SyncVar[String]                 // used for the tlmgr process input
   val outputString = new SyncVar[String]                // used for the tlmgr process output
   val errorBuffer: StringBuffer = new StringBuffer()    // buffer used for both tmgr process error console AND logging
+
+  val tlroot = "kpsewhich -var-value SELFAUTOPARENT".!!.trim
+  // println("tlroot ==" + tlroot + "==")
 
   // set in only one place, in the main thread
   var process: Process = _

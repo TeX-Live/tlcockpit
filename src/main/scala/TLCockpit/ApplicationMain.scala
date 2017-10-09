@@ -10,21 +10,30 @@ import javafx.collections.ObservableList
 import javafx.scene.control
 
 import TLCockpit.ApplicationMain.getClass
-import TeXLive.{TLBackup, TLPackage, TLUpdate, TlmgrProcess}
+import TeXLive._
+// import java.io.File
+
 import scalafx.beans.property.StringProperty
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.{Future, SyncVar}
 import scala.concurrent.ExecutionContext.Implicits.global
+// import scala.reflect.io
+// import scala.reflect.io.File
 import scala.util.{Failure, Success}
 import scalafx.beans.property.ObjectProperty
 import scalafx.geometry.{HPos, Pos, VPos}
+import scalafx.scene.Cursor
 import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.image.{Image, ImageView}
-import scalafx.scene.input.{KeyCode, KeyEvent}
+import scalafx.scene.input.{KeyCode, KeyEvent, MouseEvent}
+import scalafx.scene.paint.Color
 // needed see https://github.com/scalafx/scalafx/issues/137
 import scalafx.scene.control.TableColumn._
+import scalafx.scene.control.TreeTableColumn._
 import scalafx.scene.control.TreeItem
 import scalafx.scene.control.Menu._
+import scalafx.scene.control.cell._
+import scalafx.scene.text.Text
 import scalafx.Includes._
 import scalafx.application.{JFXApp, Platform}
 import scalafx.application.JFXApp.PrimaryStage
@@ -36,6 +45,8 @@ import scalafx.event.ActionEvent
 import scala.sys.process._
 import scalafx.collections.ObservableBuffer
 import scalafx.collections.ObservableMap
+
+// import java.awt.Desktop
 
 // TODO TreeTableView indentation is lazy
 // TODO pkg info - allow opening (maybe preview) of doc files
@@ -558,7 +569,7 @@ object ApplicationMain extends JFXApp {
               "unknown"
             if (keyval.length == 2) {
               if (keyval(0) == "doc files" || keyval(0) == "source files" || keyval(0) == "run files" ||
-                  keyval(0).startsWith("bin files (all platforms)")) {
+                  keyval(0).startsWith("bin files (all platforms)") || keyval(0).startsWith("Included files, by type")) {
                 // do nothing
               } else {
                 val keylabel = new Label(keyval(0))
@@ -579,7 +590,24 @@ object ApplicationMain extends JFXApp {
         }
         if (docFiles.nonEmpty) {
           grid.add(new Label("doc files"), 0, crow)
-          grid.add(new Label(docFiles.mkString("\n")) { wrapText = true },1, crow)
+          val vb = new VBox()
+          vb.children = docFiles.map { f =>
+            val fields = f.split(" ")
+            new Label(fields(0)) {
+              textFill = Color.Blue
+              onMouseClicked = { me: MouseEvent =>
+                println("Do something with " + fields(0))
+                // TODO while does gio return immediately on bash prompt but not here?
+                // ("gio open " + tlmgr.tlroot + "/" + fields(0)).!
+                //Desktop.getDesktop().open((tlmgr.tlroot + "/" + fields(0)))
+                OsTools.openFile(tlmgr.tlroot + "/" + fields(0))
+                println("done")
+              }
+              cursor = Cursor.Hand
+            }
+          }
+          //grid.add(new Label(docFiles.mkString("\n")) { wrapText = true },1, crow)
+          grid.add(vb,1,crow)
           crow += 1
         }
         if (srcFiles.nonEmpty) {
@@ -594,6 +622,101 @@ object ApplicationMain extends JFXApp {
         }
         grid.columnConstraints = Seq(new ColumnConstraints(100, 150, 200), new ColumnConstraints(100, 300, 5000, Priority.Always, new HPos(HPos.Left), true))
         dialog.dialogPane().content = grid
+        // dialog.width = 500
+        // dialog.height = 800
+        dialog.showAndWait()
+      }
+    })
+  }
+  def callback_show_pkg_info_dev(pkg: String): Unit = {
+    tlmgr_async_command(s"info --list $pkg", pkginfo => {
+      // need to call runLater to go back to main thread!
+      Platform.runLater {
+        val dialog = new Dialog() {
+          initOwner(stage)
+          title = s"Package Information for $pkg"
+          // headerText = s"Package Information for $pkg"
+          resizable = true
+        }
+        dialog.dialogPane().buttonTypes = Seq(ButtonType.OK)
+        val keyCol = new TreeTableColumn[(String,String), String] {
+          text = "Package"
+          cellValueFactory = { p => StringProperty(p.value.value.value._1) }
+        }
+        val valCol = new TreeTableColumn[(String,String), String] {
+          text = pkg
+          cellValueFactory = { p => StringProperty(p.value.value.value._2) }
+        }
+        val infoTable = new TreeTableView[(String, String)](
+          new TreeItem[(String, String)](("","")) {
+            expanded = false
+          }) {
+          columns ++= List(keyCol, valCol)
+        }
+        valCol.prefWidth.bind(infoTable.width - keyCol.width - 15)
+        infoTable.prefHeight = 300
+        infoTable.vgrow = Priority.Always
+        infoTable.showRoot = false
+        infoTable.fixedCellSize = Region.USE_COMPUTED_SIZE
+        val runFiles = ArrayBuffer[String]()
+        val docFiles = ArrayBuffer[String]()
+        val binFiles = ArrayBuffer[String]()
+        val srcFiles = ArrayBuffer[String]()
+        val kids     = ArrayBuffer[TreeItem[(String,String)]]()
+        var whichFiles = "run" // we assume run files if not found!
+        pkginfo.foreach((line: String) => {
+          if (line.startsWith("  ")) {
+            // files are listed with two spaces in the beginning
+            whichFiles match {
+              case "run" => runFiles += line.trim
+              case "doc" => docFiles += line.trim
+              case "bin" => binFiles += line.trim
+              case "src" => srcFiles += line.trim
+              case _ => println("Don't know what to do?!?!")
+            }
+          } else {
+            val keyval = line.split(":", 2).map(_.trim)
+            whichFiles = if (keyval(0).startsWith("run files")) "run" else
+            if (keyval(0).startsWith("doc files")) "doc" else
+            if (keyval(0).startsWith("source files")) "src" else
+            if (keyval(0).startsWith("bin files (all platforms)")) "bin" else
+              "unknown"
+            if (keyval.length == 2) {
+              if (keyval(0) == "doc files" || keyval(0) == "source files" || keyval(0) == "run files" ||
+                keyval(0).startsWith("bin files (all platforms)")) {
+                // do nothing
+              } else {
+                kids += new TreeItem[(String,String)]((keyval(0), keyval(1)))
+              }
+            }
+          }
+        })
+        // add files section
+        if (docFiles.nonEmpty) {
+          kids += new TreeItem[(String,String)](("Doc files","")) {
+            children = docFiles.map { p => new TreeItem[(String,String)](("",p)) }
+          }
+        }
+        if (runFiles.nonEmpty) {
+          kids += new TreeItem[(String,String)](("Run files","")) {
+            children = runFiles.map { p => new TreeItem[(String,String)](("",p)) }
+          }
+        }
+        if (srcFiles.nonEmpty) {
+          kids += new TreeItem[(String,String)](("Source files","")) {
+            children = srcFiles.map { p => new TreeItem[(String,String)](("",p)) }
+          }
+        }
+        if (binFiles.nonEmpty) {
+          kids += new TreeItem[(String,String)](("Bin files","")) {
+            children = binFiles.map { p => new TreeItem[(String,String)](("",p)) }
+          }
+        }
+        infoTable.root = new TreeItem[(String, String)](("","")) {
+          expanded = true
+          children = kids
+        }
+        dialog.dialogPane().content = infoTable
         // dialog.width = 500
         // dialog.height = 800
         dialog.showAndWait()
