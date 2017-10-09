@@ -1,0 +1,11 @@
+NEWS for tlcockpit
+
+version 0.5
+-----------
+- better pkg info display
+- try to open doc files from pkg info window
+- dynamic updates of the update screen during updates
+
+version 0.4
+-----------
+First half-way usable version
