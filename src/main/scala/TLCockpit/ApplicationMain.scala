@@ -49,10 +49,6 @@ import scalafx.collections.ObservableMap
 // import java.awt.Desktop
 
 // TODO TreeTableView indentation is lazy
-// TODO pkg info - allow opening (maybe preview) of doc files
-//    use WebView and pdf.js: https://stackoverflow.com/questions/18207116/displaying-pdf-in-javafx
-//    see https://github.com/scalafx/scalafx-ensemble/blob/master/src/main/scala/scalafx/ensemble/example/web/EnsembleWebView.scala
-// TODO better layout of pkg info
 
 object ApplicationMain extends JFXApp {
 
@@ -418,7 +414,8 @@ object ApplicationMain extends JFXApp {
     }
     if (doit) {
       val infraAvailable = upds.keys.exists(_.startsWith("texlive.infra"))
-      val updatesAvailable = upds.keys.exists(p => !p.startsWith("texlive.infra"))
+      // only allow for updates of other packages when no infra update available
+      val updatesAvailable = !infraAvailable && upds.keys.exists(p => !p.startsWith("texlive.infra"))
       val newroot = new TreeItem[TLUpdate](new TLUpdate("root", "", "", "", "", "")) {
         children = upds
           .filter(_._1 != "root")
@@ -430,9 +427,19 @@ object ApplicationMain extends JFXApp {
         update_self_menu.disable = !infraAvailable
         update_all_menu.disable = !updatesAvailable
         updateTable.root = newroot
+        texlive_infra_update_warning()
       }
     }
   })
+
+  def texlive_infra_update_warning(): Unit = {
+    new Alert(AlertType.Warning) {
+      initOwner(stage)
+      title = "TeX Live Infrastructure Update Available"
+      headerText = "Updates to the TeX Live Manager (Infrastructure) available."
+      contentText = "Please use \"Update self\" from the Menu!"
+    }.showAndWait()
+  }
 
   def update_bkps_list(): Unit = {
     tlmgr_async_command("restore", lines => {
@@ -511,8 +518,13 @@ object ApplicationMain extends JFXApp {
         val foo = parse_one_update_line(l)
         (foo.name.value, foo)
       }.toMap
+      val infraAvailable = newupds.keys.exists(_.startsWith("texlive.infra"))
       upds.clear()
-      upds ++= newupds
+      if (infraAvailable) {
+        upds ++= Seq( ("texlive.infra", newupds("texlive.infra") ) )
+      } else {
+        upds ++= newupds
+      }
       trigger_update("upds")
     })
   }
