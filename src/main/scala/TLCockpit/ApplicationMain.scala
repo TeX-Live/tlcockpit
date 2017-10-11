@@ -377,7 +377,9 @@ object ApplicationMain extends JFXApp {
         }
         // for ismixed we && all the installed status. If all are installed, we get true
         val allinstalled = (kids :+ p).foldRight[Boolean](true)((k, b) => k.installed.value == "Installed" && b)
-        if (!allinstalled) {
+        val someinstalled = (kids :+ p).exists(_.installed.value == "Installed")
+        val mixedinstalled = !allinstalled && someinstalled
+        if (mixedinstalled) {
           // replace installed status with "Mixed"
           new TreeItem[TLPackage](new TreeItem[TLPackage](
             new TLPackage(p.name.value, p.lrev.value.toString, p.rrev.value.toString, p.shortdesc.value, p.size.value.toString, "Mixed")
