@@ -124,24 +124,6 @@ object ApplicationMain extends JFXApp {
     (ae: KeyEvent) => if (ae.code == KeyCode.Enter) callback_run_cmdline()
   }
   val outputLine = new SyncVar[String]
-  val tlmgr = new TlmgrProcess(
-    // (s:String) => outputfield.text = s,
-    (s: Array[String]) => {
-      // we don't wont normal output to be displayed
-      // as it is anyway returned
-      // outputText.clear()
-      // outputText.appendAll(s)
-    },
-    (s: String) => {
-      // errorText.clear()
-      errorText.append(s)
-      if (s.trim != "") {
-        outerrpane.expanded = true
-        outerrtabs.selectionModel().select(1)
-      }
-    },
-    (s: String) => outputLine.put(s)
-  )
 
   def tlmgr_async_command(s: String, f: Array[String] => Unit): Unit = {
     errorText.clear()
@@ -303,10 +285,21 @@ object ApplicationMain extends JFXApp {
           }
       }
     }
-    tlmgr_async_command(s"update $s", _ => {
-      Platform.runLater { lineUpdateFunc = { (s: String) => } }
+    // val cmd = if (s == "--self") "update --self --no-restart" else s"update $s"
+    val cmd = if (s == "--self") "update --self" else s"update $s"
+    tlmgr_async_command(cmd, _ => {
+      Platform.runLater {
+        lineUpdateFunc = { (s: String) => }
+        if (s == "--self") {
+          reinitialize_tlmgr()
+          // this doesn't work seemingly
+          // update_upds_list()
+        }
+      }
     })
   }
+
+
 
   def do_one_pkg(what: String, pkg: String): Unit = {
     tlmgr_async_command(s"$what $pkg", _ => { Platform.runLater { update_pkgs_lists() } })
@@ -427,7 +420,9 @@ object ApplicationMain extends JFXApp {
         update_self_menu.disable = !infraAvailable
         update_all_menu.disable = !updatesAvailable
         updateTable.root = newroot
-        texlive_infra_update_warning()
+        if (infraAvailable) {
+          texlive_infra_update_warning()
+        }
       }
     }
   })
@@ -1052,6 +1047,61 @@ object ApplicationMain extends JFXApp {
     icons.add(iconImage)
   }
 
+
+
+  def initialize_tlmgr(): TlmgrProcess = {
+    val tt = new TlmgrProcess(
+      // (s:String) => outputfield.text = s,
+      (s: Array[String]) => {
+        // we don't wont normal output to be displayed
+        // as it is anyway returned
+        // outputText.clear()
+        // outputText.appendAll(s)
+      },
+      (s: String) => {
+        // errorText.clear()
+        errorText.append(s)
+        if (s.trim != "") {
+          outerrpane.expanded = true
+          outerrtabs.selectionModel().select(1)
+        }
+      },
+      (s: String) => outputLine.put(s)
+    )
+    val bar = Future {
+      while (true) {
+        val s = outputLine.take
+        lineUpdateFunc(s)
+      }
+    }
+    bar.onComplete {
+      case Success(value) => println(s"Got the callback, meaning = $value")
+      case Failure(e) =>
+        println("lineUpdateFunc thread got interrupted -- probably old tlmgr, ignoring it!")
+        //e.printStackTrace
+    }
+    tt
+  }
+
+  def reinitialize_tlmgr(): Unit = {
+    tlmgr.cleanup()
+    // Thread.sleep(1000)
+    tlmgr = initialize_tlmgr()
+    tlmgr_post_init()
+    pkgstabs.getSelectionModel().select(0)
+  }
+
+  def tlmgr_post_init():Unit = {
+    tlmgr.start_process()
+    tlmgr.get_output_till_prompt()
+    // update_pkg_lists_to_be_renamed() // this is async done
+    pkgs.clear()
+    upds.clear()
+    bkps.clear()
+    update_pkgs_lists()
+  }
+
+
   /* TODO implement splash screen - see example in ProScalaFX
   val startalert = new Alert(AlertType.Information)
   startalert.setTitle("Loading package database ...")
@@ -1070,21 +1120,8 @@ object ApplicationMain extends JFXApp {
   */
 
   var lineUpdateFunc: String => Unit = { (l: String) => } // println(s"DEBUG: got ==$l== from tlmgr") }
-
-  val bar = Future {
-    while (true) {
-      val s = outputLine.take
-      try {
-        lineUpdateFunc(s)
-      } catch {
-        case e: Exception => println("SOMETHING BAD IN lineUpdateFUnc happened: " + e + "\n")
-      }
-    }
-  }
-  tlmgr.start_process()
-  tlmgr.get_output_till_prompt()
-  // update_pkg_lists_to_be_renamed() // this is async done
-  update_pkgs_lists()
+  var tlmgr = initialize_tlmgr()
+  tlmgr_post_init()
 
 }  // object ApplicationMain
 

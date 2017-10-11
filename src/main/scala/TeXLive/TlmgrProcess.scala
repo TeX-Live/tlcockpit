@@ -128,6 +128,7 @@ class TlmgrProcess(updout: Array[String] => Unit, upderr: String => Unit, updlin
     } catch {
       case exc: Throwable =>
         stdin.close()
+        // println("Exception in inputFn thread: " + exc + "\n")
         errorBuffer.append("  Input thread: Exception: " + exc + "\n")
     }
   }
@@ -139,19 +140,24 @@ class TlmgrProcess(updout: Array[String] => Unit, upderr: String => Unit, updlin
       while (true) {
         line = reader.readLine
         if (line == null) {
-          // println("DDD: got null line")
           // println("Did read NULL from stdin giving up")
           // error = true
         } else {
-          // println("did read " + line + " from process")
+          // println("DDD did read " + line + " from process")
           outputString.put(line)
-          updline(line)
+          try {
+            updline(line)
+          } catch {
+            case exc: Throwable =>
+              println("Update line function failed, continuing anyway (probably old tlmgr)!")
+          }
         }
       }
       stdOut.close()
     } catch {
       case exc: Throwable =>
         stdOut.close()
+        // println("Exception in outputFn thread: " + exc + "\n")
         errorBuffer.append("  Output thread: Exception: " + exc + "\n")
     }
   }
@@ -168,6 +174,7 @@ class TlmgrProcess(updout: Array[String] => Unit, upderr: String => Unit, updlin
     } catch {
       case exc: Throwable =>
         stdErr.close()
+        // println("Exception in errorFn thread: " + exc + "\n")
         errorBuffer.append("  Error thread: Exception: " + exc + "\n")
     }
   }
