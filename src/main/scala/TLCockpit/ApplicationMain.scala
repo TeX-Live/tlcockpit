@@ -48,6 +48,9 @@ import scalafx.collections.ObservableMap
 
 // import java.awt.Desktop
 
+// TODO when installing a collection list the additionally installed packages, too
+// TODO idea pkg tree with collection -> packages
+// TODO pkg info show files in scrollable list (too long most of the cases)
 // TODO TreeTableView indentation is lazy
 
 object ApplicationMain extends JFXApp {
@@ -592,11 +595,6 @@ object ApplicationMain extends JFXApp {
           }
         })
         // add files section
-        if (runFiles.nonEmpty) {
-          grid.add(new Label("run files"), 0, crow)
-          grid.add(new Label(runFiles.mkString("\n")) { wrapText = true },1, crow)
-          crow += 1
-        }
         if (docFiles.nonEmpty) {
           grid.add(new Label("doc files"), 0, crow)
           val vb = new VBox()
@@ -617,6 +615,11 @@ object ApplicationMain extends JFXApp {
           }
           //grid.add(new Label(docFiles.mkString("\n")) { wrapText = true },1, crow)
           grid.add(vb,1,crow)
+          crow += 1
+        }
+        if (runFiles.nonEmpty) {
+          grid.add(new Label("run files"), 0, crow)
+          grid.add(new Label(runFiles.mkString("\n")) { wrapText = true },1, crow)
           crow += 1
         }
         if (srcFiles.nonEmpty) {
