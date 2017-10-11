@@ -581,6 +581,7 @@ object ApplicationMain extends JFXApp {
               "unknown"
             if (keyval.length == 2) {
               if (keyval(0) == "doc files" || keyval(0) == "source files" || keyval(0) == "run files" ||
+                  keyval(0).startsWith("depending package ") ||
                   keyval(0).startsWith("bin files (all platforms)") || keyval(0).startsWith("Included files, by type")) {
                 // do nothing
               } else {
