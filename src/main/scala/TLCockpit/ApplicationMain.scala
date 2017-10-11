@@ -410,7 +410,7 @@ object ApplicationMain extends JFXApp {
     if (doit) {
       val infraAvailable = upds.keys.exists(_.startsWith("texlive.infra"))
       // only allow for updates of other packages when no infra update available
-      val updatesAvailable = !infraAvailable && upds.keys.exists(p => !p.startsWith("texlive.infra"))
+      val updatesAvailable = !infraAvailable && upds.keys.exists(p => !p.startsWith("texlive.infra") && !(p == "root"))
       val newroot = new TreeItem[TLUpdate](new TLUpdate("root", "", "", "", "", "")) {
         children = upds
           .filter(_._1 != "root")
