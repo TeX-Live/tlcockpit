@@ -540,35 +540,46 @@ object ApplicationMain extends JFXApp {
       bkps("root") = Map[String,TLBackup](("0", new TLBackup("root","0","0")))
   }
 
-  def doListView(files: Seq[String], clickable: Boolean): ListView[String] = {
-    val vb = new ListView[String] { }
-    if (files.length > 5) {
+  def doListView(files: Seq[String], clickable: Boolean): scalafx.scene.Node = {
+    if (files.length <= 5) {
+      val vb = new VBox()
+      vb.children = files.map { f =>
+        val fields = f.split(" ")
+        new Label(fields(0)) {
+          if (clickable) {
+            textFill = Color.Blue
+            onMouseClicked = { me: MouseEvent => OsTools.openFile(tlmgr.tlroot + "/" + fields(0)) }
+            cursor = Cursor.Hand
+          }
+        }
+      }
+      vb
+    } else {
+      val vb = new ListView[String] {}
       vb.minHeight = 150
       vb.prefHeight = 150
-    } else {
-      vb.minHeight = files.length * 30
-      vb.prefHeight = files.length * 30
-    }
-    vb.maxHeight = 200
-    vb.vgrow = Priority.Always
-    vb.orientation = Orientation.Vertical
-    vb.cellFactory = { p => {
-      val foo = new ListCell[String]
-      foo.item.onChange { (_,_,str) => foo.text = str }
-      if (clickable) {
-        foo.textFill = Color.Blue
-        foo.onMouseClicked = { me: MouseEvent => OsTools.openFile(tlmgr.tlroot + "/" + foo.text.value ) }
-        foo.cursor = Cursor.Hand
+      vb.maxHeight = 200
+      vb.vgrow = Priority.Always
+      // TODO tighter spacing for ListView
+      vb.orientation = Orientation.Vertical
+      vb.cellFactory = { p => {
+        val foo = new ListCell[String]
+        foo.item.onChange { (_, _, str) => foo.text = str }
+        if (clickable) {
+          foo.textFill = Color.Blue
+          foo.onMouseClicked = { me: MouseEvent => OsTools.openFile(tlmgr.tlroot + "/" + foo.text.value) }
+          foo.cursor = Cursor.Hand
+        }
+        foo
       }
-      foo
+      }
+      // vb.children = docFiles.map { f =>
+      vb.items = ObservableBuffer(files.map { f =>
+        val fields = f.split(" ")
+        fields(0)
+      })
+      vb
     }
-    }
-    // vb.children = docFiles.map { f =>
-    vb.items = ObservableBuffer(files.map { f =>
-      val fields = f.split(" ")
-      fields(0)
-    })
-    vb
   }
 
   def callback_show_pkg_info(pkg: String): Unit = {
