@@ -21,7 +21,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 // import scala.reflect.io.File
 import scala.util.{Failure, Success}
 import scalafx.beans.property.ObjectProperty
-import scalafx.geometry.{HPos, Pos, VPos}
+import scalafx.geometry.{HPos, Pos, VPos, Orientation}
 import scalafx.scene.Cursor
 import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.image.{Image, ImageView}
@@ -32,6 +32,7 @@ import scalafx.scene.control.TableColumn._
 import scalafx.scene.control.TreeTableColumn._
 import scalafx.scene.control.TreeItem
 import scalafx.scene.control.Menu._
+import scalafx.scene.control.ListCell
 import scalafx.scene.control.cell._
 import scalafx.scene.text.Text
 import scalafx.Includes._
@@ -50,7 +51,7 @@ import scalafx.collections.ObservableMap
 
 // TODO when installing a collection list the additionally installed packages, too
 // TODO idea pkg tree with collection -> packages
-// TODO pkg info show files in scrollable list (too long most of the cases)
+// TODO pkg info listview adjust height according to font size and # of items
 // TODO TreeTableView indentation is lazy
 
 object ApplicationMain extends JFXApp {
@@ -539,6 +540,36 @@ object ApplicationMain extends JFXApp {
       bkps("root") = Map[String,TLBackup](("0", new TLBackup("root","0","0")))
   }
 
+  def doListView(files: Seq[String], clickable: Boolean): ListView[String] = {
+    val vb = new ListView[String] { }
+    if (files.length > 5) {
+      vb.minHeight = 150
+      vb.prefHeight = 150
+    } else {
+      vb.minHeight = files.length * 30
+      vb.prefHeight = files.length * 30
+    }
+    vb.maxHeight = 200
+    vb.vgrow = Priority.Always
+    vb.orientation = Orientation.Vertical
+    vb.cellFactory = { p => {
+      val foo = new ListCell[String]
+      foo.item.onChange { (_,_,str) => foo.text = str }
+      if (clickable) {
+        foo.textFill = Color.Blue
+        foo.onMouseClicked = { me: MouseEvent => OsTools.openFile(tlmgr.tlroot + "/" + foo.text.value ) }
+        foo.cursor = Cursor.Hand
+      }
+      foo
+    }
+    }
+    // vb.children = docFiles.map { f =>
+    vb.items = ObservableBuffer(files.map { f =>
+      val fields = f.split(" ")
+      fields(0)
+    })
+    vb
+  }
 
   def callback_show_pkg_info(pkg: String): Unit = {
     tlmgr_async_command(s"info --list $pkg", pkginfo => {
@@ -551,6 +582,7 @@ object ApplicationMain extends JFXApp {
           resizable = true
         }
         dialog.dialogPane().buttonTypes = Seq(ButtonType.OK)
+        val isInstalled = pkgs(pkg).installed.value == "Installed"
         val grid = new GridPane() {
           hgap = 10
           vgap = 10
@@ -598,45 +630,32 @@ object ApplicationMain extends JFXApp {
         // add files section
         if (docFiles.nonEmpty) {
           grid.add(new Label("doc files"), 0, crow)
-          val vb = new VBox()
-          vb.children = docFiles.map { f =>
-            val fields = f.split(" ")
-            new Label(fields(0)) {
-              textFill = Color.Blue
-              onMouseClicked = { me: MouseEvent =>
-                println("Do something with " + fields(0))
-                // TODO while does gio return immediately on bash prompt but not here?
-                // ("gio open " + tlmgr.tlroot + "/" + fields(0)).!
-                //Desktop.getDesktop().open((tlmgr.tlroot + "/" + fields(0)))
-                OsTools.openFile(tlmgr.tlroot + "/" + fields(0))
-                println("done")
-              }
-              cursor = Cursor.Hand
-            }
-          }
           //grid.add(new Label(docFiles.mkString("\n")) { wrapText = true },1, crow)
-          grid.add(vb,1,crow)
+          grid.add(doListView(docFiles.map(s => s.replaceFirst("RELOC","texmf-dist")),isInstalled),1,crow)
           crow += 1
         }
         if (runFiles.nonEmpty) {
           grid.add(new Label("run files"), 0, crow)
-          grid.add(new Label(runFiles.mkString("\n")) { wrapText = true },1, crow)
+          // grid.add(new Label(runFiles.mkString("\n")) { wrapText = true },1, crow)
+          grid.add(doListView(runFiles.map(s => s.replaceFirst("RELOC","texmf-dist")),false),1,crow)
           crow += 1
         }
         if (srcFiles.nonEmpty) {
           grid.add(new Label("src files"), 0, crow)
-          grid.add(new Label(srcFiles.mkString("\n")) { wrapText = true },1, crow)
+          // grid.add(new Label(srcFiles.mkString("\n")) { wrapText = true },1, crow)
+          grid.add(doListView(srcFiles.map(s => s.replaceFirst("RELOC","texmf-dist")),false),1,crow)
           crow += 1
         }
         if (binFiles.nonEmpty) {
           grid.add(new Label("bin files"), 0, crow)
-          grid.add(new Label(binFiles.mkString("\n")) { wrapText = true },1, crow)
+          // grid.add(new Label(binFiles.mkString("\n")) { wrapText = true },1, crow)
+          grid.add(doListView(binFiles.map(s => s.replaceFirst("RELOC","texmf-dist")),false),1,crow)
           crow += 1
         }
-        grid.columnConstraints = Seq(new ColumnConstraints(100, 150, 200), new ColumnConstraints(100, 300, 5000, Priority.Always, new HPos(HPos.Left), true))
+        grid.columnConstraints = Seq(new ColumnConstraints(100, 200, 200), new ColumnConstraints(100, 400, 5000, Priority.Always, new HPos(HPos.Left), true))
         dialog.dialogPane().content = grid
-        // dialog.width = 500
-        // dialog.height = 800
+        dialog.width = 600
+        dialog.height = 1500
         dialog.showAndWait()
       }
     })
