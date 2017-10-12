@@ -3,6 +3,7 @@ NEWS for tlcockpit
 version 0.6
 -----------
 - texlive infra updates handled properly (restarting tlmgr)
+- scrollable list of files in pkg info window
 
 version 0.5
 -----------
