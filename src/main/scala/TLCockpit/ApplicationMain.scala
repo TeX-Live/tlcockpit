@@ -477,6 +477,7 @@ object ApplicationMain extends JFXApp {
       trigger_update("pkgs")
     })
   }
+
   def update_pkgs_lists_dev():Unit = {
     tlmgr_async_command("info --data json", (s: Array[String]) => {
       val jsonAst = s.mkString("").parseJson
@@ -722,12 +723,11 @@ object ApplicationMain extends JFXApp {
       crow = do_one("local revision", tlp.lrev.toString, crow)
     if (tlp.available)
       crow = do_one("remote revision", tlp.rrev.toString, crow)
-    // TODO sizes are not available in TLPackage!
-    // val binsizestr = if (tlp.binsize > 0) humanReadableByteSize(tlp.binsize)+" " else "";
-    // val runsizestr = if (tlp.runsize > 0) humanReadableByteSize(tlp.runsize)+" " else "";
-    // val srcsizestr = if (tlp.srcsize > 0) humanReadableByteSize(tlp.srcsize)+" " else "";
-    // val docsizestr = if (tlp.docsize > 0) humanReadableByteSize(tlp.docsize)+" " else "";
-    // crow = do_one("sizes", runsizestr+docsizestr+binsizestr+srcsizestr
+    val binsizestr = if (tlp.binsize > 0) "bin "+humanReadableByteSize(tlp.binsize)+" " else "";
+    val runsizestr = if (tlp.runsize > 0) "run "+humanReadableByteSize(tlp.runsize)+" " else "";
+    val srcsizestr = if (tlp.srcsize > 0) "src "+humanReadableByteSize(tlp.srcsize)+" " else "";
+    val docsizestr = if (tlp.docsize > 0) "doc "+humanReadableByteSize(tlp.docsize)+" " else "";
+    crow = do_one("sizes", runsizestr+docsizestr+binsizestr+srcsizestr, crow)
     val catdata = tlp.cataloguedata
     if (catdata.version != "")
       crow = do_one("cat-version", catdata.version, crow)

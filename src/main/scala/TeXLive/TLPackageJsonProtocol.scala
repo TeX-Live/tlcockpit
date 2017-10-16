@@ -53,9 +53,11 @@ object TLPackageJsonProtocol extends DefaultJsonProtocol {
       val longdesc  = convit[JsString](vmap,"longdesc", JsString("")).convertTo[String]
       val category  = convit[JsString](vmap,"category", JsString("")).convertTo[String]
       val catalogue = convit[JsString](vmap,"catalogue", JsString("")).convertTo[String]
-      val lrev  = convit[JsNumber](vmap,"lrev",JsNumber(0)).convertTo[Long]
-      val rrev  = convit[JsNumber](vmap,"rrev",JsNumber(0)).convertTo[Long]
-      //val srcfiles  = vmap.getOrElse[JsValue]("srcfiles",JsArray()).convertTo[List[String]]
+      val lrev      = convit[JsNumber](vmap,"lrev",JsNumber(0)).convertTo[Long]
+      val rrev      = convit[JsNumber](vmap,"rrev",JsNumber(0)).convertTo[Long]
+      val srcsize   = convit[JsNumber](vmap,"srcsize",JsNumber(0)).convertTo[Long] * 4096
+      val docsize   = convit[JsNumber](vmap,"docsize",JsNumber(0)).convertTo[Long] * 4096
+      val runsize   = convit[JsNumber](vmap,"runsize",JsNumber(0)).convertTo[Long] * 4096
       val srcfiles  = convit[JsValue](vmap,"srcfiles",JsArray()).convertTo[List[String]]
       val runfiles  = convit[JsValue](vmap,"runfiles",JsArray()).convertTo[List[String]]
       val docfiles  = convit[JsValue](vmap,"docfiles",JsArray()).convertTo[List[String]]
@@ -66,6 +68,7 @@ object TLPackageJsonProtocol extends DefaultJsonProtocol {
       val available = convit[JsValue](vmap,"available", JsBoolean(false)).convertTo[Boolean]
       val catdata   = convit[JsValue](vmap,"cataloguedata", JsObject()).convertTo[JsObject]
       val binfilesd = convit[JsValue](vmap,"binfiles", JsObject()).convertTo[JsObject]
+      val binsizesd = convit[JsValue](vmap,"binsize", JsObject()).convertTo[JsObject]
       val dfd = v.asJsObject.getFields("docfiledata") match {
         case Seq(JsObject(docfiledata)) =>
           docfiledata.map {
@@ -83,6 +86,8 @@ object TLPackageJsonProtocol extends DefaultJsonProtocol {
       })
       // further parse of binfiles
       val binfiles = binfilesd.fields.flatMap { _._2.convertTo[List[String]] }.toList
+      val binsize = binsizesd.fields.map { _._2.convertTo[Long]}.toList.foldLeft[Long](0)(_ + _) * 4096
+
       // further parse the catdata
       val catversion = catdata.fields.getOrElse[JsValue]("version", JsString("")).convertTo[String]
       val cattopics  = catdata.fields.getOrElse[JsValue]("topics", JsString("")).convertTo[String]
@@ -91,7 +96,7 @@ object TLPackageJsonProtocol extends DefaultJsonProtocol {
       val catctan    = catdata.fields.getOrElse[JsValue]("ctan", JsString("")).convertTo[String]
       val catrelated = catdata.fields.getOrElse[JsValue]("related", JsString("")).convertTo[String]
       val catdat     = new CatalogueData(catversion,cattopics,catlicense,catdate,catrelated,catctan)
-      new TLPackage(name, shortdesc, longdesc, lrev, rrev, category, dfds, runfiles, srcfiles, binfiles, catdat, depends, catalogue, relocated, installed, available)
+      new TLPackage(name, shortdesc, longdesc, lrev, rrev, category, dfds, runfiles, srcfiles, binfiles, docsize, runsize, srcsize, binsize, catdat, depends, catalogue, relocated, installed, available)
     }
   }
 }
