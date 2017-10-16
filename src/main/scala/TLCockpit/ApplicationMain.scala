@@ -47,6 +47,12 @@ import scala.sys.process._
 import scalafx.collections.ObservableBuffer
 import scalafx.collections.ObservableMap
 
+import spray.json._
+import TeXLive.TLPackageJsonProtocol._
+
+
+
+
 // import java.awt.Desktop
 
 // TODO when installing a collection list the additionally installed packages, too
@@ -66,7 +72,8 @@ object ApplicationMain extends JFXApp {
   val iconImage = new Image(getClass.getResourceAsStream("tlcockpit-48.jpg"))
   val logoImage = new Image(getClass.getResourceAsStream("tlcockpit-128.jpg"))
 
-  val pkgs: ObservableMap[String, TLPackage] = ObservableMap[String, TLPackage]()
+  val tlpkgs: ObservableMap[String, TLPackage] = ObservableMap[String,TLPackage]()
+  val pkgs: ObservableMap[String, TLPackageDisplay] = ObservableMap[String, TLPackageDisplay]()
   val upds: ObservableMap[String, TLUpdate] = ObservableMap[String, TLUpdate]()
   val bkps: ObservableMap[String, Map[String, TLBackup]] = ObservableMap[String, Map[String,TLBackup]]()  // pkgname -> (version -> TLBackup)*
 
@@ -259,7 +266,7 @@ object ApplicationMain extends JFXApp {
             // println("Removing " + prevUpdName + " from list!")
             upds.remove(prevUpdName)
             val op = pkgs(prevUpdName)
-            pkgs(prevUpdName) = new TLPackage(prevUpdPkg.name.value, op.rrev.value.toString, op.rrev.value.toString,
+            pkgs(prevUpdName) = new TLPackageDisplay(prevUpdPkg.name.value, op.rrev.value.toString, op.rrev.value.toString,
               prevUpdPkg.shortdesc.value, op.size.value.toString, "Installed")
             Platform.runLater {
               trigger_update("upds")
@@ -349,8 +356,8 @@ object ApplicationMain extends JFXApp {
       case ObservableMap.Remove(k, v) => k.toString == "root"
     }
     if (doit) {
-      val pkgbuf: ArrayBuffer[TLPackage] = ArrayBuffer.empty[TLPackage]
-      val binbuf = scala.collection.mutable.Map.empty[String, ArrayBuffer[TLPackage]]
+      val pkgbuf: ArrayBuffer[TLPackageDisplay] = ArrayBuffer.empty[TLPackageDisplay]
+      val binbuf = scala.collection.mutable.Map.empty[String, ArrayBuffer[TLPackageDisplay]]
       pkgs.foreach(pkg => {
         // complicated part, determine whether it is a sub package or not!
         // we strip of initial texlive. prefixes to make sure we deal
@@ -362,7 +369,7 @@ object ApplicationMain extends JFXApp {
           if (binbuf.keySet.contains(pkgname)) {
             binbuf(pkgname) += pkg._2
           } else {
-            binbuf(pkgname) = ArrayBuffer[TLPackage](pkg._2)
+            binbuf(pkgname) = ArrayBuffer[TLPackageDisplay](pkg._2)
           }
         } else if (pkg._1 == "root") {
           // ignore the dummy root element,
@@ -373,8 +380,8 @@ object ApplicationMain extends JFXApp {
       })
       // now we have all normal packages in pkgbuf, and its sub-packages in binbuf
       // we need to create TreeItems
-      val viewkids: ArrayBuffer[TreeItem[TLPackage]] = pkgbuf.map { p => {
-        val kids: Seq[TLPackage] = if (binbuf.keySet.contains(p.name.value)) {
+      val viewkids: ArrayBuffer[TreeItem[TLPackageDisplay]] = pkgbuf.map { p => {
+        val kids: Seq[TLPackageDisplay] = if (binbuf.keySet.contains(p.name.value)) {
           binbuf(p.name.value)
         } else {
           Seq()
@@ -385,20 +392,20 @@ object ApplicationMain extends JFXApp {
         val mixedinstalled = !allinstalled && someinstalled
         if (mixedinstalled) {
           // replace installed status with "Mixed"
-          new TreeItem[TLPackage](new TreeItem[TLPackage](
-            new TLPackage(p.name.value, p.lrev.value.toString, p.rrev.value.toString, p.shortdesc.value, p.size.value.toString, "Mixed")
+          new TreeItem[TLPackageDisplay](new TreeItem[TLPackageDisplay](
+            new TLPackageDisplay(p.name.value, p.lrev.value.toString, p.rrev.value.toString, p.shortdesc.value, p.size.value.toString, "Mixed")
           )) {
-            children = kids.map(new TreeItem[TLPackage](_))
+            children = kids.map(new TreeItem[TLPackageDisplay](_))
           }
         } else {
-          new TreeItem[TLPackage](p) {
-            children = kids.map(new TreeItem[TLPackage](_))
+          new TreeItem[TLPackageDisplay](p) {
+            children = kids.map(new TreeItem[TLPackageDisplay](_))
           }
         }
       }
       }
       Platform.runLater {
-        packageTable.root = new TreeItem[TLPackage](new TLPackage("root", "0", "0", "", "0", "")) {
+        packageTable.root = new TreeItem[TLPackageDisplay](new TLPackageDisplay("root", "0", "0", "", "0", "")) {
           expanded = true
           children = viewkids.sortBy(_.value.value.name.value)
         }
@@ -463,14 +470,26 @@ object ApplicationMain extends JFXApp {
         val sd = fields(3)
         val shortdesc = if (sd.isEmpty) "" else sd.substring(1).dropRight(1).replace("""\"""",""""""")
         val inst = if (fields(5) == "1") "Installed" else "Not installed"
-        (fields(0), new TLPackage(fields(0), fields(1), fields(2), shortdesc, fields(4), inst))
+        (fields(0), new TLPackageDisplay(fields(0), fields(1), fields(2), shortdesc, fields(4), inst))
       }.toMap
       pkgs.clear()
       pkgs ++= newpkgs
       trigger_update("pkgs")
     })
   }
-
+  def update_pkgs_lists_dev():Unit = {
+    tlmgr_async_command("info --data json", (s: Array[String]) => {
+      val jsonAst = s.mkString("").parseJson
+      tlpkgs.clear()
+      tlpkgs ++= jsonAst.convertTo[List[TLPackage]].map { p => (p.name, p)}
+      val newpkgs: Map[String, TLPackageDisplay] = tlpkgs.map { p =>
+        (p._2.name, new TLPackageDisplay(p._2.name, p._2.lrev.toString, p._2.rrev.toString, p._2.shortdesc, "0", if (p._2.installed) "Installed" else "Not installed"))
+      }.toMap
+      pkgs.clear()
+      pkgs ++= newpkgs
+      trigger_update("pkgs")
+    })
+  }
 
   def parse_one_update_line(l: String): TLUpdate = {
     val fields = l.split("\t")
@@ -492,7 +511,7 @@ object ApplicationMain extends JFXApp {
     val tag = fields(7)
     val lctanv = fields(8)
     val rctanv = fields(9)
-    val tlpkg: TLPackage = pkgs(pkgname)
+    val tlpkg: TLPackageDisplay = pkgs(pkgname)
     val shortdesc = tlpkg.shortdesc.value
     new TLUpdate(pkgname, status,
       localrev + {
@@ -533,7 +552,7 @@ object ApplicationMain extends JFXApp {
   def trigger_update(s:String): Unit = {
     // println("Triggering update of " + s)
     if (s == "pkgs")
-      pkgs("root") = new TLPackage("root","0","0","","0","")
+      pkgs("root") = new TLPackageDisplay("root","0","0","","0","")
     else if (s == "upds")
       upds("root") = new TLUpdate("root", "", "", "", "", "")
     else if (s == "bkps")
@@ -671,102 +690,87 @@ object ApplicationMain extends JFXApp {
       }
     })
   }
-  def callback_show_pkg_info_dev(pkg: String): Unit = {
-    tlmgr_async_command(s"info --list $pkg", pkginfo => {
-      // need to call runLater to go back to main thread!
-      Platform.runLater {
-        val dialog = new Dialog() {
-          initOwner(stage)
-          title = s"Package Information for $pkg"
-          // headerText = s"Package Information for $pkg"
-          resizable = true
-        }
-        dialog.dialogPane().buttonTypes = Seq(ButtonType.OK)
-        val keyCol = new TreeTableColumn[(String,String), String] {
-          text = "Package"
-          cellValueFactory = { p => StringProperty(p.value.value.value._1) }
-        }
-        val valCol = new TreeTableColumn[(String,String), String] {
-          text = pkg
-          cellValueFactory = { p => StringProperty(p.value.value.value._2) }
-        }
-        val infoTable = new TreeTableView[(String, String)](
-          new TreeItem[(String, String)](("","")) {
-            expanded = false
-          }) {
-          columns ++= List(keyCol, valCol)
-        }
-        valCol.prefWidth.bind(infoTable.width - keyCol.width - 15)
-        infoTable.prefHeight = 300
-        infoTable.vgrow = Priority.Always
-        infoTable.showRoot = false
-        infoTable.fixedCellSize = Region.USE_COMPUTED_SIZE
-        val runFiles = ArrayBuffer[String]()
-        val docFiles = ArrayBuffer[String]()
-        val binFiles = ArrayBuffer[String]()
-        val srcFiles = ArrayBuffer[String]()
-        val kids     = ArrayBuffer[TreeItem[(String,String)]]()
-        var whichFiles = "run" // we assume run files if not found!
-        pkginfo.foreach((line: String) => {
-          if (line.startsWith("  ")) {
-            // files are listed with two spaces in the beginning
-            whichFiles match {
-              case "run" => runFiles += line.trim
-              case "doc" => docFiles += line.trim
-              case "bin" => binFiles += line.trim
-              case "src" => srcFiles += line.trim
-              case _ => println("Don't know what to do?!?!")
-            }
-          } else {
-            val keyval = line.split(":", 2).map(_.trim)
-            whichFiles = if (keyval(0).startsWith("run files")) "run" else
-            if (keyval(0).startsWith("doc files")) "doc" else
-            if (keyval(0).startsWith("source files")) "src" else
-            if (keyval(0).startsWith("bin files (all platforms)")) "bin" else
-              "unknown"
-            if (keyval.length == 2) {
-              if (keyval(0) == "doc files" || keyval(0) == "source files" || keyval(0) == "run files" ||
-                keyval(0).startsWith("bin files (all platforms)")) {
-                // do nothing
-              } else {
-                kids += new TreeItem[(String,String)]((keyval(0), keyval(1)))
-              }
-            }
-          }
-        })
-        // add files section
-        if (docFiles.nonEmpty) {
-          kids += new TreeItem[(String,String)](("Doc files","")) {
-            children = docFiles.map { p => new TreeItem[(String,String)](("",p)) }
-          }
-        }
-        if (runFiles.nonEmpty) {
-          kids += new TreeItem[(String,String)](("Run files","")) {
-            children = runFiles.map { p => new TreeItem[(String,String)](("",p)) }
-          }
-        }
-        if (srcFiles.nonEmpty) {
-          kids += new TreeItem[(String,String)](("Source files","")) {
-            children = srcFiles.map { p => new TreeItem[(String,String)](("",p)) }
-          }
-        }
-        if (binFiles.nonEmpty) {
-          kids += new TreeItem[(String,String)](("Bin files","")) {
-            children = binFiles.map { p => new TreeItem[(String,String)](("",p)) }
-          }
-        }
-        infoTable.root = new TreeItem[(String, String)](("","")) {
-          expanded = true
-          children = kids
-        }
-        dialog.dialogPane().content = infoTable
-        // dialog.width = 500
-        // dialog.height = 800
-        dialog.showAndWait()
-      }
-    })
-  }
 
+  def callback_show_pkg_info_dev(pkg: String): Unit = {
+    val dialog = new Dialog() {
+      initOwner(stage)
+      title = s"Package Information for $pkg"
+      headerText = s"Package Information for $pkg"
+      resizable = true
+    }
+    dialog.dialogPane().buttonTypes = Seq(ButtonType.OK)
+    val isInstalled = tlpkgs(pkg).installed
+    val grid = new GridPane() {
+      hgap = 10
+      vgap = 10
+      padding = Insets(20)
+    }
+    def do_one(k: String, v: String, row: Int): Int = {
+      grid.add(new Label(k), 0, row)
+      grid.add(new Label(v) { wrapText = true}, 1, row)
+      row + 1
+    }
+    var crow = 0
+    val tlp = tlpkgs(pkg)
+    crow = do_one("package", pkg, crow)
+    crow = do_one("category", tlp.category, crow)
+    crow = do_one("shortdesc", tlp.shortdesc, crow)
+    crow = do_one("longdesc", tlp.longdesc, crow)
+    crow = do_one("installed", if (tlp.installed) "Yes" else "No", crow)
+    crow = do_one("available", if (tlp.available) "Yes" else "No", crow)
+    if (tlp.installed)
+      crow = do_one("local revision", tlp.lrev.toString, crow)
+    if (tlp.available)
+      crow = do_one("remote revision", tlp.rrev.toString, crow)
+    // TODO sizes are not available in TLPackage!
+    // val binsizestr = if (tlp.binsize > 0) humanReadableByteSize(tlp.binsize)+" " else "";
+    // val runsizestr = if (tlp.runsize > 0) humanReadableByteSize(tlp.runsize)+" " else "";
+    // val srcsizestr = if (tlp.srcsize > 0) humanReadableByteSize(tlp.srcsize)+" " else "";
+    // val docsizestr = if (tlp.docsize > 0) humanReadableByteSize(tlp.docsize)+" " else "";
+    // crow = do_one("sizes", runsizestr+docsizestr+binsizestr+srcsizestr
+    val catdata = tlp.cataloguedata
+    if (catdata.version != "")
+      crow = do_one("cat-version", catdata.version, crow)
+    if (catdata.date != "")
+      crow = do_one("cat-date", catdata.date, crow)
+    if (catdata.license != "")
+      crow = do_one("cat-license", catdata.license, crow)
+    if (catdata.topics != "")
+      crow = do_one("cat-topics", catdata.topics, crow)
+    if (catdata.related != "")
+      crow = do_one("cat-related", catdata.related, crow)
+    // add files section
+    //println(tlpkgs(pkg))
+    val docFiles = tlpkgs(pkg).docfiles
+    if (docFiles.nonEmpty) {
+      grid.add(new Label("doc files"), 0, crow)
+      grid.add(doListView(docFiles.map(s => s.file.replaceFirst("RELOC", "texmf-dist")), isInstalled), 1, crow)
+      crow += 1
+    }
+    val runFiles = tlpkgs(pkg).runfiles
+    if (runFiles.nonEmpty) {
+      grid.add(new Label("run files"), 0, crow)
+      grid.add(doListView(runFiles.map(s => s.replaceFirst("RELOC", "texmf-dist")), false), 1, crow)
+      crow += 1
+    }
+    val srcFiles = tlpkgs(pkg).srcfiles
+    if (srcFiles.nonEmpty) {
+      grid.add(new Label("src files"), 0, crow)
+      grid.add(doListView(srcFiles.map(s => s.replaceFirst("RELOC", "texmf-dist")), false), 1, crow)
+      crow += 1
+    }
+    val binFiles = tlpkgs(pkg).binfiles
+    if (binFiles.nonEmpty) {
+      grid.add(new Label("bin files"), 0, crow)
+      grid.add(doListView(binFiles.map(s => s.replaceFirst("RELOC", "texmf-dist")), false), 1, crow)
+      crow += 1
+    }
+    grid.columnConstraints = Seq(new ColumnConstraints(100, 200, 200), new ColumnConstraints(100, 400, 5000, Priority.Always, new HPos(HPos.Left), true))
+    dialog.dialogPane().content = grid
+    dialog.width = 600
+    dialog.height = 1500
+    dialog.showAndWait()
+  }
   /**
     * @see https://stackoverflow.com/questions/3263892/format-file-size-as-mb-gb-etc
     * @see https://en.wikipedia.org/wiki/Zettabyte
@@ -913,7 +917,7 @@ object ApplicationMain extends JFXApp {
       val row = new TreeTableRow[TLUpdate] {}
       val ctm = new ContextMenu(
         new MenuItem("Info") {
-          onAction = (ae) => callback_show_pkg_info(row.item.value.name.value)
+          onAction = (ae) => callback_show_pkg_info_dev(row.item.value.name.value)
         },
         new MenuItem("Install") {
           // onAction = (ae) => callback_run_text("install " + row.item.value.name.value)
@@ -933,24 +937,24 @@ object ApplicationMain extends JFXApp {
     }
     table
   }
-  val packageTable: TreeTableView[TLPackage] = {
-    val colName = new TreeTableColumn[TLPackage, String] {
+  val packageTable: TreeTableView[TLPackageDisplay] = {
+    val colName = new TreeTableColumn[TLPackageDisplay, String] {
       text = "Package"
       cellValueFactory = {  _.value.value.value.name }
       prefWidth = 150
     }
-    val colDesc = new TreeTableColumn[TLPackage, String] {
+    val colDesc = new TreeTableColumn[TLPackageDisplay, String] {
       text = "Description"
       cellValueFactory = { _.value.value.value.shortdesc }
       prefWidth = 300
     }
-    val colInst = new TreeTableColumn[TLPackage, String] {
+    val colInst = new TreeTableColumn[TLPackageDisplay, String] {
       text = "Installed"
       cellValueFactory = { _.value.value.value.installed  }
       prefWidth = 100
     }
-    val table = new TreeTableView[TLPackage](
-      new TreeItem[TLPackage](new TLPackage("root","0","0","","0","")) {
+    val table = new TreeTableView[TLPackageDisplay](
+      new TreeItem[TLPackageDisplay](new TLPackageDisplay("root","0","0","","0","")) {
         expanded = false
       }) {
       columns ++= List(colName, colDesc, colInst)
@@ -960,10 +964,10 @@ object ApplicationMain extends JFXApp {
     table.showRoot = false
     table.vgrow = Priority.Always
     table.rowFactory = { _ =>
-      val row = new TreeTableRow[TLPackage] {}
+      val row = new TreeTableRow[TLPackageDisplay] {}
       val ctm = new ContextMenu(
         new MenuItem("Info") {
-          onAction = (ae) => callback_show_pkg_info(row.item.value.name.value)
+          onAction = (ae) => callback_show_pkg_info_dev(row.item.value.name.value)
         },
         new MenuItem("Install") {
           onAction = (ae) => do_one_pkg("install", row.item.value.name.value)
@@ -1007,7 +1011,7 @@ object ApplicationMain extends JFXApp {
       val row = new TreeTableRow[TLBackup] {}
       val ctm = new ContextMenu(
         new MenuItem("Info") {
-          onAction = (ae) => callback_show_pkg_info(row.item.value.name.value)
+          onAction = (ae) => callback_show_pkg_info_dev(row.item.value.name.value)
         },
         new MenuItem("Restore") {
           onAction = (ae) => callback_restore_pkg(row.item.value.name.value, row.item.value.rev.value)
@@ -1134,7 +1138,7 @@ object ApplicationMain extends JFXApp {
     pkgs.clear()
     upds.clear()
     bkps.clear()
-    update_pkgs_lists()
+    update_pkgs_lists_dev()
   }
 
 
