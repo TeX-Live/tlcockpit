@@ -46,29 +46,29 @@ object TLPackageJsonProtocol extends DefaultJsonProtocol {
     }
     def write(c: TLPackage) = ???
     def read(v: JsValue) = {
+      val tlBlockSize = 4096  // TL gives sizes in multiples of BlockSize!
       val vmap: Map[String, JsValue] = v.asJsObject.fields
-      val name      = convit[JsString](vmap,"name", JsString("")).convertTo[String]
-      // val name      = vmap.getOrElse[JsValue]("name", JsString("")).convertTo[String]
-      val shortdesc = convit[JsString](vmap,"shortdesc", JsString("")).convertTo[String]
-      val longdesc  = convit[JsString](vmap,"longdesc", JsString("")).convertTo[String]
-      val category  = convit[JsString](vmap,"category", JsString("")).convertTo[String]
-      val catalogue = convit[JsString](vmap,"catalogue", JsString("")).convertTo[String]
-      val lrev      = convit[JsNumber](vmap,"lrev",JsNumber(0)).convertTo[Long]
-      val rrev      = convit[JsNumber](vmap,"rrev",JsNumber(0)).convertTo[Long]
-      val srcsize   = convit[JsNumber](vmap,"srcsize",JsNumber(0)).convertTo[Long] * 4096
-      val docsize   = convit[JsNumber](vmap,"docsize",JsNumber(0)).convertTo[Long] * 4096
-      val runsize   = convit[JsNumber](vmap,"runsize",JsNumber(0)).convertTo[Long] * 4096
-      val srcfiles  = convit[JsValue](vmap,"srcfiles",JsArray()).convertTo[List[String]]
-      val runfiles  = convit[JsValue](vmap,"runfiles",JsArray()).convertTo[List[String]]
-      val docfiles  = convit[JsValue](vmap,"docfiles",JsArray()).convertTo[List[String]]
-      val depends   = convit[JsValue](vmap,"depends",JsArray()).convertTo[List[String]]
-      val executes  = convit[JsValue](vmap,"executes",JsArray()).convertTo[List[String]]
-      val relocated = convit[JsValue](vmap,"relocated", JsBoolean(false)).convertTo[Boolean]
-      val installed = convit[JsValue](vmap,"installed", JsBoolean(false)).convertTo[Boolean]
-      val available = convit[JsValue](vmap,"available", JsBoolean(false)).convertTo[Boolean]
-      val catdata   = convit[JsValue](vmap,"cataloguedata", JsObject()).convertTo[JsObject]
-      val binfilesd = convit[JsValue](vmap,"binfiles", JsObject()).convertTo[JsObject]
-      val binsizesd = convit[JsValue](vmap,"binsize", JsObject()).convertTo[JsObject]
+      val name      = convit[JsString](vmap,"name",         JsString("")).convertTo[String]
+      val shortdesc = convit[JsString](vmap,"shortdesc",    JsString("")).convertTo[String]
+      val longdesc  = convit[JsString](vmap,"longdesc",     JsString("")).convertTo[String]
+      val category  = convit[JsString](vmap,"category",     JsString("")).convertTo[String]
+      val catalogue = convit[JsString](vmap,"catalogue",    JsString("")).convertTo[String]
+      val lrev      = convit[JsNumber](vmap,"lrev",         JsNumber(0)).convertTo[Long]
+      val rrev      = convit[JsNumber](vmap,"rrev",         JsNumber(0)).convertTo[Long]
+      val srcsize   = convit[JsNumber](vmap,"srcsize",      JsNumber(0)).convertTo[Long] * tlBlockSize
+      val docsize   = convit[JsNumber](vmap,"docsize",      JsNumber(0)).convertTo[Long] * tlBlockSize
+      val runsize   = convit[JsNumber](vmap,"runsize",      JsNumber(0)).convertTo[Long] * tlBlockSize
+      val srcfiles  = convit[JsValue] (vmap,"srcfiles",     JsArray()).convertTo[List[String]]
+      val runfiles  = convit[JsValue] (vmap,"runfiles",     JsArray()).convertTo[List[String]]
+      val docfiles  = convit[JsValue] (vmap,"docfiles",     JsArray()).convertTo[List[String]]
+      val depends   = convit[JsValue] (vmap,"depends",      JsArray()).convertTo[List[String]]
+      val executes  = convit[JsValue] (vmap,"executes",     JsArray()).convertTo[List[String]]
+      val relocated = convit[JsValue] (vmap,"relocated",    JsBoolean(false)).convertTo[Boolean]
+      val installed = convit[JsValue] (vmap,"installed",    JsBoolean(false)).convertTo[Boolean]
+      val available = convit[JsValue] (vmap,"available",    JsBoolean(false)).convertTo[Boolean]
+      val catdata   = convit[JsValue] (vmap,"cataloguedata",JsObject()).convertTo[JsObject]
+      val binfilesd = convit[JsValue] (vmap,"binfiles",     JsObject()).convertTo[JsObject]
+      val binsizesd = convit[JsValue] (vmap,"binsize",      JsObject()).convertTo[JsObject]
       val dfd = v.asJsObject.getFields("docfiledata") match {
         case Seq(JsObject(docfiledata)) =>
           docfiledata.map {
@@ -86,7 +86,7 @@ object TLPackageJsonProtocol extends DefaultJsonProtocol {
       })
       // further parse of binfiles
       val binfiles = binfilesd.fields.flatMap { _._2.convertTo[List[String]] }.toList
-      val binsize = binsizesd.fields.map { _._2.convertTo[Long]}.toList.foldLeft[Long](0)(_ + _) * 4096
+      val binsize = binsizesd.fields.map { _._2.convertTo[Long]}.toList.foldLeft[Long](0)(_ + _) * tlBlockSize
 
       // further parse the catdata
       val catversion = catdata.fields.getOrElse[JsValue]("version", JsString("")).convertTo[String]
