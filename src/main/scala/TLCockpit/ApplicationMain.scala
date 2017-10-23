@@ -13,7 +13,7 @@ import TLCockpit.ApplicationMain.getClass
 import TLCockpit.Utils._
 import TeXLive._
 
-import scala.collection.immutable
+import scala.collection.{immutable, mutable}
 // import java.io.File
 
 import scalafx.beans.property.StringProperty
@@ -356,11 +356,24 @@ object ApplicationMain extends JFXApp {
   def view_pkgs_by_collections(pkgbuf: scala.collection.mutable.Map[String, TLPackageDisplay],
                                binbuf: scala.collection.mutable.Map[String, ArrayBuffer[TLPackageDisplay]],
                                colbuf: scala.collection.mutable.Map[String, ArrayBuffer[TLPackageDisplay]]): Seq[TreeItem[TLPackageDisplay]] = {
-    ArrayBuffer.empty[TreeItem[TLPackageDisplay]]
+    val bin_pkg_map = compute_bin_pkg_mapping(pkgbuf, binbuf)
+    colbuf.map(
+      p => {
+        new TreeItem[TLPackageDisplay](pkgbuf(p._1)) {
+            children = p._2.map(new TreeItem[TLPackageDisplay](_))
+          }
+      }
+    ).toSeq
+    // ArrayBuffer.empty[TreeItem[TLPackageDisplay]]
   }
 
   def view_pkgs_by_names(pkgbuf: scala.collection.mutable.Map[String, TLPackageDisplay],
                          binbuf: scala.collection.mutable.Map[String, ArrayBuffer[TLPackageDisplay]]): Seq[TreeItem[TLPackageDisplay]] = {
+    compute_bin_pkg_mapping(pkgbuf, binbuf).values.toSeq
+  }
+
+  def compute_bin_pkg_mapping(pkgbuf: scala.collection.mutable.Map[String, TLPackageDisplay],
+                              binbuf: scala.collection.mutable.Map[String, ArrayBuffer[TLPackageDisplay]]): Map[String, TreeItem[TLPackageDisplay]] = {
     pkgbuf.map {
       p => {
         val kids: Seq[TLPackageDisplay] = if (binbuf.keySet.contains(p._2.name.value)) {
@@ -372,7 +385,7 @@ object ApplicationMain extends JFXApp {
         val allinstalled = (kids :+ p._2).foldRight[Boolean](true)((k, b) => k.installed.value == "Installed" && b)
         val someinstalled = (kids :+ p._2).exists(_.installed.value == "Installed")
         val mixedinstalled = !allinstalled && someinstalled
-        if (mixedinstalled) {
+        val treeitem = if (mixedinstalled) {
           // replace installed status with "Mixed"
           new TreeItem[TLPackageDisplay](new TreeItem[TLPackageDisplay](
             new TLPackageDisplay(p._2.name.value, p._2.lrev.value.toString, p._2.rrev.value.toString, p._2.shortdesc.value, p._2.size.value.toString, "Mixed")
@@ -384,8 +397,9 @@ object ApplicationMain extends JFXApp {
             children = kids.map(new TreeItem[TLPackageDisplay](_))
           }
         }
+        (p._1, treeitem)
       }
-    }.toSeq
+    }.toMap
   }
   pkgs.onChange( (obs,chs) => {
     var doit = chs match {
