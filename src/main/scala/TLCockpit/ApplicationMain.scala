@@ -350,6 +350,34 @@ object ApplicationMain extends JFXApp {
       }
     }
   })
+
+  def view_pkgs_by_names(pkgbuf: ArrayBuffer[TLPackageDisplay], binbuf: scala.collection.mutable.Map[String, ArrayBuffer[TLPackageDisplay]]): ArrayBuffer[TreeItem[TLPackageDisplay]] = {
+    pkgbuf.map {
+      p => {
+        val kids: Seq[TLPackageDisplay] = if (binbuf.keySet.contains(p.name.value)) {
+          binbuf(p.name.value)
+        } else {
+          Seq()
+        }
+        // for ismixed we && all the installed status. If all are installed, we get true
+        val allinstalled = (kids :+ p).foldRight[Boolean](true)((k, b) => k.installed.value == "Installed" && b)
+        val someinstalled = (kids :+ p).exists(_.installed.value == "Installed")
+        val mixedinstalled = !allinstalled && someinstalled
+        if (mixedinstalled) {
+          // replace installed status with "Mixed"
+          new TreeItem[TLPackageDisplay](new TreeItem[TLPackageDisplay](
+            new TLPackageDisplay(p.name.value, p.lrev.value.toString, p.rrev.value.toString, p.shortdesc.value, p.size.value.toString, "Mixed")
+          )) {
+            children = kids.map(new TreeItem[TLPackageDisplay](_))
+          }
+        } else {
+          new TreeItem[TLPackageDisplay](p) {
+            children = kids.map(new TreeItem[TLPackageDisplay](_))
+          }
+        }
+      }
+    }
+  }
   pkgs.onChange( (obs,chs) => {
     var doit = chs match {
       case ObservableMap.Add(k, v) => k.toString == "root"
@@ -381,30 +409,7 @@ object ApplicationMain extends JFXApp {
       })
       // now we have all normal packages in pkgbuf, and its sub-packages in binbuf
       // we need to create TreeItems
-      val viewkids: ArrayBuffer[TreeItem[TLPackageDisplay]] = pkgbuf.map { p => {
-        val kids: Seq[TLPackageDisplay] = if (binbuf.keySet.contains(p.name.value)) {
-          binbuf(p.name.value)
-        } else {
-          Seq()
-        }
-        // for ismixed we && all the installed status. If all are installed, we get true
-        val allinstalled = (kids :+ p).foldRight[Boolean](true)((k, b) => k.installed.value == "Installed" && b)
-        val someinstalled = (kids :+ p).exists(_.installed.value == "Installed")
-        val mixedinstalled = !allinstalled && someinstalled
-        if (mixedinstalled) {
-          // replace installed status with "Mixed"
-          new TreeItem[TLPackageDisplay](new TreeItem[TLPackageDisplay](
-            new TLPackageDisplay(p.name.value, p.lrev.value.toString, p.rrev.value.toString, p.shortdesc.value, p.size.value.toString, "Mixed")
-          )) {
-            children = kids.map(new TreeItem[TLPackageDisplay](_))
-          }
-        } else {
-          new TreeItem[TLPackageDisplay](p) {
-            children = kids.map(new TreeItem[TLPackageDisplay](_))
-          }
-        }
-      }
-      }
+      val viewkids: ArrayBuffer[TreeItem[TLPackageDisplay]] = view_pkgs_by_names(pkgbuf, binbuf)
       Platform.runLater {
         packageTable.root = new TreeItem[TLPackageDisplay](new TLPackageDisplay("root", "0", "0", "", "0", "")) {
           expanded = true
@@ -641,6 +646,16 @@ object ApplicationMain extends JFXApp {
         onAction = (ae: ActionEvent) => callback_quit()
       })
   }
+  val ViewByPkg = new RadioMenuItem("by package name") { onAction = (ae) => trigger_update("pkgs") }
+  val ViewByCol = new RadioMenuItem("by collections")  { onAction = (ae) => trigger_update("pkgs") }
+  ViewByPkg.selected = true
+  ViewByCol.selected = false
+  val viewMenu: Menu = new Menu("View") {
+    val foo = new ToggleGroup
+    foo.toggles = Seq(ViewByPkg, ViewByCol)
+    items = List(ViewByPkg, ViewByCol)
+  }
+
   val optionsMenu: Menu = new Menu("Options") {
     items = List( new MenuItem("General ...") { disable = true; onAction = (ae) => not_implemented_info() },
       new MenuItem("Paper ...") { disable = true; onAction = (ae) => not_implemented_info() },
@@ -876,7 +891,7 @@ object ApplicationMain extends JFXApp {
   val menuBar: MenuBar = new MenuBar {
     useSystemMenuBar = true
     // menus.addAll(mainMenu, optionsMenu, helpMenu)
-    menus.addAll(mainMenu, statusMenu)
+    menus.addAll(mainMenu, viewMenu, statusMenu)
   }
 
   stage = new PrimaryStage {
