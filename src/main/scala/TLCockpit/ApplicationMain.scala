@@ -12,6 +12,8 @@ import javafx.scene.control
 import TLCockpit.ApplicationMain.getClass
 import TLCockpit.Utils._
 import TeXLive._
+
+import scala.collection.immutable
 // import java.io.File
 
 import scalafx.beans.property.StringProperty
@@ -351,32 +353,39 @@ object ApplicationMain extends JFXApp {
     }
   })
 
-  def view_pkgs_by_names(pkgbuf: ArrayBuffer[TLPackageDisplay], binbuf: scala.collection.mutable.Map[String, ArrayBuffer[TLPackageDisplay]]): ArrayBuffer[TreeItem[TLPackageDisplay]] = {
+  def view_pkgs_by_collections(pkgbuf: scala.collection.mutable.Map[String, TLPackageDisplay],
+                               binbuf: scala.collection.mutable.Map[String, ArrayBuffer[TLPackageDisplay]],
+                               colbuf: scala.collection.mutable.Map[String, ArrayBuffer[TLPackageDisplay]]): Seq[TreeItem[TLPackageDisplay]] = {
+    ArrayBuffer.empty[TreeItem[TLPackageDisplay]]
+  }
+
+  def view_pkgs_by_names(pkgbuf: scala.collection.mutable.Map[String, TLPackageDisplay],
+                         binbuf: scala.collection.mutable.Map[String, ArrayBuffer[TLPackageDisplay]]): Seq[TreeItem[TLPackageDisplay]] = {
     pkgbuf.map {
       p => {
-        val kids: Seq[TLPackageDisplay] = if (binbuf.keySet.contains(p.name.value)) {
-          binbuf(p.name.value)
+        val kids: Seq[TLPackageDisplay] = if (binbuf.keySet.contains(p._2.name.value)) {
+          binbuf(p._2.name.value)
         } else {
           Seq()
         }
         // for ismixed we && all the installed status. If all are installed, we get true
-        val allinstalled = (kids :+ p).foldRight[Boolean](true)((k, b) => k.installed.value == "Installed" && b)
-        val someinstalled = (kids :+ p).exists(_.installed.value == "Installed")
+        val allinstalled = (kids :+ p._2).foldRight[Boolean](true)((k, b) => k.installed.value == "Installed" && b)
+        val someinstalled = (kids :+ p._2).exists(_.installed.value == "Installed")
         val mixedinstalled = !allinstalled && someinstalled
         if (mixedinstalled) {
           // replace installed status with "Mixed"
           new TreeItem[TLPackageDisplay](new TreeItem[TLPackageDisplay](
-            new TLPackageDisplay(p.name.value, p.lrev.value.toString, p.rrev.value.toString, p.shortdesc.value, p.size.value.toString, "Mixed")
+            new TLPackageDisplay(p._2.name.value, p._2.lrev.value.toString, p._2.rrev.value.toString, p._2.shortdesc.value, p._2.size.value.toString, "Mixed")
           )) {
             children = kids.map(new TreeItem[TLPackageDisplay](_))
           }
         } else {
-          new TreeItem[TLPackageDisplay](p) {
+          new TreeItem[TLPackageDisplay](p._2) {
             children = kids.map(new TreeItem[TLPackageDisplay](_))
           }
         }
       }
-    }
+    }.toSeq
   }
   pkgs.onChange( (obs,chs) => {
     var doit = chs match {
@@ -385,8 +394,10 @@ object ApplicationMain extends JFXApp {
       case ObservableMap.Remove(k, v) => k.toString == "root"
     }
     if (doit) {
-      val pkgbuf: ArrayBuffer[TLPackageDisplay] = ArrayBuffer.empty[TLPackageDisplay]
+      // val pkgbuf: ArrayBuffer[TLPackageDisplay] = ArrayBuffer.empty[TLPackageDisplay]
+      val pkgbuf = scala.collection.mutable.Map.empty[String, TLPackageDisplay]
       val binbuf = scala.collection.mutable.Map.empty[String, ArrayBuffer[TLPackageDisplay]]
+      val colbuf = scala.collection.mutable.Map.empty[String, ArrayBuffer[TLPackageDisplay]]
       pkgs.foreach(pkg => {
         // complicated part, determine whether it is a sub package or not!
         // we strip of initial texlive. prefixes to make sure we deal
@@ -394,22 +405,57 @@ object ApplicationMain extends JFXApp {
         if (pkg._1.stripPrefix("texlive.").contains(".")) {
           val foo: Array[String] = pkg._1.stripPrefix("texlive.infra").split('.')
           val pkgname = foo(0)
-          val binname = foo(1)
-          if (binbuf.keySet.contains(pkgname)) {
-            binbuf(pkgname) += pkg._2
-          } else {
-            binbuf(pkgname) = ArrayBuffer[TLPackageDisplay](pkg._2)
+          if (pkgname != "") {
+            val binname = foo(1)
+            if (binbuf.keySet.contains(pkgname)) {
+              binbuf(pkgname) += pkg._2
+            } else {
+              binbuf(pkgname) = ArrayBuffer[TLPackageDisplay](pkg._2)
+            }
           }
         } else if (pkg._1 == "root") {
           // ignore the dummy root element,
           // only used for speeding up event handling
         } else {
-          pkgbuf += pkg._2
+          pkgbuf(pkg._1) = pkg._2
+        }
+      })
+      // Another round to propagate purely .win32 packages like wintools.win32 or
+      // dviout.win32 from binpkg status to full pkg, since they don't have
+      // accompanying main packages
+      binbuf.foreach(p => {
+        if (!pkgbuf.contains(p._1)) {
+          if (p._2.length > 1) {
+            println("THAT SHOULD NOT HAPPEN: >>" + p._1 + "<< >>" + p._2.length + "<<")
+          } else {
+            // println("Moving " + p._2.head.name.value + " up to pkgbuf " + p._1)
+            pkgbuf(p._2.head.name.value) = p._2.head
+            // TODO will this work out with the foreach loop above???
+            binbuf -= p._1
+          }
+        }
+      })
+      // another loop to collection and fill the collections buffer
+      pkgs.foreach(pkg => {
+        if (tlpkgs.contains(pkg._1)) {
+          if (tlpkgs(pkg._1).category == "Collection") {
+            val foo: immutable.Seq[String] = tlpkgs(pkg._1).depends
+            colbuf(pkg._1) = ArrayBuffer[TLPackageDisplay]()
+            colbuf(pkg._1) ++= foo.map(pkgbuf(_))
+          }
+        } else if (pkg._1 == "root") {
+          // do nothing
+        } else {
+          println("Cannot find information for " + pkg._1)
         }
       })
       // now we have all normal packages in pkgbuf, and its sub-packages in binbuf
       // we need to create TreeItems
-      val viewkids: ArrayBuffer[TreeItem[TLPackageDisplay]] = view_pkgs_by_names(pkgbuf, binbuf)
+      val viewkids: Seq[TreeItem[TLPackageDisplay]] =
+        if (ViewByPkg.selected.value)
+          view_pkgs_by_names(pkgbuf, binbuf)
+        else
+          view_pkgs_by_collections(pkgbuf, binbuf, colbuf)
       Platform.runLater {
         packageTable.root = new TreeItem[TLPackageDisplay](new TLPackageDisplay("root", "0", "0", "", "0", "")) {
           expanded = true
