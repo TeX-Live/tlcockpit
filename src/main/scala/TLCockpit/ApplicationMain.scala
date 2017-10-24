@@ -32,6 +32,7 @@ import scalafx.scene.input.{KeyCode, KeyEvent, MouseEvent}
 import scalafx.scene.paint.Color
 // needed see https://github.com/scalafx/scalafx/issues/137
 import scalafx.scene.control.TableColumn._
+import scalafx.scene.control.TreeItem._
 import scalafx.scene.control.TreeTableColumn._
 import scalafx.scene.control.TreeItem
 import scalafx.scene.control.Menu._
@@ -359,8 +360,30 @@ object ApplicationMain extends JFXApp {
     val bin_pkg_map = compute_bin_pkg_mapping(pkgbuf, binbuf)
     colbuf.map(
       p => {
-        new TreeItem[TLPackageDisplay](pkgbuf(p._1)) {
-            children = p._2.map(new TreeItem[TLPackageDisplay](_))
+        val colname: String = p._1
+        val coldeps: Seq[TLPackageDisplay] = p._2
+        val coltlpd: TLPackageDisplay = pkgbuf(colname)
+
+        new TreeItem[TLPackageDisplay](coltlpd) {
+            children = coldeps.map(sub => {
+              val binmap: (Boolean, Seq[TLPackageDisplay]) = bin_pkg_map(sub.name.value)
+              val ismixed: Boolean = binmap._1
+              val kids: Seq[TLPackageDisplay] = binmap._2
+              val ti = if (ismixed) {
+                // replace installed status with "Mixed"
+                new TreeItem[TLPackageDisplay](
+                  new TLPackageDisplay(sub.name.value, sub.lrev.value.toString, sub.rrev.value.toString, sub.shortdesc.value, sub.size.value.toString, "Mixed")
+                ) {
+                  children = kids.map(new TreeItem[TLPackageDisplay](_))
+                }
+              } else {
+                new TreeItem[TLPackageDisplay](sub) {
+                  children = kids.map(new TreeItem[TLPackageDisplay](_))
+                }
+              }
+              ti
+            }
+            )
           }
       }
     ).toSeq
@@ -369,11 +392,30 @@ object ApplicationMain extends JFXApp {
 
   def view_pkgs_by_names(pkgbuf: scala.collection.mutable.Map[String, TLPackageDisplay],
                          binbuf: scala.collection.mutable.Map[String, ArrayBuffer[TLPackageDisplay]]): Seq[TreeItem[TLPackageDisplay]] = {
-    compute_bin_pkg_mapping(pkgbuf, binbuf).values.toSeq
+    val bin_pkg_map: Map[String, (Boolean, Seq[TLPackageDisplay])] = compute_bin_pkg_mapping(pkgbuf, binbuf)
+    pkgbuf.map{
+      p => {
+        val binmap: (Boolean, Seq[TLPackageDisplay]) = bin_pkg_map(p._1)
+        val pkgtlp: TLPackageDisplay = p._2
+        val ismixed: Boolean = binmap._1
+        val kids: Seq[TLPackageDisplay] = binmap._2
+        if (ismixed) {
+          new TreeItem[TLPackageDisplay](
+            new TLPackageDisplay(pkgtlp.name.value, pkgtlp.lrev.value.toString, pkgtlp.rrev.value.toString, pkgtlp.shortdesc.value, pkgtlp.size.value.toString, "Mixed")
+          ) {
+            children = kids.map(new TreeItem[TLPackageDisplay](_))
+          }
+        } else {
+          new TreeItem[TLPackageDisplay](pkgtlp) {
+            children = kids.map(new TreeItem[TLPackageDisplay](_))
+          }
+        }
+      }
+    }.toSeq
   }
 
   def compute_bin_pkg_mapping(pkgbuf: scala.collection.mutable.Map[String, TLPackageDisplay],
-                              binbuf: scala.collection.mutable.Map[String, ArrayBuffer[TLPackageDisplay]]): Map[String, TreeItem[TLPackageDisplay]] = {
+                              binbuf: scala.collection.mutable.Map[String, ArrayBuffer[TLPackageDisplay]]): Map[String, (Boolean, Seq[TLPackageDisplay])] = {
     pkgbuf.map {
       p => {
         val kids: Seq[TLPackageDisplay] = if (binbuf.keySet.contains(p._2.name.value)) {
@@ -385,7 +427,8 @@ object ApplicationMain extends JFXApp {
         val allinstalled = (kids :+ p._2).foldRight[Boolean](true)((k, b) => k.installed.value == "Installed" && b)
         val someinstalled = (kids :+ p._2).exists(_.installed.value == "Installed")
         val mixedinstalled = !allinstalled && someinstalled
-        val treeitem = if (mixedinstalled) {
+        (p._1, (mixedinstalled, kids))
+        /* val treeitem = if (mixedinstalled) {
           // replace installed status with "Mixed"
           new TreeItem[TLPackageDisplay](new TreeItem[TLPackageDisplay](
             new TLPackageDisplay(p._2.name.value, p._2.lrev.value.toString, p._2.rrev.value.toString, p._2.shortdesc.value, p._2.size.value.toString, "Mixed")
@@ -397,7 +440,7 @@ object ApplicationMain extends JFXApp {
             children = kids.map(new TreeItem[TLPackageDisplay](_))
           }
         }
-        (p._1, treeitem)
+        (p._1, treeitem) */
       }
     }.toMap
   }
