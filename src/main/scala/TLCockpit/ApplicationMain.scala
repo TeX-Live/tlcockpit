@@ -59,8 +59,9 @@ import TeXLive.TLPackageJsonProtocol._
 
 // import java.awt.Desktop
 
+// TODO missing sub-packages for texlive.infra
+// TODO installation of collection line-updates the pkg display from Not-Installed to Installed
 // TODO when installing a collection list the additionally installed packages, too
-// TODO idea pkg tree with collection -> packages
 // TODO pkg info listview adjust height according to font size and # of items
 // TODO TreeTableView indentation is lazy
 
