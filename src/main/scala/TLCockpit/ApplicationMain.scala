@@ -14,6 +14,7 @@ import TLCockpit.Utils._
 import TeXLive._
 
 import scala.collection.{immutable, mutable}
+import scalafx.event.Event
 // import java.io.File
 
 import scalafx.beans.property.StringProperty
@@ -1010,6 +1011,8 @@ object ApplicationMain extends JFXApp {
     }
     icons.add(iconImage)
   }
+
+  stage.onCloseRequest = (e: Event) => callback_quit()
 
 
 
