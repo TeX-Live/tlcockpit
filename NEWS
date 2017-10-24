@@ -1,5 +1,9 @@
 NEWS for tlcockpit
 
+version 0.X
+-----------
+- fix behavior when closing using the Window Manager X on Windows (Issue: 2)
+
 version 0.6
 -----------
 - texlive infra updates handled properly (restarting tlmgr)
