@@ -365,7 +365,7 @@ object ApplicationMain extends JFXApp {
         val coltlpd: TLPackageDisplay = pkgbuf(colname)
 
         new TreeItem[TLPackageDisplay](coltlpd) {
-            children = coldeps.map(sub => {
+            children = coldeps.filter(q => tlpkgs(q.name.value).category != "Collection").map(sub => {
               val binmap: (Boolean, Seq[TLPackageDisplay]) = bin_pkg_map(sub.name.value)
               val ismixed: Boolean = binmap._1
               val kids: Seq[TLPackageDisplay] = binmap._2
