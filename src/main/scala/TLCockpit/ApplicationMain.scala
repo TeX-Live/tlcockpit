@@ -365,10 +365,10 @@ object ApplicationMain extends JFXApp {
         val coltlpd: TLPackageDisplay = pkgbuf(colname)
 
         new TreeItem[TLPackageDisplay](coltlpd) {
-            children = coldeps.filter(q => tlpkgs(q.name.value).category != "Collection").map(sub => {
+            children = coldeps.filter(q => tlpkgs(q.name.value).category != "Collection").sortBy(_.name.value).map(sub => {
               val binmap: (Boolean, Seq[TLPackageDisplay]) = bin_pkg_map(sub.name.value)
               val ismixed: Boolean = binmap._1
-              val kids: Seq[TLPackageDisplay] = binmap._2
+              val kids: Seq[TLPackageDisplay] = binmap._2.sortBy(_.name.value)
               val ti = if (ismixed) {
                 // replace installed status with "Mixed"
                 new TreeItem[TLPackageDisplay](
@@ -398,7 +398,7 @@ object ApplicationMain extends JFXApp {
         val binmap: (Boolean, Seq[TLPackageDisplay]) = bin_pkg_map(p._1)
         val pkgtlp: TLPackageDisplay = p._2
         val ismixed: Boolean = binmap._1
-        val kids: Seq[TLPackageDisplay] = binmap._2
+        val kids: Seq[TLPackageDisplay] = binmap._2.sortBy(_.name.value)
         if (ismixed) {
           new TreeItem[TLPackageDisplay](
             new TLPackageDisplay(pkgtlp.name.value, pkgtlp.lrev.value.toString, pkgtlp.rrev.value.toString, pkgtlp.shortdesc.value, pkgtlp.size.value.toString, "Mixed")
@@ -428,19 +428,6 @@ object ApplicationMain extends JFXApp {
         val someinstalled = (kids :+ p._2).exists(_.installed.value == "Installed")
         val mixedinstalled = !allinstalled && someinstalled
         (p._1, (mixedinstalled, kids))
-        /* val treeitem = if (mixedinstalled) {
-          // replace installed status with "Mixed"
-          new TreeItem[TLPackageDisplay](new TreeItem[TLPackageDisplay](
-            new TLPackageDisplay(p._2.name.value, p._2.lrev.value.toString, p._2.rrev.value.toString, p._2.shortdesc.value, p._2.size.value.toString, "Mixed")
-          )) {
-            children = kids.map(new TreeItem[TLPackageDisplay](_))
-          }
-        } else {
-          new TreeItem[TLPackageDisplay](p._2) {
-            children = kids.map(new TreeItem[TLPackageDisplay](_))
-          }
-        }
-        (p._1, treeitem) */
       }
     }.toMap
   }
