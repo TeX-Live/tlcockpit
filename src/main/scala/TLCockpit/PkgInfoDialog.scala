@@ -119,10 +119,11 @@ class PkgInfoDialog(pkg: String) extends Dialog {
       vb.prefHeight = 150
       vb.maxHeight = 200
       vb.vgrow = Priority.Always
-      // TODO tighter spacing for ListView
       vb.orientation = Orientation.Vertical
       vb.cellFactory = { p => {
         val foo = new ListCell[String]
+        // ensure tighter spacing similar to the other entires
+        foo.padding = Insets(0)
         foo.item.onChange { (_, _, str) => foo.text = str }
         if (clickable) {
           foo.textFill = Color.Blue
