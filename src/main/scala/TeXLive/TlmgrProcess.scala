@@ -6,7 +6,6 @@ import OsTools._
 
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.SyncVar
-// import scala.sys.process.{Process, ProcessBuilder, ProcessIO}
 import scala.sys.process._
 
 class TlmgrProcess(updout: Array[String] => Unit, upderr: String => Unit, updline: String => Unit) {

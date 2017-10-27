@@ -6,26 +6,19 @@
 
 package TLCockpit
 
-import javafx.collections.ObservableList
-import javafx.scene.control
-
-import TLCockpit.ApplicationMain.getClass
 import TLCockpit.Utils._
 import TeXLive._
 
 import scala.collection.{immutable, mutable}
-import scalafx.event.Event
-// import java.io.File
-
-import scalafx.beans.property.StringProperty
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.{Future, SyncVar}
 import scala.concurrent.ExecutionContext.Implicits.global
-// import scala.reflect.io
-// import scala.reflect.io.File
 import scala.util.{Failure, Success}
-import scalafx.beans.property.ObjectProperty
-import scalafx.geometry.{HPos, Pos, VPos, Orientation}
+import scala.sys.process._
+// ScalaFX imports
+import scalafx.event.Event
+import scalafx.beans.property.StringProperty
+import scalafx.geometry.{Pos, Orientation}
 import scalafx.scene.Cursor
 import scalafx.scene.control.Alert.AlertType
 import scalafx.scene.image.{Image, ImageView}
@@ -38,8 +31,6 @@ import scalafx.scene.control.TreeTableColumn._
 import scalafx.scene.control.TreeItem
 import scalafx.scene.control.Menu._
 import scalafx.scene.control.ListCell
-import scalafx.scene.control.cell._
-import scalafx.scene.text.Text
 import scalafx.Includes._
 import scalafx.application.{JFXApp, Platform}
 import scalafx.application.JFXApp.PrimaryStage
@@ -48,14 +39,13 @@ import scalafx.scene.Scene
 import scalafx.scene.layout._
 import scalafx.scene.control._
 import scalafx.event.ActionEvent
-import scala.sys.process._
 import scalafx.collections.ObservableBuffer
 import scalafx.collections.ObservableMap
 
+// JSON support - important load TLPackageJsonProtocol later!
 import spray.json._
 import TeXLive.TLPackageJsonProtocol._
 
-// import java.awt.Desktop
 
 // TODO missing sub-packages for texlive.infra
 // TODO installation of collection line-updates the pkg display from Not-Installed to Installed
