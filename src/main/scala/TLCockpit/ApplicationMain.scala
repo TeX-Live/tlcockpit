@@ -55,9 +55,6 @@ import scalafx.collections.ObservableMap
 import spray.json._
 import TeXLive.TLPackageJsonProtocol._
 
-
-
-
 // import java.awt.Desktop
 
 // TODO missing sub-packages for texlive.infra
@@ -582,7 +579,7 @@ object ApplicationMain extends JFXApp {
       tlpkgs.clear()
       tlpkgs ++= jsonAst.convertTo[List[TLPackage]].map { p => (p.name, p)}
       val newpkgs: Map[String, TLPackageDisplay] = tlpkgs.map { p =>
-        (p._2.name, new TLPackageDisplay(p._2.name, p._2.lrev.toString, p._2.rrev.toString, p._2.shortdesc, "0", if (p._2.installed) "Installed" else "Not installed"))
+        (p._2.name, new TLPackageDisplay(p._2.name, p._2.lrev.toString, p._2.rrev.toString, p._2.shortdesc.getOrElse(""), "0", if (p._2.installed) "Installed" else "Not installed"))
       }.toMap
       pkgs.clear()
       pkgs ++= newpkgs
