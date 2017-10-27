@@ -460,6 +460,7 @@ object ApplicationMain extends JFXApp {
         if (!pkgbuf.contains(p._1)) {
           if (p._2.length > 1) {
             println("THAT SHOULD NOT HAPPEN: >>" + p._1 + "<< >>" + p._2.length + "<<")
+            // p._2.foreach(f => println("-> " + f.name.value))
           } else {
             // println("Moving " + p._2.head.name.value + " up to pkgbuf " + p._1)
             pkgbuf(p._2.head.name.value) = p._2.head
