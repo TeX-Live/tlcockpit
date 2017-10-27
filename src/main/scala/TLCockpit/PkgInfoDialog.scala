@@ -115,8 +115,8 @@ class PkgInfoDialog(pkg: String) extends Dialog {
       vb
     } else {
       val vb = new ListView[String] {}
-      vb.minHeight = 150
-      vb.prefHeight = 150
+      vb.minHeight = 100
+      vb.prefHeight = 100
       vb.maxHeight = 200
       vb.vgrow = Priority.Always
       vb.orientation = Orientation.Vertical
