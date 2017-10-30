@@ -5,7 +5,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import sys.process._
 
 object OsTools {
-  val OS = System.getProperty("os.name").map(_.toLower)
+  val OS: String = System.getProperty("os.name").map(_.toLower)
   def isWindows: Boolean = {
     OS.startsWith("windows")
   }
