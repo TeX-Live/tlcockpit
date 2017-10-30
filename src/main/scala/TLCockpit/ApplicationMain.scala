@@ -48,10 +48,8 @@ import TeXLive.TLPackageJsonProtocol._
 
 
 // TODO missing sub-packages for texlive.infra
-// TODO strange errors when installing a collection
 // TODO installation of collection line-updates the pkg display from Not-Installed to Installed
 // TODO when installing a collection list the additionally installed packages, too
-// TODO pkg info listview adjust height according to font size and # of items
 // TODO TreeTableView indentation is lazy
 
 object ApplicationMain extends JFXApp {
@@ -425,9 +423,12 @@ object ApplicationMain extends JFXApp {
     var doit = chs match {
       case ObservableMap.Add(k, v) => k.toString == "root"
       case ObservableMap.Replace(k, va, vr) => k.toString == "root"
-      case ObservableMap.Remove(k, v) => k.toString == "root"
+        // don't call the trigger on root removal!
+      // case ObservableMap.Remove(k, v) => k.toString == "root"
+      case ObservableMap.Remove(k,v) => false
     }
     if (doit) {
+      // println("DEBUG: entering pkgs.onChange")
       // val pkgbuf: ArrayBuffer[TLPackageDisplay] = ArrayBuffer.empty[TLPackageDisplay]
       val pkgbuf = scala.collection.mutable.Map.empty[String, TLPackageDisplay]
       val binbuf = scala.collection.mutable.Map.empty[String, ArrayBuffer[TLPackageDisplay]]
@@ -491,6 +492,7 @@ object ApplicationMain extends JFXApp {
           view_pkgs_by_names(pkgbuf, binbuf)
         else
           view_pkgs_by_collections(pkgbuf, binbuf, colbuf)
+      // println("DEBUG: leaving pkgs.onChange before runLater")
       Platform.runLater {
         packageTable.root = new TreeItem[TLPackageDisplay](new TLPackageDisplay("root", "0", "0", "", "0", "")) {
           expanded = true
@@ -638,7 +640,7 @@ object ApplicationMain extends JFXApp {
   }
 
   def trigger_update(s:String): Unit = {
-    // println("Triggering update of " + s)
+    // println("DEBUG: Triggering update of " + s)
     if (s == "pkgs")
       pkgs("root") = new TLPackageDisplay("root","0","0","","0","")
     else if (s == "upds")
