@@ -48,6 +48,7 @@ import TeXLive.TLPackageJsonProtocol._
 
 
 // TODO missing sub-packages for texlive.infra
+// TODO strange errors when installing a collection
 // TODO installation of collection line-updates the pkg display from Not-Installed to Installed
 // TODO when installing a collection list the additionally installed packages, too
 // TODO pkg info listview adjust height according to font size and # of items
