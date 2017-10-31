@@ -19,7 +19,7 @@ object OsTools {
   def openFileCmd(f: String): Seq[String] = {
     val absf = new java.io.File(f).getCanonicalPath
     if (isWindows) {
-      Seq("cmd", "start", absf)
+      Seq("cmd", "/c", "start", absf)
     } else if (isApple) {
       Seq("open", absf)
     } else {
