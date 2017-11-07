@@ -2,30 +2,30 @@ package TeXLive
 
 import java.io._
 
-import OsTools._
+import TeXLive.OsTools._
 
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.SyncVar
 import scala.sys.process._
 
-class TlmgrProcess(updout: Array[String] => Unit, upderr: String => Unit, updline: String => Unit) {
+class TlmgrProcess(updout: String => Unit, upderr: String => Unit) {
   val inputString = new SyncVar[String]                 // used for the tlmgr process input
-  val outputString = new SyncVar[String]                // used for the tlmgr process output
-  val errorBuffer: StringBuffer = new StringBuffer()    // buffer used for both tmgr process error console AND logging
+  // val outputString = new SyncVar[String]                // used for the tlmgr process output
+  // val errorBuffer: StringBuffer = new StringBuffer()    // buffer used for both tmgr process error console AND logging
 
   val tlroot = "kpsewhich -var-value SELFAUTOPARENT".!!.trim
   // println("tlroot ==" + tlroot + "==")
 
   // set in only one place, in the main thread
   var process: Process = _
-  var lastInput: String = ""
-  var lastOk: Boolean = false
+  // var lastInput: String = ""
+  // var lastOk: Boolean = false
   var isBusy = false
 
 
-  def send_command(input: String): Array[String] = {
+  def send_command(input: String): Unit = {
 
-    lastInput = input
+    // lastInput = input
 
     val maxWaitTime = 5000
     var waited = 0
@@ -37,7 +37,7 @@ class TlmgrProcess(updout: Array[String] => Unit, upderr: String => Unit, updlin
       waited += 300
 
       if (waited > maxWaitTime && sendNL < 3) {
-        outputString.put("protocol")
+        inputString.put("protocol")
         sendNL += 1
       }
       if (waited > maxWaitTime && sendNL >= 3) {
@@ -47,57 +47,25 @@ class TlmgrProcess(updout: Array[String] => Unit, upderr: String => Unit, updlin
     try {
       // pass the input and wait for the output
       assert(!inputString.isSet)
-      assert(!outputString.isSet)
+      //assert(!outputString.isSet)
       // errorBuffer.setLength(0)
       synchronized(isBusy = true)
       inputString.put(input)
-      val ret = if (input != "quit") {
-        get_output_till_prompt()
-      } else {
-        new Array[String](0)
-      }
-      // updout(ret.mkString("\n"))
-      updout(ret)
-      upderr(errorBuffer.toString)
       synchronized( isBusy = false )
-      ret
     } catch {
       case exc: Throwable =>
-        errorBuffer.append("  Main thread: " +
+        upderr("Main thread: " +
           (if (exc.isInstanceOf[NoSuchElementException]) "Timeout" else "Exception: " + exc))
-        null
     }
   }
 
   def start_process(): Unit = {
     // process creation
     if (process == null) {
-      val procIO = new ProcessIO(inputFn(_), outputFn(_), errorFn(_))
+      val procIO = new ProcessIO(inputFn(_), outputFn(_, updout), outputFn(_, upderr))
       val processBuilder: ProcessBuilder = Seq({if (isWindows) "tlmgr.bat" else "tlmgr"}, "--machine-readable", "shell")
       process = processBuilder.run(procIO)
     }
-  }
-
-  def get_output_till_prompt(): Array[String] = {
-    var ret = ArrayBuffer[String]()
-    var result = ""
-    var found = false
-    synchronized(isBusy = true)
-    while (!found) {
-      result = outputString.take()
-      if (result == "tlmgr> ") {
-        found = true
-      } else if (result == "OK") {
-        lastOk = true
-        // do nothing, we found a good ok
-      } else if (result == "ERROR") {
-        lastOk = false
-      } else {
-        ret += result
-      }
-    }
-    synchronized(isBusy = false)
-    ret.toArray
   }
 
   def cleanup(): Unit = {
@@ -128,53 +96,30 @@ class TlmgrProcess(updout: Array[String] => Unit, upderr: String => Unit, updlin
       case exc: Throwable =>
         stdin.close()
         // println("Exception in inputFn thread: " + exc + "\n")
-        errorBuffer.append("  Input thread: Exception: " + exc + "\n")
+        upderr("Input thread: Exception: " + exc + "\n")
     }
   }
 
-  private[this] def outputFn(stdOut: InputStream): Unit = {
-    val reader = new BufferedReader(new InputStreamReader(stdOut))
+  private[this] def outputFn(outStr: InputStream, updfun: String => Unit): Unit = {
+    val reader = new BufferedReader(new InputStreamReader(outStr))
     try {
       var line: String = ""
       while (true) {
         line = reader.readLine
-        if (line == null) {
-          // println("Did read NULL from stdin giving up")
-          // error = true
-        } else {
-          // println("DDD did read " + line + " from process")
-          outputString.put(line)
-          try {
-            updline(line)
-          } catch {
-            case exc: Throwable =>
-              println("Update line function failed, continuing anyway (probably old tlmgr)!")
-          }
+        // println("DDD did read " + line + " from process")
+        try {
+          updfun(line)
+        } catch {
+          case exc: Throwable =>
+            upderr("Update output line function failed, continuing anyway (probably old tlmgr)!")
+            // println("Update output line function failed, continuing anyway (probably old tlmgr)!")
         }
       }
-      stdOut.close()
+      outStr.close()
     } catch {
       case exc: Throwable =>
-        stdOut.close()
-        // println("Exception in outputFn thread: " + exc + "\n")
-        errorBuffer.append("  Output thread: Exception: " + exc + "\n")
-    }
-  }
-
-  private[this] def errorFn(stdErr: InputStream): Unit = {
-    val reader = new BufferedReader(new InputStreamReader(stdErr))
-    try {
-      var line = reader.readLine
-      while (line != null) {
-        errorBuffer.append(line + "\n")
-        line = reader.readLine
-      }
-      stdErr.close()
-    } catch {
-      case exc: Throwable =>
-        stdErr.close()
-        // println("Exception in errorFn thread: " + exc + "\n")
-        errorBuffer.append("  Error thread: Exception: " + exc + "\n")
+        outStr.close()
+        upderr("Output thread: Exception: " + exc + "\n")
     }
   }
 }

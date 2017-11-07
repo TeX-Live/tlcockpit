@@ -127,6 +127,7 @@ object ApplicationMain extends JFXApp {
     (ae: KeyEvent) => if (ae.code == KeyCode.Enter) callback_run_cmdline()
   }
   val outputLine = new SyncVar[String]
+  val errorLine  = new SyncVar[String]
 
   def tlmgr_async_command(s: String, f: Array[String] => Unit): Unit = {
     errorText.clear()
@@ -1005,38 +1006,34 @@ object ApplicationMain extends JFXApp {
 
   stage.onCloseRequest = (e: Event) => callback_quit()
 
-
-
   def initialize_tlmgr(): TlmgrProcess = {
     val tt = new TlmgrProcess(
-      // (s:String) => outputfield.text = s,
-      (s: Array[String]) => {
-        // we don't wont normal output to be displayed
-        // as it is anyway returned
-        // outputText.clear()
-        // outputText.appendAll(s)
-      },
-      (s: String) => {
-        // errorText.clear()
-        errorText.append(s)
-        if (s.trim != "") {
-          outerrpane.expanded = true
-          outerrtabs.selectionModel().select(1)
-        }
-      },
-      (s: String) => outputLine.put(s)
+      (s: String) => outputLine.put(s),
+      (s: String) => errorLine.put(s)
     )
-    val bar = Future {
+    val stdoutFuture = Future {
       while (true) {
         val s = outputLine.take
         lineUpdateFunc(s)
       }
     }
-    bar.onComplete {
+    stdoutFuture.onComplete {
       case Success(value) => println(s"Got the callback, meaning = $value")
       case Failure(e) =>
-        println("lineUpdateFunc thread got interrupted -- probably old tlmgr, ignoring it!")
+        println("lineUpdateFunc(stdout) thread got interrupted -- probably old tlmgr, ignoring it!")
         //e.printStackTrace
+    }
+    val stderrFuture = Future {
+      while (true) {
+        val s = errorLine.take
+        lineUpdateFunc(s)
+      }
+    }
+    stderrFuture.onComplete {
+      case Success(value) => println(s"Got the callback, meaning = $value")
+      case Failure(e) =>
+        println("lineUpdateFunc(stderr) thread got interrupted -- probably old tlmgr, ignoring it!")
+      //e.printStackTrace
     }
     tt
   }
