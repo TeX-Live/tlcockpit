@@ -72,10 +72,16 @@ object ApplicationMain extends JFXApp {
   val upds: ObservableMap[String, TLUpdate] = ObservableMap[String, TLUpdate]()
   val bkps: ObservableMap[String, Map[String, TLBackup]] = ObservableMap[String, Map[String,TLBackup]]()  // pkgname -> (version -> TLBackup)*
 
-  val errorText: ObservableBuffer[String] = ObservableBuffer[String]()
+  val logText: ObservableBuffer[String] = ObservableBuffer[String]()
   val outputText: ObservableBuffer[String] = ObservableBuffer[String]()
+  val errorText: ObservableBuffer[String] = ObservableBuffer[String]()
 
   val outputfield: TextArea = new TextArea {
+    editable = false
+    wrapText = true
+    text = ""
+  }
+  val logfield: TextArea = new TextArea {
     editable = false
     wrapText = true
     text = ""
@@ -85,12 +91,16 @@ object ApplicationMain extends JFXApp {
     wrapText = true
     text = ""
   }
+  logText.onChange({
+    logfield.text = logText.mkString("\n")
+    logfield.scrollTop = Double.MaxValue
+  })
   errorText.onChange({
     errorfield.text = errorText.mkString("\n")
     errorfield.scrollTop = Double.MaxValue
     if (errorfield.text.value.nonEmpty) {
       outerrpane.expanded = true
-      outerrtabs.selectionModel().select(1)
+      outerrtabs.selectionModel().select(2)
     }
   })
   outputText.onChange({
@@ -116,7 +126,12 @@ object ApplicationMain extends JFXApp {
         content = outputfield
       },
       new Tab {
-        text = "Error"
+        text = "Logging"
+        closable = false
+        content = logfield
+      },
+      new Tab {
+        text = "Errors"
         closable = false
         content = errorfield
       }
@@ -187,7 +202,7 @@ object ApplicationMain extends JFXApp {
 
   def callback_run_external(s: String, unbuffered: Boolean = true): Unit = {
     outputText.clear()
-    errorText.clear()
+    logText.clear()
     outerrpane.expanded = true
     outerrtabs.selectionModel().select(0)
     outputText.append(s"Running $s" + (if (unbuffered) " (unbuffered)" else " (buffered)"))
@@ -195,7 +210,7 @@ object ApplicationMain extends JFXApp {
       s ! ProcessLogger(
         line => if (unbuffered) Platform.runLater( outputText.append(line) )
                 else OutputBuffer.synchronized( OutputBuffer.append(line + "\n") ),
-        line => Platform.runLater( errorText.append(line) )
+        line => Platform.runLater( logText.append(line) )
       )
     }
     foo.onComplete {
@@ -212,8 +227,8 @@ object ApplicationMain extends JFXApp {
           outputText.append("Completed")
           reset_output_buffer()
           outputfield.scrollTop = Double.MaxValue
-          errorText.append("An ERROR has occurred running $s: " + t.getMessage)
-          errorfield.scrollTop = Double.MaxValue
+          logText.append("An ERROR has occurred running $s: " + t.getMessage)
+          logfield.scrollTop = Double.MaxValue
           outerrpane.expanded = true
           outerrtabs.selectionModel().select(1)
         }
@@ -234,7 +249,7 @@ object ApplicationMain extends JFXApp {
     var prevUpdName = ""
     var prevUpdPkg  = new TLUpdate("","","","","","")
     stdoutLineUpdateFunc = (l:String) => {
-      // println("line update: " + l + "=")
+      // println("DEBUG line update: " + l + "=")
       l match {
         case u if u.startsWith("location-url") => None
         case u if u.startsWith("total-bytes") => None
@@ -244,7 +259,7 @@ object ApplicationMain extends JFXApp {
         case u if u.startsWith("tlmgr>") => None
         case u =>
           if (prevUpdName != "") {
-            // println("Removing " + prevUpdName + " from list!")
+            // println("DEBUG Removing " + prevUpdName + " from list!")
             upds.remove(prevUpdName)
             val op = pkgs(prevUpdName)
             pkgs(prevUpdName) = new TLPackageDisplay(prevUpdPkg.name.value, op.rrev.value.toString, op.rrev.value.toString,
@@ -256,9 +271,9 @@ object ApplicationMain extends JFXApp {
           }
           if (u.startsWith("end-of-updates")) {
             // nothing to be done, all has been done above
-            // println("got end of updates")
+            // println("DEBUG got end of updates")
           } else {
-            // println("getting update line")
+            // println("DEBUG getting update line")
             val foo = parse_one_update_line(l)
             val pkgname = foo.name.value
             val PkgTreeItemOption = updateTable.root.value.children.find(_.value.value.name.value == pkgname)
@@ -266,13 +281,13 @@ object ApplicationMain extends JFXApp {
               case Some(p) =>
                 prevUpdName = pkgname
                 prevUpdPkg  = p.getValue
-                // println("Setting status to Updating ... for " + pkgname)
+                // println("DEBUG Setting status to Updating ... for " + pkgname)
                 prevUpdPkg.status = StringProperty("Updating ...")
                 Platform.runLater {
-                  // println("calling updateTable refresh")
+                  // println("DEBUG calling updateTable refresh")
                   updateTable.refresh()
                 }
-              case None => println("Very strange: Cannot find TreeItem for upd package" + pkgname)
+              case None => errorText += "Very strange: Cannot find TreeItem for upd package" + pkgname
             }
           }
       }
@@ -448,10 +463,10 @@ object ApplicationMain extends JFXApp {
       binbuf.foreach(p => {
         if (!pkgbuf.contains(p._1)) {
           if (p._2.length > 1) {
-            println("THAT SHOULD NOT HAPPEN: >>" + p._1 + "<< >>" + p._2.length + "<<")
+            errorText += "THAT SHOULD NOT HAPPEN: >>" + p._1 + "<< >>" + p._2.length + "<<"
             // p._2.foreach(f => println("-> " + f.name.value))
           } else {
-            // println("Moving " + p._2.head.name.value + " up to pkgbuf " + p._1)
+            // println("DEBUG Moving " + p._2.head.name.value + " up to pkgbuf " + p._1)
             pkgbuf(p._2.head.name.value) = p._2.head
             // TODO will this work out with the foreach loop above???
             binbuf -= p._1
@@ -469,7 +484,7 @@ object ApplicationMain extends JFXApp {
         } else if (pkg._1 == "root") {
           // do nothing
         } else {
-          println("Cannot find information for " + pkg._1)
+          errorText += "Cannot find information for " + pkg._1
         }
       })
       // now we have all normal packages in pkgbuf, and its sub-packages in binbuf
@@ -602,8 +617,8 @@ object ApplicationMain extends JFXApp {
 
   def update_upds_list(): Unit = {
     tlmgr_send("update --list", (status, lines) => {
-      // println(s"got updates length ${lines.length}")
-      // println(s"tlmgr last output = ${lines}")
+      // println(s"DEBUG got updates length ${lines.length}")
+      // println(s"DEBUG tlmgr last output = ${lines}")
       val newupds: Map[String, TLUpdate] = lines.filter { l =>
         l match {
           case u if u.startsWith("location-url") => false
@@ -1033,7 +1048,7 @@ object ApplicationMain extends JFXApp {
     stdoutFuture.onComplete {
       case Success(value) => println(s"Got the callback, meaning = $value")
       case Failure(e) =>
-        println("lineUpdateFunc(stdout) thread got interrupted -- probably old tlmgr, ignoring it!")
+        errorText += "lineUpdateFunc(stdout) thread got interrupted -- probably old tlmgr, ignoring it!"
         //e.printStackTrace
     }
     val stderrFuture = Future {
@@ -1045,7 +1060,7 @@ object ApplicationMain extends JFXApp {
     stderrFuture.onComplete {
       case Success(value) => println(s"Got the callback, meaning = $value")
       case Failure(e) =>
-        println("lineUpdateFunc(stderr) thread got interrupted -- probably old tlmgr, ignoring it!")
+        errorText += "lineUpdateFunc(stderr) thread got interrupted -- probably old tlmgr, ignoring it!"
       //e.printStackTrace
     }
     tt
@@ -1056,23 +1071,23 @@ object ApplicationMain extends JFXApp {
     tlmgrBusy.value = true
     currentPromise.future.onComplete {
       case Success((a, b)) =>
-        // println("current future completed!")
+        // println("DEBUG current future completed!")
         Platform.runLater {
           onCompleteFunc(a, b)
         }
       case Failure(ex) =>
-        println("Need to do something with that" + ex.getMessage)
+        errorText += "Running a tlmgr command did not succeed: " + ex.getMessage
     }
     // println(s"DEBUG sending ${s}")
     tlmgr.send_command(s)
   }
 
   def tlmgr_send(s: String, onCompleteFunc: (String, Array[String]) => Unit): Unit = {
-    errorText.clear()
+    logText.clear()
     outputText.clear()
     outerrpane.expanded = false
     if (!currentPromise.isCompleted) {
-      // println(s"tlmgr busy, put onto pending jobs: $s")
+      // println(s"DEBUG tlmgr busy, put onto pending jobs: $s")
       pendingJobs += ((s, onCompleteFunc))
     } else {
       tlmgr_run_one_cmd(s, onCompleteFunc)
@@ -1116,7 +1131,7 @@ object ApplicationMain extends JFXApp {
   */
 
   var stdoutLineUpdateFunc: String => Unit = { (l: String) => } // println(s"DEBUG: got ==$l== from tlmgr") }
-  var stderrLineUpdateFunc: String => Unit = { (l: String) => errorText.append(l) }
+  var stderrLineUpdateFunc: String => Unit = { (l: String) => logText.append(l) }
   var tlmgr = initialize_tlmgr()
   tlmgr_post_init()
 }  // object ApplicationMain
