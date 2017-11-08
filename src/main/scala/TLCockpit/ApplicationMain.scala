@@ -61,9 +61,6 @@ object ApplicationMain extends JFXApp {
 
   val version: String = getClass.getPackage.getImplementationVersion
 
-  var tlmgrLastStatus = ""
-  var tlmgrCurrentOutput = ArrayBuffer[String]()
-  var tlmgrLastOutput = ArrayBuffer[String]()
   var tlmgrBusy = BooleanProperty(false)
 
   // necessary action when Window is closed with X or some other operation
@@ -236,7 +233,7 @@ object ApplicationMain extends JFXApp {
   def callback_update(s: String): Unit = {
     var prevUpdName = ""
     var prevUpdPkg  = new TLUpdate("","","","","","")
-    lineUpdateFunc = (l:String) => {
+    stdoutLineUpdateFunc = (l:String) => {
       // println("line update: " + l + "=")
       l match {
         case u if u.startsWith("location-url") => None
@@ -283,7 +280,7 @@ object ApplicationMain extends JFXApp {
     // val cmd = if (s == "--self") "update --self --no-restart" else s"update $s"
     val cmd = if (s == "--self") "update --self" else s"update $s"
     tlmgr_send(cmd, (a,b) => {
-      lineUpdateFunc = { (s: String) => }
+      stdoutLineUpdateFunc = { (s: String) => }
       if (s == "--self") {
         reinitialize_tlmgr()
         // this doesn't work seemingly
@@ -544,7 +541,6 @@ object ApplicationMain extends JFXApp {
   }
   def update_pkgs_lists():Unit = {
     tlmgr_send("info --data name,localrev,remoterev,shortdesc,size,installed", (status, s) => {
-      // println(s"DEBUG completion action got ${tlmgrLastOutput}")
       val newpkgs = s.map { (line: String) =>
         val fields: Array[String] = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1)
         val sd = fields(3)
@@ -606,9 +602,8 @@ object ApplicationMain extends JFXApp {
 
   def update_upds_list(): Unit = {
     tlmgr_send("update --list", (status, lines) => {
-      // val newupds = scala.collection.mutable.Map.empty[String,TLUpdate]
       // println(s"got updates length ${lines.length}")
-      // println(s"tlmgr last output = ${tlmgrLastOutput}")
+      // println(s"tlmgr last output = ${lines}")
       val newupds: Map[String, TLUpdate] = lines.filter { l =>
         l match {
           case u if u.startsWith("location-url") => false
@@ -1008,22 +1003,24 @@ object ApplicationMain extends JFXApp {
       (s: String) => errorLine.put(s)
     )
     val stdoutFuture = Future {
+      val tlmgrOutput = ArrayBuffer[String]()
+      var tlmgrStatus = ""
       while (true) {
         val s = outputLine.take
         //println(s"DEBUG: got " + s)
         if (s == "OK") {
-          tlmgrLastStatus = s
+          tlmgrStatus = s
         } else if (s == "ERROR") {
-          tlmgrLastStatus = s
+          tlmgrStatus = s
         } else if (s == "tlmgr> ") {
           // println("DEBUG: fulfilling current promise!")
-          currentPromise.success((tlmgrLastStatus,tlmgrLastOutput.toArray))
-          tlmgrLastStatus = ""
-          tlmgrLastOutput.clear()
+          currentPromise.success((tlmgrStatus,tlmgrOutput.toArray))
+          tlmgrStatus = ""
+          tlmgrOutput.clear()
           tlmgrBusy.value = false
         } else {
-          tlmgrLastOutput += s
-          lineUpdateFunc(s)
+          tlmgrOutput += s
+          stdoutLineUpdateFunc(s)
         }
       }
     }
@@ -1037,7 +1034,7 @@ object ApplicationMain extends JFXApp {
     val stderrFuture = Future {
       while (true) {
         val s = errorLine.take
-        lineUpdateFunc(s)
+        stderrLineUpdateFunc(s)
       }
     }
     stderrFuture.onComplete {
@@ -1112,7 +1109,8 @@ object ApplicationMain extends JFXApp {
   }
   */
 
-  var lineUpdateFunc: String => Unit = { (l: String) => } // println(s"DEBUG: got ==$l== from tlmgr") }
+  var stdoutLineUpdateFunc: String => Unit = { (l: String) => } // println(s"DEBUG: got ==$l== from tlmgr") }
+  var stderrLineUpdateFunc: String => Unit = { (l: String) => println(s"tlmgr stderr output: ${l}") }
   var tlmgr = initialize_tlmgr()
   tlmgr_post_init()
 
