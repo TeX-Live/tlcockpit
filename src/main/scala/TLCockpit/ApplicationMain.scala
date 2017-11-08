@@ -11,15 +11,11 @@ import TeXLive._
 
 import scala.collection.{immutable, mutable}
 import scala.collection.mutable.ArrayBuffer
-import scala.concurrent.{Await, Future, Promise, SyncVar}
-import scala.concurrent.duration._
+import scala.concurrent.{Future, Promise, SyncVar}
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
 import scala.sys.process._
-import scalafx.beans.Observable
 import scalafx.beans.property.BooleanProperty
-import scalafx.beans.value.ObservableValue
-import scalafx.event.subscriptions.Subscription
 // ScalaFX imports
 import scalafx.event.Event
 import scalafx.beans.property.StringProperty
