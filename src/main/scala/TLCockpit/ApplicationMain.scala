@@ -995,6 +995,7 @@ object ApplicationMain extends JFXApp {
 
 
   var currentPromise = Promise[(String,Array[String])]()
+  val pendingJobs = scala.collection.mutable.Queue[(String,(String, Array[String]) => Unit)]()
 
   def initialize_tlmgr(): TlmgrProcess = {
     tlmgrBusy.value = true
@@ -1018,6 +1019,10 @@ object ApplicationMain extends JFXApp {
           tlmgrStatus = ""
           tlmgrOutput.clear()
           tlmgrBusy.value = false
+          if (pendingJobs.nonEmpty) {
+            val nextCmd = pendingJobs.dequeue()
+            tlmgr_run_one_cmd(nextCmd._1, nextCmd._2)
+          }
         } else {
           tlmgrOutput += s
           stdoutLineUpdateFunc(s)
@@ -1046,27 +1051,31 @@ object ApplicationMain extends JFXApp {
     tt
   }
 
+  def tlmgr_run_one_cmd(s: String, onCompleteFunc: (String, Array[String]) => Unit): Unit = {
+    currentPromise = Promise[(String, Array[String])]()
+    tlmgrBusy.value = true
+    currentPromise.future.onComplete {
+      case Success((a, b)) =>
+        // println("current future completed!")
+        Platform.runLater {
+          onCompleteFunc(a, b)
+        }
+      case Failure(ex) =>
+        println("Need to do something with that" + ex.getMessage)
+    }
+    // println(s"DEBUG sending ${s}")
+    tlmgr.send_command(s)
+  }
+
   def tlmgr_send(s: String, onCompleteFunc: (String, Array[String]) => Unit): Unit = {
     errorText.clear()
     outputText.clear()
     outerrpane.expanded = false
     if (!currentPromise.isCompleted) {
-      println(s"tlmgr busy, not doing anything - rejecting $s")
-      // TODO we could add a currentPromise.onComplete handler
-      // that generates a new promise and sends the command
-      // but then we would need a stack of currentPromises!!!
+      // println(s"tlmgr busy, put onto pending jobs: $s")
+      pendingJobs += ((s, onCompleteFunc))
     } else {
-      currentPromise = Promise[(String,Array[String])]()
-      tlmgrBusy.value = true
-      currentPromise.future.onComplete {
-        case Success((a,b)) =>
-          // println("current future completed!")
-          Platform.runLater { onCompleteFunc(a,b) }
-        case Failure(ex)    =>
-          println("Need to do something with that" + ex.getMessage)
-      }
-      // println(s"DEBUG sending ${s}")
-      tlmgr.send_command(s)
+      tlmgr_run_one_cmd(s, onCompleteFunc)
     }
   }
 
@@ -1085,10 +1094,7 @@ object ApplicationMain extends JFXApp {
     pkgs.clear()
     upds.clear()
     bkps.clear()
-    currentPromise.future.onComplete {
-      case Success((a,b)) => update_pkgs_lists_dev()
-      case Failure(ex) => println("Couldn't start tlmgr!!!") // TODO error handling
-    }
+    update_pkgs_lists_dev()
   }
 
 
