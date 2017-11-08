@@ -62,6 +62,7 @@ object ApplicationMain extends JFXApp {
   val version: String = getClass.getPackage.getImplementationVersion
 
   var tlmgrLastStatus = ""
+  var tlmgrCurrentOutput = ArrayBuffer[String]()
   var tlmgrLastOutput = ArrayBuffer[String]()
   var tlmgrBusy = BooleanProperty(false)
 
@@ -146,12 +147,12 @@ object ApplicationMain extends JFXApp {
   }
 
   def callback_run_text(s: String): Unit = {
-    tlmgr_send(s, () => {})
+    tlmgr_send(s, (a: String, b: Array[String]) => {})
   }
 
   def callback_run_cmdline(): Unit = {
-    tlmgr_send(cmdline.text.value, () => {
-      outputText.append(tlmgrLastOutput.mkString("\n"))
+    tlmgr_send(cmdline.text.value, (status,output) => {
+      outputText.append(output.mkString("\n"))
       outerrpane.expanded = true
       outerrtabs.selectionModel().select(0)
     })
@@ -281,7 +282,7 @@ object ApplicationMain extends JFXApp {
     }
     // val cmd = if (s == "--self") "update --self --no-restart" else s"update $s"
     val cmd = if (s == "--self") "update --self" else s"update $s"
-    tlmgr_send(cmd, () => {
+    tlmgr_send(cmd, (a,b) => {
       lineUpdateFunc = { (s: String) => }
       if (s == "--self") {
         reinitialize_tlmgr()
@@ -294,7 +295,7 @@ object ApplicationMain extends JFXApp {
 
 
   def do_one_pkg(what: String, pkg: String): Unit = {
-    tlmgr_send(s"$what $pkg", () => { update_pkgs_lists() })
+    tlmgr_send(s"$what $pkg", (a,b) => { update_pkgs_lists() })
   }
 
   def callback_restore_pkg(str: String, rev: String): Unit = {
@@ -528,8 +529,7 @@ object ApplicationMain extends JFXApp {
   }
 
   def update_bkps_list(): Unit = {
-    tlmgr_send("restore", () => {
-      val lines = tlmgrLastOutput
+    tlmgr_send("restore", (status, lines) => {
       // lines.drop(1).foreach(println(_))
       val newbkps: Map[String, Map[String, TLBackup]] = lines.drop(1).map { (l: String) =>
         val fields = l.split("[ ():]", -1).filter(_.nonEmpty)
@@ -543,9 +543,8 @@ object ApplicationMain extends JFXApp {
     })
   }
   def update_pkgs_lists():Unit = {
-    tlmgr_send("info --data name,localrev,remoterev,shortdesc,size,installed", () => {
-      println(s"DEBUG completion action got ${tlmgrLastOutput}")
-      val s = tlmgrLastOutput
+    tlmgr_send("info --data name,localrev,remoterev,shortdesc,size,installed", (status, s) => {
+      // println(s"DEBUG completion action got ${tlmgrLastOutput}")
       val newpkgs = s.map { (line: String) =>
         val fields: Array[String] = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1)
         val sd = fields(3)
@@ -560,8 +559,8 @@ object ApplicationMain extends JFXApp {
   }
 
   def update_pkgs_lists_dev():Unit = {
-    tlmgr_send("info --data json", () => {
-      val jsonAst = tlmgrLastOutput.mkString("").parseJson
+    tlmgr_send("info --data json", (status, lines) => {
+      val jsonAst = lines.mkString("").parseJson
       tlpkgs.clear()
       tlpkgs ++= jsonAst.convertTo[List[TLPackage]].map { p => (p.name, p)}
       val newpkgs: Map[String, TLPackageDisplay] = tlpkgs.map { p =>
@@ -606,9 +605,8 @@ object ApplicationMain extends JFXApp {
   }
 
   def update_upds_list(): Unit = {
-    tlmgr_send("update --list", () => {
+    tlmgr_send("update --list", (status, lines) => {
       // val newupds = scala.collection.mutable.Map.empty[String,TLUpdate]
-      val lines = tlmgrLastOutput
       // println(s"got updates length ${lines.length}")
       // println(s"tlmgr last output = ${tlmgrLastOutput}")
       val newupds: Map[String, TLUpdate] = lines.filter { l =>
@@ -1001,7 +999,7 @@ object ApplicationMain extends JFXApp {
   stage.onCloseRequest = (e: Event) => callback_quit()
 
 
-  var currentPromise = Promise[String]()
+  var currentPromise = Promise[(String,Array[String])]()
 
   def initialize_tlmgr(): TlmgrProcess = {
     tlmgrBusy.value = true
@@ -1019,7 +1017,9 @@ object ApplicationMain extends JFXApp {
           tlmgrLastStatus = s
         } else if (s == "tlmgr> ") {
           // println("DEBUG: fulfilling current promise!")
-          currentPromise.success(tlmgrLastStatus)
+          currentPromise.success((tlmgrLastStatus,tlmgrLastOutput.toArray))
+          tlmgrLastStatus = ""
+          tlmgrLastOutput.clear()
           tlmgrBusy.value = false
         } else {
           tlmgrLastOutput += s
@@ -1049,7 +1049,7 @@ object ApplicationMain extends JFXApp {
     tt
   }
 
-  def tlmgr_send(s: String, onCompleteFunc: () => Unit): Unit = {
+  def tlmgr_send(s: String, onCompleteFunc: (String, Array[String]) => Unit): Unit = {
     errorText.clear()
     outputText.clear()
     outerrpane.expanded = false
@@ -1059,14 +1059,12 @@ object ApplicationMain extends JFXApp {
       // that generates a new promise and sends the command
       // but then we would need a stack of currentPromises!!!
     } else {
-      currentPromise = Promise[String]()
-      tlmgrLastOutput.clear()
-      tlmgrLastStatus = ""
+      currentPromise = Promise[(String,Array[String])]()
       tlmgrBusy.value = true
       currentPromise.future.onComplete {
-        case Success(value) =>
+        case Success((a,b)) =>
           // println("current future completed!")
-          Platform.runLater { onCompleteFunc() }
+          Platform.runLater { onCompleteFunc(a,b) }
         case Failure(ex)    =>
           println("Need to do something with that" + ex.getMessage)
       }
@@ -1091,7 +1089,7 @@ object ApplicationMain extends JFXApp {
     upds.clear()
     bkps.clear()
     currentPromise.future.onComplete {
-      case Success(value) => update_pkgs_lists_dev()
+      case Success((a,b)) => update_pkgs_lists_dev()
       case Failure(ex) => println("Couldn't start tlmgr!!!") // TODO error handling
     }
   }
