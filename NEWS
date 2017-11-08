@@ -2,9 +2,11 @@ NEWS for tlcockpit
 
 version 0.7 (201711XX)
 ----------------------
+requires tlmgr >= 2017-11-09
 - fix behavior when closing using the Window Manager X on Windows (Issue: 2)
 - use tlmgr json output
 - allow ordering packages by name and by collection
+- log and error output separated (Debug area)
 
 version 0.6 (20171012)
 ----------------------

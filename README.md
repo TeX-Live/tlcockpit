@@ -25,8 +25,8 @@ call as in `java -jar PATH/TO/tlcockpit.jar`.
 
 Requirements
 ------------
-You need at least `tlmgr` from after 2017-09-01, in TeX Live language at least
-version 45190 or `texlive.infra`.
+You need at least `tlmgr` from after 2017-12-08, in TeX Live language at least
+version 45719  or `texlive.infra`.
 
 A recent Java installation that includes JavaFX is required. If you see
 errors like
@@ -49,7 +49,7 @@ Development is done in Scala with the ScalaFX widget set. The project is
 mainly a challenge for myself to learn Scala. Building is done with *sbt*,
 opening the project in IntelliJ works fine.
 
-Deplyment is done via [sbt assembly](https://github.com/sbt/sbt-assembly)
+Deployment is done via [sbt assembly](https://github.com/sbt/sbt-assembly)
 which packs all the necessary libraries into one jar file.
 
 Contributions are welcome, improvements are easily done as I just started
