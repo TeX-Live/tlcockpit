@@ -18,40 +18,11 @@ class TlmgrProcess(updout: String => Unit, upderr: String => Unit) {
 
   // set in only one place, in the main thread
   var process: Process = _
-  // var lastInput: String = ""
-  // var lastOk: Boolean = false
-  var isBusy = false
-
 
   def send_command(input: String): Unit = {
-
-    // lastInput = input
-
-    val maxWaitTime = 5000
-    var waited = 0
-    var sendNL = 0
-    while (isBusy) {
-      // do busy waiting here in case some other tlmgr command is running
-      // println("Debug: waiting for tlmgr being ready, want to send " + input)
-      Thread.sleep(300)
-      waited += 300
-
-      if (waited > maxWaitTime && sendNL < 3) {
-        inputString.put("protocol")
-        sendNL += 1
-      }
-      if (waited > maxWaitTime && sendNL >= 3) {
-        throw new Exception("tlmgr busy, waited too long, aborting calling: " + input)
-      }
-    }
     try {
-      // pass the input and wait for the output
       assert(!inputString.isSet)
-      //assert(!outputString.isSet)
-      // errorBuffer.setLength(0)
-      synchronized(isBusy = true)
       inputString.put(input)
-      synchronized( isBusy = false )
     } catch {
       case exc: Throwable =>
         upderr("Main thread: " +
