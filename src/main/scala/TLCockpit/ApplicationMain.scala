@@ -88,6 +88,10 @@ object ApplicationMain extends JFXApp {
   errorText.onChange({
     errorfield.text = errorText.mkString("\n")
     errorfield.scrollTop = Double.MaxValue
+    if (errorfield.text.value.nonEmpty) {
+      outerrpane.expanded = true
+      outerrtabs.selectionModel().select(1)
+    }
   })
   outputText.onChange({
     outputfield.text = outputText.mkString("\n")
@@ -1112,10 +1116,9 @@ object ApplicationMain extends JFXApp {
   */
 
   var stdoutLineUpdateFunc: String => Unit = { (l: String) => } // println(s"DEBUG: got ==$l== from tlmgr") }
-  var stderrLineUpdateFunc: String => Unit = { (l: String) => println(s"tlmgr stderr output: ${l}") }
+  var stderrLineUpdateFunc: String => Unit = { (l: String) => errorText.append(l) }
   var tlmgr = initialize_tlmgr()
   tlmgr_post_init()
-
 }  // object ApplicationMain
 
 // vim:set tabstop=2 expandtab : //
