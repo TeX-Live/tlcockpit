@@ -45,7 +45,7 @@ import scalafx.collections.ObservableMap
 
 // JSON support - important load TLPackageJsonProtocol later!
 import spray.json._
-import TeXLive.TLPackageJsonProtocol._
+import TeXLive.JsonProtocol._
 
 
 // TODO missing sub-packages for texlive.infra
@@ -70,7 +70,7 @@ object ApplicationMain extends JFXApp {
   val tlpkgs: ObservableMap[String, TLPackage] = ObservableMap[String,TLPackage]()
   val pkgs: ObservableMap[String, TLPackageDisplay] = ObservableMap[String, TLPackageDisplay]()
   val upds: ObservableMap[String, TLUpdate] = ObservableMap[String, TLUpdate]()
-  val bkps: ObservableMap[String, Map[String, TLBackup]] = ObservableMap[String, Map[String,TLBackup]]()  // pkgname -> (version -> TLBackup)*
+  val bkps: ObservableMap[String, Map[String, TLBackupDisplay]] = ObservableMap[String, Map[String,TLBackupDisplay]]()  // pkgname -> (version -> TLBackup)*
 
   val logText: ObservableBuffer[String] = ObservableBuffer[String]()
   val outputText: ObservableBuffer[String] = ObservableBuffer[String]()
@@ -322,18 +322,18 @@ object ApplicationMain extends JFXApp {
     }
     if (doit) {
       // println("DEBUG bkps.onChange called new length = " + bkps.keys.toArray.length)
-      val newroot = new TreeItem[TLBackup](new TLBackup("root", "", "")) {
+      val newroot = new TreeItem[TLBackupDisplay](new TLBackupDisplay("root", "", "")) {
         children = bkps
           .filter(_._1 != "root")
           .map(p => {
             val pkgname: String = p._1
             // we sort by negative of revision number, which give inverse sort
-            val versmap: Array[(String, TLBackup)] = p._2.toArray.sortBy(-_._2.rev.value.toInt)
+            val versmap: Array[(String, TLBackupDisplay)] = p._2.toArray.sortBy(-_._2.rev.value.toInt)
 
-            val foo: Seq[TreeItem[TLBackup]] = versmap.tail.sortBy(-_._2.rev.value.toInt).map { q =>
-              new TreeItem[TLBackup](q._2)
+            val foo: Seq[TreeItem[TLBackupDisplay]] = versmap.tail.sortBy(-_._2.rev.value.toInt).map { q =>
+              new TreeItem[TLBackupDisplay](q._2)
             }.toSeq
-            new TreeItem[TLBackup](versmap.head._2) {
+            new TreeItem[TLBackupDisplay](versmap.head._2) {
               children = foo
             }
           }).toArray.sortBy(_.value.value.name.value)
@@ -540,21 +540,34 @@ object ApplicationMain extends JFXApp {
     }.showAndWait()
   }
 
-  def update_bkps_list(): Unit = {
+  def update_bkps_list_old(): Unit = {
     tlmgr_send("restore", (status, lines) => {
       // lines.drop(1).foreach(println(_))
-      val newbkps: Map[String, Map[String, TLBackup]] = lines.drop(1).map { (l: String) =>
+      val newbkps: Map[String, Map[String, TLBackupDisplay]] = lines.drop(1).map { (l: String) =>
         val fields = l.split("[ ():]", -1).filter(_.nonEmpty)
         val pkgname = fields(0)
         val rests: Array[Array[String]] = fields.drop(1).sliding(4, 4).toArray
-        (pkgname, rests.map({ p => (p(1), new TLBackup(pkgname, p(0), p(1) + " " + p(2) + ":" + p(3)))}).toMap)
+        (pkgname, rests.map({ p => (p(1), new TLBackupDisplay(pkgname, p(0), p(1) + " " + p(2) + ":" + p(3)))}).toMap)
       }.toMap
       bkps.clear()
       bkps ++= newbkps
       trigger_update("bkps")
     })
   }
-  def update_pkgs_lists():Unit = {
+  def update_bkps_list(): Unit = {
+    tlmgr_send("restore --json", (status, lines) => {
+      val jsonAst = lines.mkString("").parseJson
+      val backups: Map[String, Map[String, TLBackupDisplay]] =
+          jsonAst
+            .convertTo[List[TLBackup]]
+            .groupBy[String](_.name)
+            .map(p => (p._1, p._2.map(q => (q.rev, new TLBackupDisplay(q.name, q.rev, q.date))).toMap))
+      bkps.clear()
+      bkps ++= backups
+      trigger_update("bkps")
+    })
+  }
+  /* def update_pkgs_lists():Unit = {
     tlmgr_send("info --data name,localrev,remoterev,shortdesc,size,installed", (status, s) => {
       val newpkgs = s.map { (line: String) =>
         val fields: Array[String] = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1)
@@ -567,10 +580,10 @@ object ApplicationMain extends JFXApp {
       pkgs ++= newpkgs
       trigger_update("pkgs")
     })
-  }
+  } */
 
-  def update_pkgs_lists_dev():Unit = {
-    tlmgr_send("info --data json", (status, lines) => {
+  def update_pkgs_lists():Unit = {
+    tlmgr_send("info --json", (status, lines) => {
       val jsonAst = lines.mkString("").parseJson
       tlpkgs.clear()
       tlpkgs ++= jsonAst.convertTo[List[TLPackage]].map { p => (p.name, p)}
@@ -649,7 +662,7 @@ object ApplicationMain extends JFXApp {
     else if (s == "upds")
       upds("root") = new TLUpdate("root", "", "", "", "", "")
     else if (s == "bkps")
-      bkps("root") = Map[String,TLBackup](("0", new TLBackup("root","0","0")))
+      bkps("root") = Map[String,TLBackupDisplay](("0", new TLBackupDisplay("root","0","0")))
   }
 
   def doListView(files: Seq[String], clickable: Boolean): scalafx.scene.Node = {
@@ -882,16 +895,20 @@ object ApplicationMain extends JFXApp {
     table.prefHeight = 300
     table.showRoot = false
     table.vgrow = Priority.Always
-    table.rowFactory = { _ =>
+    table.rowFactory = { p =>
       val row = new TreeTableRow[TLPackageDisplay] {}
+      val curpkg: TLPackageDisplay = row.item.value;
+      val is_installed: Boolean = if (curpkg == null) true else !(curpkg.installed.value == "Not installed")
       val ctm = new ContextMenu(
         new MenuItem("Info") {
           onAction = (ae) => new PkgInfoDialog(row.item.value.name.value).showAndWait()
         },
         new MenuItem("Install") {
+          disable = is_installed
           onAction = (ae) => do_one_pkg("install", row.item.value.name.value)
         },
         new MenuItem("Remove") {
+          disable = !is_installed
           onAction = (ae) => do_one_pkg("remove", row.item.value.name.value)
         }
       )
@@ -900,24 +917,24 @@ object ApplicationMain extends JFXApp {
     }
     table
   }
-  val backupTable: TreeTableView[TLBackup] = {
-    val colName = new TreeTableColumn[TLBackup, String] {
+  val backupTable: TreeTableView[TLBackupDisplay] = {
+    val colName = new TreeTableColumn[TLBackupDisplay, String] {
       text = "Package"
       cellValueFactory = {  _.value.value.value.name }
       prefWidth = 150
     }
-    val colRev = new TreeTableColumn[TLBackup, String] {
+    val colRev = new TreeTableColumn[TLBackupDisplay, String] {
       text = "Revision"
       cellValueFactory = { _.value.value.value.rev }
       prefWidth = 100
     }
-    val colDate = new TreeTableColumn[TLBackup, String] {
+    val colDate = new TreeTableColumn[TLBackupDisplay, String] {
       text = "Date"
       cellValueFactory = { _.value.value.value.date }
       prefWidth = 300
     }
-    val table = new TreeTableView[TLBackup](
-      new TreeItem[TLBackup](new TLBackup("root","","")) {
+    val table = new TreeTableView[TLBackupDisplay](
+      new TreeItem[TLBackupDisplay](new TLBackupDisplay("root","","")) {
         expanded = false
       }) {
       columns ++= List(colName, colRev, colDate)
@@ -927,7 +944,7 @@ object ApplicationMain extends JFXApp {
     table.showRoot = false
     table.vgrow = Priority.Always
     table.rowFactory = { _ =>
-      val row = new TreeTableRow[TLBackup] {}
+      val row = new TreeTableRow[TLBackupDisplay] {}
       val ctm = new ContextMenu(
         new MenuItem("Info") {
           onAction = (ae) => new PkgInfoDialog(row.item.value.name.value).showAndWait()
@@ -1109,7 +1126,7 @@ object ApplicationMain extends JFXApp {
     pkgs.clear()
     upds.clear()
     bkps.clear()
-    update_pkgs_lists_dev()
+    update_pkgs_lists()
   }
 
 
