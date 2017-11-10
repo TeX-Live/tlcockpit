@@ -847,23 +847,16 @@ object ApplicationMain extends JFXApp {
     table.showRoot = false
     table.rowFactory = { _ =>
       val row = new TreeTableRow[TLUpdate] {}
-      val ctm = new ContextMenu(
-        new MenuItem("Info") {
-          onAction = (ae) => new PkgInfoDialog(row.item.value.name.value).showAndWait()
-        },
-        new MenuItem("Install") {
-          // onAction = (ae) => callback_run_text("install " + row.item.value.name.value)
-          onAction = (ae) => do_one_pkg("install", row.item.value.name.value)
-        },
-        new MenuItem("Remove") {
-          // onAction = (ae) => callback_run_text("remove " + row.item.value.name.value)
-          onAction = (ae) => do_one_pkg("remove", row.item.value.name.value)
-        },
-        new MenuItem("Update") {
-          // onAction = (ae) => callback_run_text("update " + row.item.value.name.value)
-          onAction = (ae) => callback_update(row.item.value.name.value)
-        }
-      )
+      val infoMI = new MenuItem("Info") {
+        onAction = (ae) => new PkgInfoDialog(row.item.value.name.value).showAndWait()
+      }
+      val removeMI = new MenuItem("Remove") {
+        onAction = (ae) => do_one_pkg("remove", row.item.value.name.value)
+      }
+      val updateMI = new MenuItem("Update") {
+        onAction = (ae) => callback_update(row.item.value.name.value)
+      }
+      val ctm = new ContextMenu(infoMI, removeMI, updateMI)
       row.contextMenu = ctm
       row
     }
@@ -897,24 +890,23 @@ object ApplicationMain extends JFXApp {
     table.vgrow = Priority.Always
     table.rowFactory = { p =>
       val row = new TreeTableRow[TLPackageDisplay] {}
-      // TODO fix enable/disable of install/remove etc
-      // the current method does not work out somehow, strange values depending on
-      // the subtree :-(
-      // val curpkg: TLPackageDisplay = row.item.value;
-      // val is_installed: Boolean = if (curpkg == null) true else !(curpkg.installed.value == "Not installed")
-      val ctm = new ContextMenu(
-        new MenuItem("Info") {
-          onAction = (ae) => new PkgInfoDialog(row.item.value.name.value).showAndWait()
-        },
-        new MenuItem("Install") {
-          // disable = is_installed
-          onAction = (ae) => do_one_pkg("install", row.item.value.name.value)
-        },
-        new MenuItem("Remove") {
-          // disable = !is_installed
-          onAction = (ae) => do_one_pkg("remove", row.item.value.name.value)
+      val infoMI = new MenuItem("Info") {
+        onAction = (ae) => new PkgInfoDialog(row.item.value.name.value).showAndWait()
+      }
+      val installMI = new MenuItem("Install") {
+        onAction = (ae) => do_one_pkg("install", row.item.value.name.value)
+      }
+      val removeMI = new MenuItem("Remove") {
+        onAction = (ae) => do_one_pkg("remove", row.item.value.name.value)
+      }
+      val ctm = new ContextMenu(infoMI, installMI, removeMI)
+      row.item.onChange { (_,_,newTL) =>
+        if (newTL != null) {
+          val is_installed: Boolean = !(newTL.installed.value == "Not installed")
+          installMI.disable = is_installed
+          removeMI.disable = !is_installed
         }
-      )
+      }
       row.contextMenu = ctm
       row
     }
