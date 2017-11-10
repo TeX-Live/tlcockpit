@@ -897,18 +897,21 @@ object ApplicationMain extends JFXApp {
     table.vgrow = Priority.Always
     table.rowFactory = { p =>
       val row = new TreeTableRow[TLPackageDisplay] {}
-      val curpkg: TLPackageDisplay = row.item.value;
-      val is_installed: Boolean = if (curpkg == null) true else !(curpkg.installed.value == "Not installed")
+      // TODO fix enable/disable of install/remove etc
+      // the current method does not work out somehow, strange values depending on
+      // the subtree :-(
+      // val curpkg: TLPackageDisplay = row.item.value;
+      // val is_installed: Boolean = if (curpkg == null) true else !(curpkg.installed.value == "Not installed")
       val ctm = new ContextMenu(
         new MenuItem("Info") {
           onAction = (ae) => new PkgInfoDialog(row.item.value.name.value).showAndWait()
         },
         new MenuItem("Install") {
-          disable = is_installed
+          // disable = is_installed
           onAction = (ae) => do_one_pkg("install", row.item.value.name.value)
         },
         new MenuItem("Remove") {
-          disable = !is_installed
+          // disable = !is_installed
           onAction = (ae) => do_one_pkg("remove", row.item.value.name.value)
         }
       )
@@ -950,6 +953,7 @@ object ApplicationMain extends JFXApp {
           onAction = (ae) => new PkgInfoDialog(row.item.value.name.value).showAndWait()
         },
         new MenuItem("Restore") {
+          disable = true
           onAction = (ae) => callback_restore_pkg(row.item.value.name.value, row.item.value.rev.value)
         }
       )
@@ -1135,16 +1139,6 @@ object ApplicationMain extends JFXApp {
   startalert.setTitle("Loading package database ...")
   startalert.setContentText("Loading package database, this might take a while. Please wait!")
   startalert.show()
-  */
-
-  /*
-  var testmode = false
-  if (parameters.unnamed.nonEmpty) {
-    if (parameters.unnamed.head == "-test" || parameters.unnamed.head == "--test") {
-      println("Testing mode enabled, not actually calling tlmgr!")
-      testmode = true
-    }
-  }
   */
 
   var stdoutLineUpdateFunc: String => Unit = { (l: String) => } // println(s"DEBUG: got ==$l== from tlmgr") }
