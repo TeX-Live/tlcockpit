@@ -202,7 +202,7 @@ object ApplicationMain extends JFXApp {
 
   def callback_run_external(s: String, unbuffered: Boolean = true): Unit = {
     outputText.clear()
-    logText.clear()
+    // logText.clear()
     outerrpane.expanded = true
     outerrtabs.selectionModel().select(0)
     outputText.append(s"Running $s" + (if (unbuffered) " (unbuffered)" else " (buffered)"))
@@ -227,10 +227,10 @@ object ApplicationMain extends JFXApp {
           outputText.append("Completed")
           reset_output_buffer()
           outputfield.scrollTop = Double.MaxValue
-          logText.append("An ERROR has occurred running $s: " + t.getMessage)
-          logfield.scrollTop = Double.MaxValue
+          errorText.append("An ERROR has occurred running $s: " + t.getMessage)
+          errorfield.scrollTop = Double.MaxValue
           outerrpane.expanded = true
-          outerrtabs.selectionModel().select(1)
+          outerrtabs.selectionModel().select(2)
         }
     }
   }
@@ -1096,7 +1096,7 @@ object ApplicationMain extends JFXApp {
   }
 
   def tlmgr_send(s: String, onCompleteFunc: (String, Array[String]) => Unit): Unit = {
-    logText.clear()
+    // logText.clear()
     outputText.clear()
     outerrpane.expanded = false
     if (!currentPromise.isCompleted) {
@@ -1134,7 +1134,7 @@ object ApplicationMain extends JFXApp {
   */
 
   var stdoutLineUpdateFunc: String => Unit = { (l: String) => } // println(s"DEBUG: got ==$l== from tlmgr") }
-  var stderrLineUpdateFunc: String => Unit = { (l: String) => logText.append(l) }
+  var stderrLineUpdateFunc: String => Unit = { (l: String) => Platform.runLater { logText.append(l) } }
   var tlmgr = initialize_tlmgr()
   tlmgr_post_init()
 }  // object ApplicationMain
