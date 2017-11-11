@@ -48,6 +48,8 @@ import spray.json._
 import TeXLive.JsonProtocol._
 
 // TODO after update single package the package details view is not updated
+// TODO implement general options (tlpdb options)
+// TODO implement paper configuration
 // TODO missing sub-packages for texlive.infra
 // TODO installation of collection line-updates the pkg display from Not-Installed to Installed
 // TODO when installing a collection list the additionally installed packages, too
