@@ -109,7 +109,11 @@ object ApplicationMain extends JFXApp {
   })
 
   val update_all_menu: MenuItem = new MenuItem("Update all") {
-    onAction = (ae) => callback_update("--all")
+    val cmd = "--all" + {
+      if (disable_auto_install) " --no-auto-install" else "" } + {
+      if (disable_auto_removal) " --no-auto-remove" else "" } + {
+      if (enable_reinstall_forcible) " --reinstall-forcibly-removed" else "" }
+    onAction = (ae) => callback_update(cmd)
     disable = true
   }
   val update_self_menu: MenuItem = new MenuItem("Update self") {
@@ -754,8 +758,18 @@ object ApplicationMain extends JFXApp {
     foo.toggles = Seq(ViewByPkg, ViewByCol)
     items = List(ViewByPkg, ViewByCol)
   }
+  var disable_auto_removal = false
+  var disable_auto_install = false
+  var enable_reinstall_forcible = false
   val updMenu: Menu = new Menu("Updates") {
-    items = List(update_all_menu, update_self_menu)
+    items = List(
+      update_all_menu,
+      update_self_menu,
+      new SeparatorMenuItem,
+      new CheckMenuItem("Disable auto removal") { onAction = (ae) => disable_auto_removal = selected.value },
+      new CheckMenuItem("Disable auto install") { onAction = (ae) => disable_auto_install = selected.value },
+      new CheckMenuItem("Reinstall forcibly removed") { onAction = (ae) => enable_reinstall_forcible = selected.value }
+    )
   }
 
 
