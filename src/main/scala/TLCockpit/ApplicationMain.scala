@@ -709,9 +709,16 @@ object ApplicationMain extends JFXApp {
 
   val mainMenu: Menu = new Menu("TLCockpit") {
     items = List(
-      update_all_menu,
-      update_self_menu,
-      new SeparatorMenuItem,
+      // temporarily move here as we disable the Help menu
+      new MenuItem("About") {
+        onAction = (ae) => callback_about()
+      },
+      new MenuItem("Exit") {
+        onAction = (ae: ActionEvent) => callback_quit()
+      })
+  }
+  val toolsMenu: Menu = new Menu("Tools") {
+    items = List(
       new MenuItem("Update filename databases ...") {
         onAction = (ae) => {
           callback_run_external("mktexlsr")
@@ -723,7 +730,7 @@ object ApplicationMain extends JFXApp {
       new MenuItem("Rebuild all formats ...") { onAction = (ae) => callback_run_external("fmtutil --sys --all", false) },
       new MenuItem("Update font map database ...") {
         onAction = (ae) => callback_run_external("updmap --sys")
-      },
+      }
       /*
       new MenuItem("Restore packages from backup ...") {
         disable = true; onAction = (ae) => not_implemented_info()
@@ -736,24 +743,21 @@ object ApplicationMain extends JFXApp {
         disable = true; onAction = (ae) => not_implemented_info()
       },
       */
-      new SeparatorMenuItem,
-      // temporarily move here as we disable the Help menu
-      new MenuItem("About") {
-        onAction = (ae) => callback_about()
-      },
-      new MenuItem("Exit") {
-        onAction = (ae: ActionEvent) => callback_quit()
-      })
+    )
   }
   val ViewByPkg = new RadioMenuItem("by package name") { onAction = (ae) => trigger_update("pkgs") }
   val ViewByCol = new RadioMenuItem("by collections")  { onAction = (ae) => trigger_update("pkgs") }
   ViewByPkg.selected = true
   ViewByCol.selected = false
-  val viewMenu: Menu = new Menu("View") {
+  val pkgsMenu: Menu = new Menu("Packages") {
     val foo = new ToggleGroup
     foo.toggles = Seq(ViewByPkg, ViewByCol)
     items = List(ViewByPkg, ViewByCol)
   }
+  val updMenu: Menu = new Menu("Updates") {
+    items = List(update_all_menu, update_self_menu)
+  }
+
 
   val optionsMenu: Menu = new Menu("Options") {
     items = List( new MenuItem("General ...") { disable = true; onAction = (ae) => not_implemented_info() },
@@ -764,18 +768,6 @@ object ApplicationMain extends JFXApp {
       new CheckMenuItem("Enable debugging options") { disable = true },
       new CheckMenuItem("Disable auto-install of new packages") { disable = true },
       new CheckMenuItem("Disable auto-removal of server-deleted packages") { disable = true }
-    )
-  }
-  val helpMenu: Menu = new Menu("Help") {
-    items = List(
-      /*
-      new MenuItem("Manual") {
-        disable = true; onAction = (ae) => not_implemented_info()
-      },
-      */
-      new MenuItem("About") {
-        onAction = (ae) => callback_about()
-      },
     )
   }
   val statusMenu: Menu = new Menu("Status: Idle") {
@@ -975,23 +967,28 @@ object ApplicationMain extends JFXApp {
       }
     )
   }
+  val menuBar: MenuBar = new MenuBar {
+    useSystemMenuBar = true
+    // menus.addAll(mainMenu, optionsMenu, helpMenu)
+    menus.addAll(mainMenu, pkgsMenu, toolsMenu, statusMenu)
+  }
   pkgstabs.selectionModel().selectedItem.onChange(
     (a,b,c) => {
       if (a.value.text() == "Backups") {
         if (backupTable.root.value.children.length == 0)
           update_bkps_list()
+        menuBar.menus = Seq(mainMenu, toolsMenu, statusMenu)
       } else if (a.value.text() == "Updates") {
         // only update if not done already
         if (updateTable.root.value.children.length == 0)
           update_upds_list()
+        menuBar.menus = Seq(mainMenu, updMenu, toolsMenu, statusMenu)
+      } else if (a.value.text() == "Packages") {
+        menuBar.menus = Seq(mainMenu, pkgsMenu, toolsMenu, statusMenu)
       }
     }
   )
-  val menuBar: MenuBar = new MenuBar {
-    useSystemMenuBar = true
-    // menus.addAll(mainMenu, optionsMenu, helpMenu)
-    menus.addAll(mainMenu, viewMenu, statusMenu)
-  }
+
 
   stage = new PrimaryStage {
     title = "TLCockpit"
