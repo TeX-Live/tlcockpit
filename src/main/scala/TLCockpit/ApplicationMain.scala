@@ -47,7 +47,7 @@ import scalafx.collections.ObservableMap
 import spray.json._
 import TeXLive.JsonProtocol._
 
-
+// TODO after update single package the package details view is not updated
 // TODO missing sub-packages for texlive.infra
 // TODO installation of collection line-updates the pkg display from Not-Installed to Installed
 // TODO when installing a collection list the additionally installed packages, too
@@ -311,11 +311,14 @@ object ApplicationMain extends JFXApp {
 
 
   def do_one_pkg(what: String, pkg: String): Unit = {
-    tlmgr_send(s"$what $pkg", (a,b) => { update_pkgs_lists() })
+    tlmgr_send(s"$what $pkg", (_,_) => { update_pkgs_lists() })
   }
 
   def callback_restore_pkg(str: String, rev: String): Unit = {
-    not_implemented_info()
+    tlmgr_send(s"restore --force $str $rev", (_,_) => {
+      update_pkgs_lists()
+      update_upds_list()
+    })
   }
 
   bkps.onChange( (obs,chs) => {
@@ -735,18 +738,6 @@ object ApplicationMain extends JFXApp {
       new MenuItem("Update font map database ...") {
         onAction = (ae) => callback_run_external("updmap --sys")
       }
-      /*
-      new MenuItem("Restore packages from backup ...") {
-        disable = true; onAction = (ae) => not_implemented_info()
-      },
-      new MenuItem("Handle symlinks in system dirs ...") {
-        disable = true; onAction = (ae) => not_implemented_info()
-      },
-      new SeparatorMenuItem,
-      new MenuItem("Remove TeX Live ...") {
-        disable = true; onAction = (ae) => not_implemented_info()
-      },
-      */
     )
   }
   val ViewByPkg = new RadioMenuItem("by package name") { onAction = (ae) => trigger_update("pkgs") }
@@ -951,7 +942,6 @@ object ApplicationMain extends JFXApp {
           onAction = (ae) => new PkgInfoDialog(row.item.value.name.value).showAndWait()
         },
         new MenuItem("Restore") {
-          disable = true
           onAction = (ae) => callback_restore_pkg(row.item.value.name.value, row.item.value.rev.value)
         }
       )
