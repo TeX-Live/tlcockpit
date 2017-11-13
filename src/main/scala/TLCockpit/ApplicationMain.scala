@@ -766,15 +766,27 @@ object ApplicationMain extends JFXApp {
   }
 
 
+  def callback_paper(): Unit = {
+    tlmgr_send("paper --json", (status, lines) => {
+      val jsonAst = lines.mkString("").parseJson
+      val paperconfs: Map[String, TLPaperConf] = jsonAst.convertTo[List[TLPaperConf]].map { p => (p.program, p) }.toMap
+      Platform.runLater {
+        val dg = new PaperDialog(paperconfs)
+        val ret = dg.showAndWait()
+        println("GOT RETURN OF " + ret)
+      }
+    })
+  }
+
   val optionsMenu: Menu = new Menu("Options") {
-    items = List( new MenuItem("General ...") { disable = true; onAction = (ae) => not_implemented_info() },
-      new MenuItem("Paper ...") { disable = true; onAction = (ae) => not_implemented_info() },
-      new MenuItem("Platforms ...") { disable = true; onAction = (ae) => not_implemented_info() },
+    items = List( // new MenuItem("General ...") { disable = true; onAction = (ae) => not_implemented_info() },
+      new MenuItem("Paper ...") { onAction = (ae) => callback_paper() },
+      /* new MenuItem("Platforms ...") { disable = true; onAction = (ae) => not_implemented_info() },
       new SeparatorMenuItem,
       new CheckMenuItem("Expert options") { disable = true },
       new CheckMenuItem("Enable debugging options") { disable = true },
       new CheckMenuItem("Disable auto-install of new packages") { disable = true },
-      new CheckMenuItem("Disable auto-removal of server-deleted packages") { disable = true }
+      new CheckMenuItem("Disable auto-removal of server-deleted packages") { disable = true } */
     )
   }
   val statusMenu: Menu = new Menu("Status: Idle") {
@@ -976,21 +988,21 @@ object ApplicationMain extends JFXApp {
   val menuBar: MenuBar = new MenuBar {
     useSystemMenuBar = true
     // menus.addAll(mainMenu, optionsMenu, helpMenu)
-    menus.addAll(mainMenu, pkgsMenu, toolsMenu, statusMenu)
+    menus.addAll(mainMenu, pkgsMenu, toolsMenu, optionsMenu, statusMenu)
   }
   pkgstabs.selectionModel().selectedItem.onChange(
     (a,b,c) => {
       if (a.value.text() == "Backups") {
         if (backupTable.root.value.children.length == 0)
           update_bkps_list()
-        menuBar.menus = Seq(mainMenu, toolsMenu, statusMenu)
+        menuBar.menus = Seq(mainMenu, toolsMenu, optionsMenu, statusMenu)
       } else if (a.value.text() == "Updates") {
         // only update if not done already
         if (updateTable.root.value.children.length == 0)
           update_upds_list()
-        menuBar.menus = Seq(mainMenu, updMenu, toolsMenu, statusMenu)
+        menuBar.menus = Seq(mainMenu, updMenu, toolsMenu, optionsMenu, statusMenu)
       } else if (a.value.text() == "Packages") {
-        menuBar.menus = Seq(mainMenu, pkgsMenu, toolsMenu, statusMenu)
+        menuBar.menus = Seq(mainMenu, pkgsMenu, toolsMenu, optionsMenu, statusMenu)
       }
     }
   )
