@@ -47,6 +47,7 @@ import scalafx.collections.ObservableMap
 import spray.json._
 import TeXLive.JsonProtocol._
 
+// TODO deal with problems on startup like broken $locations which sends java to max CPU
 // TODO after update single package the package details view is not updated
 // TODO missing sub-packages for texlive.infra
 // TODO installation of collection line-updates the pkg display from Not-Installed to Installed
