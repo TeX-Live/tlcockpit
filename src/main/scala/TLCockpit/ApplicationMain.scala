@@ -49,7 +49,6 @@ import TeXLive.JsonProtocol._
 
 // TODO after update single package the package details view is not updated
 // TODO implement general options (tlpdb options)
-// TODO implement paper configuration
 // TODO missing sub-packages for texlive.infra
 // TODO installation of collection line-updates the pkg display from Not-Installed to Installed
 // TODO when installing a collection list the additionally installed packages, too
@@ -71,7 +70,7 @@ object ApplicationMain extends JFXApp {
 
   val tlpkgs: ObservableMap[String, TLPackage] = ObservableMap[String,TLPackage]()
   val pkgs: ObservableMap[String, TLPackageDisplay] = ObservableMap[String, TLPackageDisplay]()
-  val upds: ObservableMap[String, TLUpdate] = ObservableMap[String, TLUpdate]()
+  val upds: ObservableMap[String, TLUpdateDisplay] = ObservableMap[String, TLUpdateDisplay]()
   val bkps: ObservableMap[String, Map[String, TLBackupDisplay]] = ObservableMap[String, Map[String,TLBackupDisplay]]()  // pkgname -> (version -> TLBackup)*
 
   val logText: ObservableBuffer[String] = ObservableBuffer[String]()
@@ -253,7 +252,7 @@ object ApplicationMain extends JFXApp {
 
   def callback_update(s: String): Unit = {
     var prevUpdName = ""
-    var prevUpdPkg  = new TLUpdate("","","","","","")
+    var prevUpdPkg  = new TLUpdateDisplay("","","","","","")
     stdoutLineUpdateFunc = (l:String) => {
       // println("DEBUG line update: " + l + "=")
       l match {
@@ -522,10 +521,10 @@ object ApplicationMain extends JFXApp {
       val infraAvailable = upds.keys.exists(_.startsWith("texlive.infra"))
       // only allow for updates of other packages when no infra update available
       val updatesAvailable = !infraAvailable && upds.keys.exists(p => !p.startsWith("texlive.infra") && !(p == "root"))
-      val newroot = new TreeItem[TLUpdate](new TLUpdate("root", "", "", "", "", "")) {
+      val newroot = new TreeItem[TLUpdateDisplay](new TLUpdateDisplay("root", "", "", "", "", "")) {
         children = upds
           .filter(_._1 != "root")
-          .map(p => new TreeItem[TLUpdate](p._2))
+          .map(p => new TreeItem[TLUpdateDisplay](p._2))
           .toArray
           .sortBy(_.value.value.name.value)
       }
@@ -605,7 +604,7 @@ object ApplicationMain extends JFXApp {
     })
   }
 
-  def parse_one_update_line(l: String): TLUpdate = {
+  def parse_one_update_line(l: String): TLUpdateDisplay = {
     val fields = l.split("\t")
     val pkgname = fields(0)
     val status = fields(1) match {
@@ -627,7 +626,7 @@ object ApplicationMain extends JFXApp {
     val rctanv = fields(9)
     val tlpkg: TLPackageDisplay = pkgs(pkgname)
     val shortdesc = tlpkg.shortdesc.value
-    new TLUpdate(pkgname, status,
+    new TLUpdateDisplay(pkgname, status,
       localrev + {
         if (lctanv != "-") s" ($lctanv)" else ""
       },
@@ -641,7 +640,7 @@ object ApplicationMain extends JFXApp {
     tlmgr_send("update --list", (status, lines) => {
       // println(s"DEBUG got updates length ${lines.length}")
       // println(s"DEBUG tlmgr last output = ${lines}")
-      val newupds: Map[String, TLUpdate] = lines.filter { l =>
+      val newupds: Map[String, TLUpdateDisplay] = lines.filter { l =>
         l match {
           case u if u.startsWith("location-url") => false
           case u if u.startsWith("total-bytes") => false
@@ -669,7 +668,7 @@ object ApplicationMain extends JFXApp {
     if (s == "pkgs")
       pkgs("root") = new TLPackageDisplay("root","0","0","","0","")
     else if (s == "upds")
-      upds("root") = new TLUpdate("root", "", "", "", "", "")
+      upds("root") = new TLUpdateDisplay("root", "", "", "", "", "")
     else if (s == "bkps")
       bkps("root") = Map[String,TLBackupDisplay](("0", new TLBackupDisplay("root","0","0")))
   }
@@ -766,6 +765,29 @@ object ApplicationMain extends JFXApp {
   }
 
 
+  def callback_general_options(): Unit = {
+    tlmgr_send("option showall --json", (status, lines) => {
+      val jsonAst = lines.mkString("").parseJson
+      val tlpdopts: TLOptions = jsonAst.convertTo[TLOptions]
+      println("Got tl options = " + tlpdopts)
+      /* Platform.runLater {
+        val dg = new PaperDialog(paperconfs)
+        dg.showAndWait() match {
+          case Some(newPapers) =>
+            // println(s"Got result ${newPapers}")
+            // collect changed settings
+            val changedPapers = newPapers.filter(p => currentPapers(p._1) != p._2)
+            // println(s"Got changed papers ${changedPapers}")
+            changedPapers.foreach(p => {
+              tlmgr_send(s"paper ${p._1} paper ${p._2}", (_,_) => None)
+            })
+          case None =>
+        }
+      } */
+    })
+  }
+
+
   def callback_paper(): Unit = {
     tlmgr_send("paper --json", (status, lines) => {
       val jsonAst = lines.mkString("").parseJson
@@ -789,7 +811,8 @@ object ApplicationMain extends JFXApp {
   }
 
   val optionsMenu: Menu = new Menu("Options") {
-    items = List( // new MenuItem("General ...") { disable = true; onAction = (ae) => not_implemented_info() },
+    items = List(
+      new MenuItem("General ...") { onAction = (ae) => callback_general_options() },
       new MenuItem("Paper ...") { onAction = (ae) => callback_paper() },
       /* new MenuItem("Platforms ...") { disable = true; onAction = (ae) => not_implemented_info() },
       new SeparatorMenuItem,
@@ -824,39 +847,39 @@ object ApplicationMain extends JFXApp {
       )
     }
   }
-  val updateTable: TreeTableView[TLUpdate] = {
-    val colName = new TreeTableColumn[TLUpdate, String] {
+  val updateTable: TreeTableView[TLUpdateDisplay] = {
+    val colName = new TreeTableColumn[TLUpdateDisplay, String] {
       text = "Package"
       cellValueFactory = { _.value.value.value.name }
       prefWidth = 150
     }
-    val colStatus = new TreeTableColumn[TLUpdate, String] {
+    val colStatus = new TreeTableColumn[TLUpdateDisplay, String] {
       text = "Status"
       cellValueFactory = { _.value.value.value.status }
       prefWidth = 120
     }
-    val colDesc = new TreeTableColumn[TLUpdate, String] {
+    val colDesc = new TreeTableColumn[TLUpdateDisplay, String] {
       text = "Description"
       cellValueFactory = { _.value.value.value.shortdesc }
       prefWidth = 300
     }
-    val colLRev = new TreeTableColumn[TLUpdate, String] {
+    val colLRev = new TreeTableColumn[TLUpdateDisplay, String] {
       text = "Local rev"
       cellValueFactory = { _.value.value.value.lrev }
       prefWidth = 100
     }
-    val colRRev = new TreeTableColumn[TLUpdate, String] {
+    val colRRev = new TreeTableColumn[TLUpdateDisplay, String] {
       text = "Remote rev"
       cellValueFactory = { _.value.value.value.rrev }
       prefWidth = 100
     }
-    val colSize = new TreeTableColumn[TLUpdate, String] {
+    val colSize = new TreeTableColumn[TLUpdateDisplay, String] {
       text = "Size"
       cellValueFactory = { _.value.value.value.size }
       prefWidth = 70
     }
-    val table = new TreeTableView[TLUpdate](
-      new TreeItem[TLUpdate](new TLUpdate("root","","","","","")) {
+    val table = new TreeTableView[TLUpdateDisplay](
+      new TreeItem[TLUpdateDisplay](new TLUpdateDisplay("root","","","","","")) {
         expanded = false
       }) {
       columns ++= List(colName, colStatus, colDesc, colLRev, colRRev, colSize)
@@ -867,7 +890,7 @@ object ApplicationMain extends JFXApp {
     table.placeholder = new Label("No updates available")
     table.showRoot = false
     table.rowFactory = { _ =>
-      val row = new TreeTableRow[TLUpdate] {}
+      val row = new TreeTableRow[TLUpdateDisplay] {}
       val infoMI = new MenuItem("Info") {
         onAction = (ae) => new PkgInfoDialog(row.item.value.name.value).showAndWait()
       }
