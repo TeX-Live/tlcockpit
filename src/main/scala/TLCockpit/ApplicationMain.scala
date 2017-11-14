@@ -770,10 +770,20 @@ object ApplicationMain extends JFXApp {
     tlmgr_send("paper --json", (status, lines) => {
       val jsonAst = lines.mkString("").parseJson
       val paperconfs: Map[String, TLPaperConf] = jsonAst.convertTo[List[TLPaperConf]].map { p => (p.program, p) }.toMap
+      val currentPapers: Map[String, String] = paperconfs.mapValues(p => p.options.head)
       Platform.runLater {
         val dg = new PaperDialog(paperconfs)
-        val ret = dg.showAndWait()
-        println("GOT RETURN OF " + ret)
+        dg.showAndWait() match {
+          case Some(newPapers) =>
+            // println(s"Got result ${newPapers}")
+            // collect changed settings
+            val changedPapers = newPapers.filter(p => currentPapers(p._1) != p._2)
+            // println(s"Got changed papers ${changedPapers}")
+            changedPapers.foreach(p => {
+              tlmgr_send(s"paper ${p._1} paper ${p._2}", (_,_) => None)
+            })
+          case None =>
+        }
       }
     })
   }

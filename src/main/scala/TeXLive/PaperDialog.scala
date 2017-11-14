@@ -16,7 +16,7 @@ import scalafx.scene.input.MouseEvent
 import scalafx.scene.layout._
 import scalafx.scene.paint.Color
 
-class PaperDialog(paperconf: Map[String, TLPaperConf]) extends Dialog {
+class PaperDialog(paperconf: Map[String, TLPaperConf])  {
 
   case class Result(selected: Map[String,String])
 
@@ -68,18 +68,25 @@ class PaperDialog(paperconf: Map[String, TLPaperConf]) extends Dialog {
   dialog.height = 1500
   // dialog
 
-  dialog.resultConverter = { dialogButton =>
+  dialog.resultConverter = dialogButton =>
     if (dialogButton == ButtonType.OK)
       Result(cbseq.mapValues(_.value.value))
     else
       null
+
+  def showAndWait(): Option[Map[String,String]] = {
+    val result = dialog.showAndWait()
+
+    result match {
+      case Some(Result(foo)) =>
+        // println("Got resutl " + foo)
+        Some(foo)
+      case Some(foo) =>
+        // println("Got strange result " + foo)
+        None
+      case None =>
+        None
+    }
   }
 
-  def showAndWait(): Any = {
-    val foo: Option[Result] = dialog.showAndWait[Result]()
-  }
-    dialog.showAndWait[Result]() match {
-      case Some(f) => f
-      case None => None
-    }
 }
