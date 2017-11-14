@@ -51,7 +51,6 @@ class PaperDialog(paperconf: Map[String, TLPaperConf])  {
     row + 1
   }
 
-  // TODO buttons for all to a4 and all to letter
   val cbseq: Map[String, ChoiceBox[String]] = paperconf.map { p =>
     val prog: String = p._1
     val opts: TLPaperConf = p._2
@@ -62,11 +61,10 @@ class PaperDialog(paperconf: Map[String, TLPaperConf])  {
     (prog, cb)
   }
 
-  grid.columnConstraints = Seq(new ColumnConstraints(100, 200, 200), new ColumnConstraints(100, 400, 5000, Priority.Always, new HPos(HPos.Left), true))
+  grid.columnConstraints = Seq(new ColumnConstraints(100, 100, 150), new ColumnConstraints(150, 150, 5000, Priority.Always, new HPos(HPos.Left), true))
   dialog.dialogPane().content = grid
-  dialog.width = 600
+  dialog.width = 300
   dialog.height = 1500
-  // dialog
 
   dialog.resultConverter = dialogButton =>
     if (dialogButton == ButtonType.OK)
