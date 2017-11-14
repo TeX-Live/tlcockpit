@@ -34,6 +34,9 @@ case class TLPackage
   available: Boolean
 )
 
+case class TLOption (name: String, description: String, format: String,
+  tlmgrname: String, value: Option[String], default: String)
+
 case class TLOptions
 (
   sys_bin: String,

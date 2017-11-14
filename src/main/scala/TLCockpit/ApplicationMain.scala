@@ -48,7 +48,7 @@ import spray.json._
 import TeXLive.JsonProtocol._
 
 // TODO after update single package the package details view is not updated
-// TODO implement general options (tlpdb options)
+// TODO general options: implement multiple repo dialog
 // TODO missing sub-packages for texlive.infra
 // TODO installation of collection line-updates the pkg display from Not-Installed to Installed
 // TODO when installing a collection list the additionally installed packages, too
@@ -768,22 +768,19 @@ object ApplicationMain extends JFXApp {
   def callback_general_options(): Unit = {
     tlmgr_send("option showall --json", (status, lines) => {
       val jsonAst = lines.mkString("").parseJson
-      val tlpdopts: TLOptions = jsonAst.convertTo[TLOptions]
-      println("Got tl options = " + tlpdopts)
-      /* Platform.runLater {
-        val dg = new PaperDialog(paperconfs)
+      val tlpdopts: List[TLOption] = jsonAst.convertTo[List[TLOption]]
+      // println("Got tl options = " + tlpdopts)
+      Platform.runLater {
+        val dg = new OptionsDialog(tlpdopts)
         dg.showAndWait() match {
-          case Some(newPapers) =>
-            // println(s"Got result ${newPapers}")
-            // collect changed settings
-            val changedPapers = newPapers.filter(p => currentPapers(p._1) != p._2)
-            // println(s"Got changed papers ${changedPapers}")
-            changedPapers.foreach(p => {
-              tlmgr_send(s"paper ${p._1} paper ${p._2}", (_,_) => None)
+          case Some(changedOpts) =>
+            // println(s"got changes ${changedOpts}")
+            changedOpts.foreach(p => {
+              tlmgr_send(s"option ${p._1} ${p._2}", (_,_) => None)
             })
           case None =>
         }
-      } */
+      }
     })
   }
 

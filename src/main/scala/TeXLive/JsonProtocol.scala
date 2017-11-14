@@ -10,5 +10,6 @@ object JsonProtocol extends DefaultJsonProtocol {
   implicit val tlbackupFormat = jsonFormat3(TLBackup)
   implicit val tlpaperconfFormat = jsonFormat3(TLPaperConf)
   implicit val tloptionsFormat = jsonFormat14(TLOptions)
+  implicit val tloptionFormat = jsonFormat6(TLOption)
 }
 
