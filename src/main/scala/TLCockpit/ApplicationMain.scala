@@ -48,7 +48,6 @@ import spray.json._
 import TeXLive.JsonProtocol._
 
 // TODO after update single package the package details view is not updated
-// TODO general options: implement multiple repo dialog
 // TODO missing sub-packages for texlive.infra
 // TODO installation of collection line-updates the pkg display from Not-Installed to Installed
 // TODO when installing a collection list the additionally installed packages, too
@@ -776,7 +775,11 @@ object ApplicationMain extends JFXApp {
           case Some(changedOpts) =>
             // println(s"got changes ${changedOpts}")
             changedOpts.foreach(p => {
-              tlmgr_send(s"option ${p._1} ${p._2}", (_,_) => None)
+              // don't believe it or not, but \" does *NOT* work in Scala in
+              // interpolated strings, and it seems there is no better way
+              // than that one ...
+              println(s"D: setting ${p._1} to ${p._2}")
+              tlmgr_send(s"option ${p._1} ${'"'}${p._2}${'"'}", (_,_) => None)
             })
           case None =>
         }

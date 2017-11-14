@@ -68,13 +68,28 @@ class OptionsDialog(opts: List[TLOption]) {
       }
     else if (tlopt.format == "u") {
       val locs = value.split(' ')
-      if (locs.length == 1)
-        new TextField() {
-          text = value
-          text.onChange( (_,_,newVal) => { changedValues(nm) = newVal })
+      val locsmap = if (locs.length == 1) Map[String,String](("main", value))
+      else locs.map(p => {
+        val uu = p.split('#')
+        (uu(1), uu(0))
+      }).toMap
+      val buttonStr = if (locs.length == 1) value else "Multiple repository"
+      new Button(buttonStr) {
+        onAction = (event: ActionEvent) => {
+          val dg = new LocationDialog(locsmap)
+          dg.showAndWait() match {
+            case Some(newlocs) =>
+              if (newlocs.toList.length == 1) {
+                changedValues(nm) = newlocs("main")
+                this.text = newlocs("main")
+              } else {
+                changedValues(nm) = newlocs.map(p => p._2 + "#" + p._1).mkString(" ")
+                this.text = "Multiple repository"
+              }
+            case None =>
+          }
         }
-      else
-        new Button("Multiple repository") { onAction = (event: ActionEvent) => not_implemented_info() }
+      }
     } else
       new Label("Unknown setting")
 
