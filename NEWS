@@ -7,6 +7,7 @@ requires tlmgr >= 2017-11-10
 - use tlmgr json output
 - allow ordering packages by name and by collection
 - log and error output separated (Debug area)
+- support for paper configuration and general options (besides multiple repos)
 
 version 0.6 (20171012)
 ----------------------
