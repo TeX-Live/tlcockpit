@@ -16,6 +16,7 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.util.{Failure, Success}
 import scala.sys.process._
 import scalafx.beans.property.BooleanProperty
+import scalafx.scene.text.Font
 // ScalaFX imports
 import scalafx.event.Event
 import scalafx.beans.property.StringProperty
@@ -563,6 +564,11 @@ object ApplicationMain extends JFXApp {
     })
   }
   def update_bkps_list(): Unit = {
+    val tmp = new Label("Loading backups, please wait ...")
+    tmp.wrapText = true
+    tmp.opacity = 0.4f
+    tmp.font = new Font(30f)
+    backupTable.placeholder = tmp
     tlmgr_send("restore --json", (status, lines) => {
       val jsonAst = lines.mkString("").parseJson
       val backups: Map[String, Map[String, TLBackupDisplay]] =
@@ -591,6 +597,11 @@ object ApplicationMain extends JFXApp {
   } */
 
   def update_pkgs_lists():Unit = {
+    val tmp = new Label("Loading database, please wait ...")
+    tmp.wrapText = true
+    tmp.opacity = 0.4f
+    tmp.font = new Font(30f)
+    packageTable.placeholder = tmp
     tlmgr_send("info --json", (status, lines) => {
       val jsonAst = lines.mkString("").parseJson
       tlpkgs.clear()
@@ -637,6 +648,11 @@ object ApplicationMain extends JFXApp {
   }
 
   def update_upds_list(): Unit = {
+    val tmp = new Label("Loading updates, please wait ...")
+    tmp.wrapText = true
+    tmp.opacity = 0.4f
+    tmp.font = new Font(30f)
+    updateTable.placeholder = tmp
     tlmgr_send("update --list", (status, lines) => {
       // println(s"DEBUG got updates length ${lines.length}")
       // println(s"DEBUG tlmgr last output = ${lines}")
