@@ -312,12 +312,12 @@ object ApplicationMain extends JFXApp {
 
 
   def do_one_pkg(what: String, pkg: String): Unit = {
-    tlmgr_send(s"$what $pkg", (_,_) => { update_pkgs_lists() })
+    tlmgr_send(s"$what $pkg", (_,_) => { load_tlpdb_update_pkgs() })
   }
 
   def callback_restore_pkg(str: String, rev: String): Unit = {
     tlmgr_send(s"restore --force $str $rev", (_,_) => {
-      update_pkgs_lists()
+      load_tlpdb_update_pkgs()
       update_upds_list()
     })
   }
@@ -569,6 +569,7 @@ object ApplicationMain extends JFXApp {
     tmp.wrapText = true
     tmp.opacity = 0.4f
     tmp.font = new Font(30f)
+    val prevph = backupTable.placeholder.value
     backupTable.placeholder = tmp
     tlmgr_send("restore --json", (status, lines) => {
       val jsonAst = lines.mkString("").parseJson
@@ -580,6 +581,7 @@ object ApplicationMain extends JFXApp {
       bkps.clear()
       bkps ++= backups
       trigger_update("bkps")
+      backupTable.placeholder = prevph
     })
   }
   /* def update_pkgs_lists():Unit = {
@@ -597,22 +599,36 @@ object ApplicationMain extends JFXApp {
     })
   } */
 
-  def update_pkgs_lists():Unit = {
+  def update_pkgs(): Unit = {
+    val newpkgs: Map[String, TLPackageDisplay] =
+      tlpkgs
+          .filter(p => p._1.contains(searchEntry.text.value))
+          .map { p =>
+                    (p._2.name,
+                      new TLPackageDisplay(
+                        p._2.name, p._2.lrev.toString, p._2.rrev.toString,
+                        p._2.shortdesc.getOrElse(""), "0", if (p._2.installed) "Installed" else "Not installed"
+                      )
+                    )
+          }.toMap
+    pkgs.clear()
+    pkgs ++= newpkgs
+    trigger_update("pkgs")
+  }
+
+  def load_tlpdb_update_pkgs():Unit = {
     val tmp = new Label("Loading database, please wait ...")
     tmp.wrapText = true
     tmp.opacity = 0.4f
     tmp.font = new Font(30f)
+    val prevph = packageTable.placeholder.value
     packageTable.placeholder = tmp
     tlmgr_send("info --json", (status, lines) => {
       val jsonAst = lines.mkString("").parseJson
       tlpkgs.clear()
       tlpkgs ++= jsonAst.convertTo[List[TLPackage]].map { p => (p.name, p)}
-      val newpkgs: Map[String, TLPackageDisplay] = tlpkgs.map { p =>
-        (p._2.name, new TLPackageDisplay(p._2.name, p._2.lrev.toString, p._2.rrev.toString, p._2.shortdesc.getOrElse(""), "0", if (p._2.installed) "Installed" else "Not installed"))
-      }.toMap
-      pkgs.clear()
-      pkgs ++= newpkgs
-      trigger_update("pkgs")
+      update_pkgs()
+      packageTable.placeholder = prevph
     })
   }
 
@@ -653,6 +669,7 @@ object ApplicationMain extends JFXApp {
     tmp.wrapText = true
     tmp.opacity = 0.4f
     tmp.font = new Font(30f)
+    val prevph = updateTable.placeholder.value
     updateTable.placeholder = tmp
     tlmgr_send("update --list", (status, lines) => {
       // println(s"DEBUG got updates length ${lines.length}")
@@ -677,6 +694,7 @@ object ApplicationMain extends JFXApp {
         upds ++= newupds
       }
       trigger_update("upds")
+      updateTable.placeholder = prevph
     })
   }
 
@@ -758,8 +776,18 @@ object ApplicationMain extends JFXApp {
       }
     )
   }
-  val ViewByPkg = new RadioMenuItem("by package name") { onAction = (ae) => trigger_update("pkgs") }
-  val ViewByCol = new RadioMenuItem("by collections")  { onAction = (ae) => trigger_update("pkgs") }
+  val ViewByPkg = new RadioMenuItem("by package name") {
+    onAction = (ae) => {
+      searchEntry.text = ""
+      update_pkgs()
+    }
+  }
+  val ViewByCol = new RadioMenuItem("by collections")  {
+    onAction = (ae) => {
+      searchEntry.text = ""
+      update_pkgs()
+    }
+  }
   ViewByPkg.selected = true
   ViewByCol.selected = false
   val pkgsMenu: Menu = new Menu("Packages") {
@@ -1017,6 +1045,9 @@ object ApplicationMain extends JFXApp {
   }
   val searchEntry = new TextField()
   searchEntry.hgrow = Priority.Sometimes
+  searchEntry.onKeyPressed = {
+    (ae: KeyEvent) => if (ae.code == KeyCode.Enter) update_pkgs()
+  }
   val searchBox = new HBox {
     children = Seq(
       new Label("Search:") {
@@ -1025,10 +1056,13 @@ object ApplicationMain extends JFXApp {
       },
       searchEntry,
       new Button("Go") {
-        onAction = _ => trigger_update("pkg")
+        onAction = _ => update_pkgs()
       },
       new Button("Reset") {
-        onAction = _ => searchEntry.text = ""
+        onAction = _ => {
+          searchEntry.text = ""
+          update_pkgs()
+        }
       }
     )
     alignment = Pos.Center
@@ -1256,7 +1290,7 @@ object ApplicationMain extends JFXApp {
     pkgs.clear()
     upds.clear()
     bkps.clear()
-    update_pkgs_lists()
+    load_tlpdb_update_pkgs()
   }
 
 
