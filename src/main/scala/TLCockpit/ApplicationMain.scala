@@ -1015,6 +1015,30 @@ object ApplicationMain extends JFXApp {
     }
     table
   }
+  val searchEntry = new TextField()
+  searchEntry.hgrow = Priority.Sometimes
+  val searchBox = new HBox {
+    children = Seq(
+      new Label("Search:") {
+        vgrow = Priority.Always
+        alignmentInParent = Pos.CenterLeft
+      },
+      searchEntry,
+      new Button("Go") {
+        onAction = _ => trigger_update("pkg")
+      },
+      new Button("Reset") {
+        onAction = _ => searchEntry.text = ""
+      }
+    )
+    alignment = Pos.Center
+    padding = Insets(10)
+    spacing = 10
+  }
+  val pkgsContainer = new VBox {
+    children = Seq(packageTable,searchBox)
+  }
+
   val pkgstabs: TabPane = new TabPane {
     minWidth = 400
     vgrow = Priority.Always
@@ -1022,7 +1046,7 @@ object ApplicationMain extends JFXApp {
       new Tab {
         text = "Packages"
         closable = false
-        content = packageTable
+        content = pkgsContainer
       },
       new Tab {
         text = "Updates"
@@ -1036,6 +1060,9 @@ object ApplicationMain extends JFXApp {
       }
     )
   }
+  // val spacerMenu: Menu = new Menu("                        ")
+  // spacerMenu.disable = true
+  // spacerMenu.hgrow = Priority.Always
   val menuBar: MenuBar = new MenuBar {
     useSystemMenuBar = true
     // menus.addAll(mainMenu, optionsMenu, helpMenu)
