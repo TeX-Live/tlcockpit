@@ -1087,6 +1087,8 @@ object ApplicationMain extends JFXApp {
 
   stage.onCloseRequest = (e: Event) => callback_quit()
 
+  stage.width = 800
+
 
   var currentPromise = Promise[(String,Array[String])]()
   val pendingJobs = scala.collection.mutable.Queue[(String,(String, Array[String]) => Unit)]()
