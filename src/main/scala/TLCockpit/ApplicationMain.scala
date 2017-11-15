@@ -48,7 +48,6 @@ import scalafx.collections.ObservableMap
 import spray.json._
 import TeXLive.JsonProtocol._
 
-// TODO deal with problems on startup like broken $locations which sends java to max CPU
 // TODO after update single package the package details view is not updated
 // TODO missing sub-packages for texlive.infra
 // TODO installation of collection line-updates the pkg display from Not-Installed to Installed
@@ -1096,47 +1095,82 @@ object ApplicationMain extends JFXApp {
       (s: String) => outputLine.put(s),
       (s: String) => errorLine.put(s)
     )
+    /* val tlmgrMonitor = Future {
+      while (true) {
+        if (!tlmgr.isAlive) {
+          println("TLMGR HAS DIED!!!!")
+          // Platform.exit()
+          // sys.exit(1)
+        }
+        Thread.sleep(5000)
+      }
+    }*/
     val stdoutFuture = Future {
       val tlmgrOutput = ArrayBuffer[String]()
       var tlmgrStatus = ""
-      while (true) {
+      var alive = true
+      while (alive) {
         val s = outputLine.take
-        //println(s"DEBUG: got " + s)
-        if (s == "OK") {
-          tlmgrStatus = s
-        } else if (s == "ERROR") {
-          tlmgrStatus = s
-        } else if (s == "tlmgr> ") {
-          // println("DEBUG: fulfilling current promise!")
-          currentPromise.success((tlmgrStatus,tlmgrOutput.toArray))
-          tlmgrStatus = ""
-          tlmgrOutput.clear()
-          tlmgrBusy.value = false
-          if (pendingJobs.nonEmpty) {
-            val nextCmd = pendingJobs.dequeue()
-            tlmgr_run_one_cmd(nextCmd._1, nextCmd._2)
-          }
+        if (s == null) {
+          alive = false
+          // println("GOT NULL from outputline tlmgr dead???")
         } else {
-          tlmgrOutput += s
-          stdoutLineUpdateFunc(s)
+          //println(s"DEBUG: got " + s)
+          if (s == "OK") {
+            tlmgrStatus = s
+          } else if (s == "ERROR") {
+            tlmgrStatus = s
+          } else if (s == "tlmgr> ") {
+            // println("DEBUG: fulfilling current promise!")
+            currentPromise.success((tlmgrStatus, tlmgrOutput.toArray))
+            tlmgrStatus = ""
+            tlmgrOutput.clear()
+            tlmgrBusy.value = false
+            if (pendingJobs.nonEmpty) {
+              val nextCmd = pendingJobs.dequeue()
+              tlmgr_run_one_cmd(nextCmd._1, nextCmd._2)
+            }
+          } else {
+            tlmgrOutput += s
+            stdoutLineUpdateFunc(s)
+          }
         }
       }
     }
     tlmgrBusy.onChange({ Platform.runLater{ statusMenu.text = "Status: " + (if (tlmgrBusy.value) "Busy" else "Idle") }})
     stdoutFuture.onComplete {
-      case Success(value) => println(s"Got the callback, meaning = $value")
+      case Success(value) =>
+        // println(s"tlmgr stdout reader terminated: ${value}")
+        Platform.runLater {
+          outerrpane.expanded = true
+          outerrtabs.selectionModel().select(1)
+          errorfield.scrollTop = Double.MaxValue
+          logfield.scrollTop = Double.MaxValue
+          new Alert(AlertType.Error) {
+            initOwner(stage)
+            title = "TeX Live Manager tlmgr has terminated"
+            headerText = "TeX Live Manager tlmgr has terminated - we cannot continue"
+            contentText = "Please inspect the debug output in the main window lower pane!"
+          }.showAndWait()
+          // Platform.exit()
+          // sys.exit(1)
+        }
       case Failure(e) =>
         errorText += "lineUpdateFunc(stdout) thread got interrupted -- probably old tlmgr, ignoring it!"
         //e.printStackTrace
     }
     val stderrFuture = Future {
-      while (true) {
+      var alive = true
+      while (alive) {
         val s = errorLine.take
-        stderrLineUpdateFunc(s)
+        if (s == null)
+          alive = false
+        else
+          stderrLineUpdateFunc(s)
       }
     }
     stderrFuture.onComplete {
-      case Success(value) => println(s"Got the callback, meaning = $value")
+      case Success(value) => // println(s"tlmgr stderr reader terminated: ${value}")
       case Failure(e) =>
         errorText += "lineUpdateFunc(stderr) thread got interrupted -- probably old tlmgr, ignoring it!"
       //e.printStackTrace
@@ -1181,7 +1215,11 @@ object ApplicationMain extends JFXApp {
   }
 
   def tlmgr_post_init():Unit = {
-    tlmgr.start_process()
+    if (!tlmgr.start_process()) {
+      println("Cannot start tlmgr process, terminating!")
+      Platform.exit()
+      sys.exit(1)
+    }
     // Thread.sleep(1000)
     // update_pkg_lists_to_be_renamed() // this is async done
     pkgs.clear()

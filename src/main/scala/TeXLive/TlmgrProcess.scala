@@ -30,13 +30,22 @@ class TlmgrProcess(updout: String => Unit, upderr: String => Unit) {
     }
   }
 
-  def start_process(): Unit = {
+  def isAlive(): Boolean = {
+    if (process != null)
+      process.isAlive()
+    else
+      // return true on not-started process
+      true
+  }
+
+  def start_process(): Boolean = {
     // process creation
     if (process == null) {
       val procIO = new ProcessIO(inputFn(_), outputFn(_, updout), outputFn(_, upderr))
       val processBuilder: ProcessBuilder = Seq({if (isWindows) "tlmgr.bat" else "tlmgr"}, "-v", "--machine-readable", "shell")
       process = processBuilder.run(procIO)
     }
+    process.isAlive()
   }
 
   def cleanup(): Unit = {
