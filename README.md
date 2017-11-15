@@ -58,24 +58,37 @@ writing Scala and my style is horrible ;-)
 Screenshots
 -----------
 
-(permanently outdated)
+Starting up TLCockpit
+
+![Loading screen](screenshots/tlcockpit-loading.jpg)
 
 Package listing
 
-![Package listing view](screenshots/pkgs-view.jpg)
+![Package listing view](screenshots/tlcockpit-packages.jpg)
+
+View packages by collections
+
+![Packages by collections](screenshots/tlcockpit-collections.jpg)
 
 Updates listing
 
-![Updates listing view](screenshots/update-view.jpg)
+![Updates listing view](screenshots/tlcockpit-updates.jpg)
 
 Backup/Restore listing
 
-![Backup listing view](screenshots/backup-view.jpg)
+![Backup listing view](screenshots/tlcockpit-backups.jpg)
 
 Package details
 
-![Package details](screenshots/pkg-details.png)
+![Package details](screenshots/tlcockpit-pkgdetails.jpg)
 
+Configuration dialog
+
+![Config screen](screenshots/tlcockpit-config.jpg)
+
+Paper setting dialog
+
+![Config screen](screenshots/tlcockpit-paper.jpg)
 
 License
 -------
