@@ -9,6 +9,7 @@ requires tlmgr >= 2017-11-15
 - log and error output separated (Debug area)
 - support for paper configuration and general options
 - deal with dying tlmgr
+- add search capability (searches package names and sortdesc)
 
 version 0.6 (20171012)
 ----------------------
