@@ -602,7 +602,11 @@ object ApplicationMain extends JFXApp {
   def update_pkgs(): Unit = {
     val newpkgs: Map[String, TLPackageDisplay] =
       tlpkgs
-          .filter(p => p._1.contains(searchEntry.text.value))
+          .filter { p =>
+            val searchTerm = searchEntry.text.value.toLowerCase
+            p._1.toLowerCase.contains(searchTerm) ||
+            p._2.shortdesc.getOrElse("").toLowerCase.contains(searchTerm)
+          }
           .map { p =>
                     (p._2.name,
                       new TLPackageDisplay(
