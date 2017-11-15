@@ -312,13 +312,13 @@ object ApplicationMain extends JFXApp {
 
 
   def do_one_pkg(what: String, pkg: String): Unit = {
-    tlmgr_send(s"$what $pkg", (_,_) => { load_tlpdb_update_pkgs() })
+    tlmgr_send(s"$what $pkg", (_,_) => { load_tlpdb_update_pkgs_view() })
   }
 
   def callback_restore_pkg(str: String, rev: String): Unit = {
     tlmgr_send(s"restore --force $str $rev", (_,_) => {
-      load_tlpdb_update_pkgs()
-      update_upds_list()
+      load_tlpdb_update_pkgs_view()
+      load_updates_update_upds_view()
     })
   }
 
@@ -550,21 +550,7 @@ object ApplicationMain extends JFXApp {
     }.showAndWait()
   }
 
-  def update_bkps_list_old(): Unit = {
-    tlmgr_send("restore", (status, lines) => {
-      // lines.drop(1).foreach(println(_))
-      val newbkps: Map[String, Map[String, TLBackupDisplay]] = lines.drop(1).map { (l: String) =>
-        val fields = l.split("[ ():]", -1).filter(_.nonEmpty)
-        val pkgname = fields(0)
-        val rests: Array[Array[String]] = fields.drop(1).sliding(4, 4).toArray
-        (pkgname, rests.map({ p => (p(1), new TLBackupDisplay(pkgname, p(0), p(1) + " " + p(2) + ":" + p(3)))}).toMap)
-      }.toMap
-      bkps.clear()
-      bkps ++= newbkps
-      trigger_update("bkps")
-    })
-  }
-  def update_bkps_list(): Unit = {
+  def load_backups_update_bkps_view(): Unit = {
     val tmp = new Label("Loading backups, please wait ...")
     tmp.wrapText = true
     tmp.opacity = 0.4f
@@ -584,22 +570,8 @@ object ApplicationMain extends JFXApp {
       backupTable.placeholder = prevph
     })
   }
-  /* def update_pkgs_lists():Unit = {
-    tlmgr_send("info --data name,localrev,remoterev,shortdesc,size,installed", (status, s) => {
-      val newpkgs = s.map { (line: String) =>
-        val fields: Array[String] = line.split(",(?=(?:[^\"]*\"[^\"]*\")*[^\"]*$)", -1)
-        val sd = fields(3)
-        val shortdesc = if (sd.isEmpty) "" else sd.substring(1).dropRight(1).replace("""\"""",""""""")
-        val inst = if (fields(5) == "1") "Installed" else "Not installed"
-        (fields(0), new TLPackageDisplay(fields(0), fields(1), fields(2), shortdesc, fields(4), inst))
-      }.toMap
-      pkgs.clear()
-      pkgs ++= newpkgs
-      trigger_update("pkgs")
-    })
-  } */
 
-  def update_pkgs(): Unit = {
+  def update_pkgs_view(): Unit = {
     val newpkgs: Map[String, TLPackageDisplay] =
       tlpkgs
           .filter { p =>
@@ -620,7 +592,7 @@ object ApplicationMain extends JFXApp {
     trigger_update("pkgs")
   }
 
-  def load_tlpdb_update_pkgs():Unit = {
+  def load_tlpdb_update_pkgs_view():Unit = {
     val tmp = new Label("Loading database, please wait ...")
     tmp.wrapText = true
     tmp.opacity = 0.4f
@@ -631,7 +603,7 @@ object ApplicationMain extends JFXApp {
       val jsonAst = lines.mkString("").parseJson
       tlpkgs.clear()
       tlpkgs ++= jsonAst.convertTo[List[TLPackage]].map { p => (p.name, p)}
-      update_pkgs()
+      update_pkgs_view()
       packageTable.placeholder = prevph
     })
   }
@@ -668,7 +640,7 @@ object ApplicationMain extends JFXApp {
       shortdesc, size)
   }
 
-  def update_upds_list(): Unit = {
+  def load_updates_update_upds_view(): Unit = {
     val tmp = new Label("Loading updates, please wait ...")
     tmp.wrapText = true
     tmp.opacity = 0.4f
@@ -783,13 +755,13 @@ object ApplicationMain extends JFXApp {
   val ViewByPkg = new RadioMenuItem("by package name") {
     onAction = (ae) => {
       searchEntry.text = ""
-      update_pkgs()
+      update_pkgs_view()
     }
   }
   val ViewByCol = new RadioMenuItem("by collections")  {
     onAction = (ae) => {
       searchEntry.text = ""
-      update_pkgs()
+      update_pkgs_view()
     }
   }
   ViewByPkg.selected = true
@@ -818,17 +790,14 @@ object ApplicationMain extends JFXApp {
     tlmgr_send("option showall --json", (status, lines) => {
       val jsonAst = lines.mkString("").parseJson
       val tlpdopts: List[TLOption] = jsonAst.convertTo[List[TLOption]]
-      // println("Got tl options = " + tlpdopts)
       Platform.runLater {
         val dg = new OptionsDialog(tlpdopts)
         dg.showAndWait() match {
           case Some(changedOpts) =>
-            // println(s"got changes ${changedOpts}")
             changedOpts.foreach(p => {
               // don't believe it or not, but \" does *NOT* work in Scala in
               // interpolated strings, and it seems there is no better way
               // than that one ...
-              println(s"D: setting ${p._1} to ${p._2}")
               tlmgr_send(s"option ${p._1} ${'"'}${p._2}${'"'}", (_,_) => None)
             })
           case None =>
@@ -1050,7 +1019,7 @@ object ApplicationMain extends JFXApp {
   val searchEntry = new TextField()
   searchEntry.hgrow = Priority.Sometimes
   searchEntry.onKeyPressed = {
-    (ae: KeyEvent) => if (ae.code == KeyCode.Enter) update_pkgs()
+    (ae: KeyEvent) => if (ae.code == KeyCode.Enter) update_pkgs_view()
   }
   val searchBox = new HBox {
     children = Seq(
@@ -1060,12 +1029,12 @@ object ApplicationMain extends JFXApp {
       },
       searchEntry,
       new Button("Go") {
-        onAction = _ => update_pkgs()
+        onAction = _ => update_pkgs_view()
       },
       new Button("Reset") {
         onAction = _ => {
           searchEntry.text = ""
-          update_pkgs()
+          update_pkgs_view()
         }
       }
     )
@@ -1110,12 +1079,12 @@ object ApplicationMain extends JFXApp {
     (a,b,c) => {
       if (a.value.text() == "Backups") {
         if (backupTable.root.value.children.length == 0)
-          update_bkps_list()
+          load_backups_update_bkps_view()
         menuBar.menus = Seq(mainMenu, toolsMenu, optionsMenu, statusMenu)
       } else if (a.value.text() == "Updates") {
         // only update if not done already
         if (updateTable.root.value.children.length == 0)
-          update_upds_list()
+          load_updates_update_upds_view()
         menuBar.menus = Seq(mainMenu, updMenu, toolsMenu, optionsMenu, statusMenu)
       } else if (a.value.text() == "Packages") {
         menuBar.menus = Seq(mainMenu, pkgsMenu, toolsMenu, optionsMenu, statusMenu)
@@ -1294,7 +1263,7 @@ object ApplicationMain extends JFXApp {
     pkgs.clear()
     upds.clear()
     bkps.clear()
-    load_tlpdb_update_pkgs()
+    load_tlpdb_update_pkgs_view()
   }
 
 
