@@ -487,7 +487,9 @@ object ApplicationMain extends JFXApp {
           if (tlpkgs(pkg._1).category == "Collection") {
             val foo: immutable.Seq[String] = tlpkgs(pkg._1).depends
             colbuf(pkg._1) = ArrayBuffer[TLPackageDisplay]()
-            colbuf(pkg._1) ++= foo.map(pkgbuf(_))
+            // TODO we need to deal with packages that get removed!!!
+            // for now just make sure we don't add them here!
+            colbuf(pkg._1) ++= foo.filter(pkgbuf.contains(_)).map(pkgbuf(_))
           }
         } else if (pkg._1 == "root") {
           // do nothing
@@ -628,7 +630,7 @@ object ApplicationMain extends JFXApp {
     }
     val localrev = fields(2)
     val serverrev = fields(3)
-    val size = humanReadableByteSize(fields(4).toLong)
+    val size = if (fields(1) == "d") "0" else humanReadableByteSize(fields(4).toLong)
     val runtime = fields(5)
     val esttot = fields(6)
     val tag = fields(7)

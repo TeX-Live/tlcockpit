@@ -25,8 +25,8 @@ call as in `java -jar PATH/TO/tlcockpit.jar`.
 
 Requirements
 ------------
-You need at least `tlmgr` from after 2017-12-10, in TeX Live language at least
-version 45730  or `texlive.infra`.
+You need at least `tlmgr` from after 2017-11-15, in TeX Live language at least
+version 45806  or `texlive.infra`.
 
 A recent Java installation that includes JavaFX is required. If you see
 errors like
