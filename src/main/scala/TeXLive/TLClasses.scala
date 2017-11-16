@@ -29,7 +29,6 @@ case class TLPackage
   cataloguedata: CatalogueData,
   depends: List[String],
   catalogue: Option[String],
-  var relocated: Boolean,
   var installed: Boolean,
   available: Boolean
 )

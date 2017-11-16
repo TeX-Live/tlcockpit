@@ -19,7 +19,7 @@ import scalafx.beans.property.BooleanProperty
 import scalafx.scene.text.Font
 // ScalaFX imports
 import scalafx.event.Event
-import scalafx.beans.property.StringProperty
+import scalafx.beans.property.{ObjectProperty, StringProperty}
 import scalafx.geometry.{Pos, Orientation}
 import scalafx.scene.Cursor
 import scalafx.scene.control.Alert.AlertType
@@ -266,14 +266,15 @@ object ApplicationMain extends JFXApp {
               upds.remove(prevName)
             } else {
               tlpkgs(prevName).installed = true
-              tlpkgs(prevName).relocated = false
             }
             pkgs(prevName).lrev = pkgs(prevName).rrev
             pkgs(prevName).installed = StringProperty("Installed") // TODO support Mixed!!!
             tlpkgs(prevName).lrev = tlpkgs(prevName).rrev
             Platform.runLater {
-              if (mode == "update") trigger_update("upds")
-              trigger_update("pkgs")
+              // if (mode == "update") trigger_update("upds")
+              // trigger_update("pkgs")
+              if (mode == "update") updateTable.refresh()
+              packageTable.refresh()
             }
           }
           if (u.startsWith("end-of-updates")) {
@@ -311,9 +312,57 @@ object ApplicationMain extends JFXApp {
       }
     })
   }
+  /*
+  removing a package output:
+> remove collection-langitalian
+tlmgr: removing collection-langitalian
+tlmgr: removing package amsldoc-it
+tlmgr: removing package amsmath-it
+tlmgr: removing package amsthdoc-it
+tlmgr: removing package codicefiscaleitaliano
+tlmgr: removing package fancyhdr-it
+tlmgr: removing package fixltxhyph
+tlmgr: removing package frontespizio
+tlmgr: removing package itnumpar
+tlmgr: removing package l2tabu-italian
+tlmgr: removing package latex4wp-it
+tlmgr: removing package layaureo
+tlmgr: removing package lshort-italian
+tlmgr: removing package psfrag-italian
+tlmgr: removing package texlive-it
+tlmgr: ultimately removed these packages: amsldoc-it amsmath-it amsthdoc-it codicefiscaleitaliano collection-langitalian fancyhdr-it fixltxhyph frontespizio itnumpar l2tabu-italian latex4wp-it layaureo lshort-italian psfrag-italian texlive-it
+running mktexlsr ...
+done running mktexlsr.
+OK
+
+   */
   def callback_remove(pkg: String): Unit = {
-    tlmgr_send(s"remove $pkg", (_,_) => { load_tlpdb_update_pkgs_view() })
+    var prevName = ""
+    stdoutLineUpdateFunc = (l: String) => {
+      if (prevName != "") {
+        tlpkgs(prevName).installed = false
+        pkgs(prevName).lrev = ObjectProperty[Int](0)
+        pkgs(prevName).installed = StringProperty("Not installed")
+        tlpkgs(prevName).lrev = 0
+        Platform.runLater {
+          packageTable.refresh()
+        }
+      }
+      if (l.startsWith("tlmgr: ultimately removed")) {
+        // nothing to be done, all has been done above
+        // println("DEBUG got end of updates")
+      } else if (l.startsWith("tlmgr: removing package ")) {
+        val pkgname = l.replace("tlmgr: removing package ","")
+        pkgs(pkgname).installed = StringProperty("Removing ...")
+        packageTable.refresh()
+        prevName = pkgname
+      } else {
+        errorText.append(s"Cannot parse output of removal: ${l}\n")
+      }
+    }
+    tlmgr_send(s"remove $pkg", (_, _) => { stdoutLineUpdateFunc = defaultStdoutLineUpdateFunc })
   }
+
   def callback_install(pkg: String): Unit = {
     set_line_update_function("install")
     tlmgr_send(s"install $pkg", (_,_) => { stdoutLineUpdateFunc = defaultStdoutLineUpdateFunc })
@@ -577,19 +626,19 @@ object ApplicationMain extends JFXApp {
   def update_pkgs_view(): Unit = {
     val newpkgs: Map[String, TLPackageDisplay] =
       tlpkgs
-          .filter { p =>
-            val searchTerm = searchEntry.text.value.toLowerCase
-            p._1.toLowerCase.contains(searchTerm) ||
+        .filter { p =>
+          val searchTerm = searchEntry.text.value.toLowerCase
+          p._1.toLowerCase.contains(searchTerm) ||
             p._2.shortdesc.getOrElse("").toLowerCase.contains(searchTerm)
-          }
-          .map { p =>
-                    (p._2.name,
-                      new TLPackageDisplay(
-                        p._2.name, p._2.lrev.toString, p._2.rrev.toString,
-                        p._2.shortdesc.getOrElse(""), "0", if (p._2.installed) "Installed" else "Not installed"
-                      )
-                    )
-          }.toMap
+        }
+        .map { p =>
+          (p._2.name,
+            new TLPackageDisplay(
+              p._2.name, p._2.lrev.toString, p._2.rrev.toString,
+              p._2.shortdesc.getOrElse(""), "0", if (p._2.installed) "Installed" else "Not installed"
+            )
+          )
+        }.toMap
     pkgs.clear()
     pkgs ++= newpkgs
     trigger_update("pkgs")
