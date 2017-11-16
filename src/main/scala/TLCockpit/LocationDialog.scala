@@ -76,6 +76,7 @@ class LocationDialog(locs: Map[String,String]) {
     crow += 1
     // println(s"adding addButton at row ${crow}")
     grid.add(addButton, 2, crow)
+    dialog.dialogPane.value.scene.value.window.value.sizeToScene()
   }
   grid.add(addButton, 2, crow)
 
