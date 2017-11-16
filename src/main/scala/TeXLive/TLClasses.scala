@@ -15,7 +15,7 @@ case class TLPackage
   name: String,
   shortdesc: Option[String],
   longdesc: Option[String],
-  lrev: Long,
+  var lrev: Long,
   rrev: Long,
   category: String,
   docfiles: List[DocFile],
@@ -29,8 +29,8 @@ case class TLPackage
   cataloguedata: CatalogueData,
   depends: List[String],
   catalogue: Option[String],
-  relocated: Boolean,
-  installed: Boolean,
+  var relocated: Boolean,
+  var installed: Boolean,
   available: Boolean
 )
 

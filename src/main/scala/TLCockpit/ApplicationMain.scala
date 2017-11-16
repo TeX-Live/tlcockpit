@@ -48,10 +48,8 @@ import scalafx.collections.ObservableMap
 import spray.json._
 import TeXLive.JsonProtocol._
 
-// TODO after update single package the package details view is not updated
 // TODO missing sub-packages for texlive.infra
-// TODO installation of collection line-updates the pkg display from Not-Installed to Installed
-// TODO when installing a collection list the additionally installed packages, too
+// TODO line-by-line updates for removal
 // TODO TreeTableView indentation is lazy
 
 object ApplicationMain extends JFXApp {
@@ -250,9 +248,8 @@ object ApplicationMain extends JFXApp {
     }.showAndWait()
   }
 
-  def callback_update(s: String): Unit = {
-    var prevUpdName = ""
-    var prevUpdPkg  = new TLUpdateDisplay("","","","","","")
+  def set_line_update_function(mode: String) = {
+    var prevName = ""
     stdoutLineUpdateFunc = (l:String) => {
       // println("DEBUG line update: " + l + "=")
       l match {
@@ -263,14 +260,19 @@ object ApplicationMain extends JFXApp {
         case u if u == "OK" => None
         case u if u.startsWith("tlmgr>") => None
         case u =>
-          if (prevUpdName != "") {
-            // println("DEBUG Removing " + prevUpdName + " from list!")
-            upds.remove(prevUpdName)
-            val op = pkgs(prevUpdName)
-            pkgs(prevUpdName) = new TLPackageDisplay(prevUpdPkg.name.value, op.rrev.value.toString, op.rrev.value.toString,
-              prevUpdPkg.shortdesc.value, op.size.value.toString, "Installed")
+          if (prevName != "") {
+            if (mode == "update") {
+              // println("DEBUG Removing " + prevUpdName + " from list!")
+              upds.remove(prevName)
+            } else {
+              tlpkgs(prevName).installed = true
+              tlpkgs(prevName).relocated = false
+            }
+            pkgs(prevName).lrev = pkgs(prevName).rrev
+            pkgs(prevName).installed = StringProperty("Installed") // TODO support Mixed!!!
+            tlpkgs(prevName).lrev = tlpkgs(prevName).rrev
             Platform.runLater {
-              trigger_update("upds")
+              if (mode == "update") trigger_update("upds")
               trigger_update("pkgs")
             }
           }
@@ -279,25 +281,26 @@ object ApplicationMain extends JFXApp {
             // println("DEBUG got end of updates")
           } else {
             // println("DEBUG getting update line")
-            val foo = parse_one_update_line(l)
-            val pkgname = foo.name.value
-            val PkgTreeItemOption = updateTable.root.value.children.find(_.value.value.name.value == pkgname)
-            PkgTreeItemOption match {
-              case Some(p) =>
-                prevUpdName = pkgname
-                prevUpdPkg  = p.getValue
-                // println("DEBUG Setting status to Updating ... for " + pkgname)
-                prevUpdPkg.status = StringProperty("Updating ...")
-                Platform.runLater {
-                  // println("DEBUG calling updateTable refresh")
-                  updateTable.refresh()
-                }
-              case None => errorText += "Very strange: Cannot find TreeItem for upd package" + pkgname
+            prevName = if (mode == "update") {
+              val foo = parse_one_update_line(l)
+              val pkgname = foo.name.value
+              upds(pkgname).status = StringProperty("Updating ...")
+              updateTable.refresh()
+              pkgname
+            } else {
+              val fields = l.split("\t")
+              val pkgname = fields(0)
+              pkgs(pkgname).installed = StringProperty("Installing ...")
+              packageTable.refresh()
+              pkgname
             }
           }
       }
     }
-    // val cmd = if (s == "--self") "update --self --no-restart" else s"update $s"
+  }
+
+  def callback_update(s: String): Unit = {
+    set_line_update_function("update")
     val cmd = if (s == "--self") "update --self" else s"update $s"
     tlmgr_send(cmd, (a,b) => {
       stdoutLineUpdateFunc = defaultStdoutLineUpdateFunc
@@ -308,14 +311,14 @@ object ApplicationMain extends JFXApp {
       }
     })
   }
-
-
-
-  def do_one_pkg(what: String, pkg: String): Unit = {
-    tlmgr_send(s"$what $pkg", (_,_) => { load_tlpdb_update_pkgs_view() })
+  def callback_remove(pkg: String): Unit = {
+    tlmgr_send(s"remove $pkg", (_,_) => { load_tlpdb_update_pkgs_view() })
   }
-
-  def callback_restore_pkg(str: String, rev: String): Unit = {
+  def callback_install(pkg: String): Unit = {
+    set_line_update_function("install")
+    tlmgr_send(s"install $pkg", (_,_) => { stdoutLineUpdateFunc = defaultStdoutLineUpdateFunc })
+  }
+  def callback_restore(str: String, rev: String): Unit = {
     tlmgr_send(s"restore --force $str $rev", (_,_) => {
       load_tlpdb_update_pkgs_view()
       load_updates_update_upds_view()
@@ -676,12 +679,13 @@ object ApplicationMain extends JFXApp {
 
   def trigger_update(s:String): Unit = {
     // println("DEBUG: Triggering update of " + s)
-    if (s == "pkgs")
-      pkgs("root") = new TLPackageDisplay("root","0","0","","0","")
-    else if (s == "upds")
+    if (s == "pkgs") {
+      pkgs("root") = new TLPackageDisplay("root", "0", "0", "", "0", "")
+    } else if (s == "upds") {
       upds("root") = new TLUpdateDisplay("root", "", "", "", "", "")
-    else if (s == "bkps")
-      bkps("root") = Map[String,TLBackupDisplay](("0", new TLBackupDisplay("root","0","0")))
+    } else if (s == "bkps") {
+      bkps("root") = Map[String, TLBackupDisplay](("0", new TLBackupDisplay("root", "0", "0")))
+    }
   }
 
   def doListView(files: Seq[String], clickable: Boolean): scalafx.scene.Node = {
@@ -914,7 +918,7 @@ object ApplicationMain extends JFXApp {
         onAction = (ae) => new PkgInfoDialog(row.item.value.name.value).showAndWait()
       }
       val removeMI = new MenuItem("Remove") {
-        onAction = (ae) => do_one_pkg("remove", row.item.value.name.value)
+        onAction = (ae) => callback_remove(row.item.value.name.value)
       }
       val updateMI = new MenuItem("Update") {
         onAction = (ae) => callback_update(row.item.value.name.value)
@@ -957,10 +961,10 @@ object ApplicationMain extends JFXApp {
         onAction = (ae) => new PkgInfoDialog(row.item.value.name.value).showAndWait()
       }
       val installMI = new MenuItem("Install") {
-        onAction = (ae) => do_one_pkg("install", row.item.value.name.value)
+        onAction = (ae) => callback_install(row.item.value.name.value)
       }
       val removeMI = new MenuItem("Remove") {
-        onAction = (ae) => do_one_pkg("remove", row.item.value.name.value)
+        onAction = (ae) => callback_remove(row.item.value.name.value)
       }
       val ctm = new ContextMenu(infoMI, installMI, removeMI)
       row.item.onChange { (_,_,newTL) =>
@@ -1008,7 +1012,7 @@ object ApplicationMain extends JFXApp {
           onAction = (ae) => new PkgInfoDialog(row.item.value.name.value).showAndWait()
         },
         new MenuItem("Restore") {
-          onAction = (ae) => callback_restore_pkg(row.item.value.name.value, row.item.value.rev.value)
+          onAction = (ae) => callback_restore(row.item.value.name.value, row.item.value.rev.value)
         }
       )
       row.contextMenu = ctm
