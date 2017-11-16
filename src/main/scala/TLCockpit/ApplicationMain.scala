@@ -300,7 +300,7 @@ object ApplicationMain extends JFXApp {
     // val cmd = if (s == "--self") "update --self --no-restart" else s"update $s"
     val cmd = if (s == "--self") "update --self" else s"update $s"
     tlmgr_send(cmd, (a,b) => {
-      stdoutLineUpdateFunc = { (s: String) => }
+      stdoutLineUpdateFunc = defaultStdoutLineUpdateFunc
       if (s == "--self") {
         reinitialize_tlmgr()
         // this doesn't work seemingly
@@ -1273,9 +1273,11 @@ object ApplicationMain extends JFXApp {
   startalert.setContentText("Loading package database, this might take a while. Please wait!")
   startalert.show()
   */
+  def defaultStdoutLineUpdateFunc(l: String) : Unit = { } // println(s"DEBUG: got ==$l== from tlmgr") }
+  def defaultStderrLineUpdateFunc(l: String) : Unit = { Platform.runLater { logText.append(l) } }
 
-  var stdoutLineUpdateFunc: String => Unit = { (l: String) => } // println(s"DEBUG: got ==$l== from tlmgr") }
-  var stderrLineUpdateFunc: String => Unit = { (l: String) => Platform.runLater { logText.append(l) } }
+  var stdoutLineUpdateFunc: String => Unit = defaultStdoutLineUpdateFunc
+  var stderrLineUpdateFunc: String => Unit = defaultStderrLineUpdateFunc
   var tlmgr = initialize_tlmgr()
   tlmgr_post_init()
 }  // object ApplicationMain
