@@ -49,7 +49,6 @@ import spray.json._
 import TeXLive.JsonProtocol._
 
 // TODO missing sub-packages for texlive.infra
-// TODO line-by-line updates for removal
 // TODO TreeTableView indentation is lazy
 
 object ApplicationMain extends JFXApp {
@@ -264,15 +263,21 @@ object ApplicationMain extends JFXApp {
             if (mode == "update") {
               // println("DEBUG Removing " + prevUpdName + " from list!")
               upds.remove(prevName)
-            } else {
+            } else if (mode == "remove") {
+              tlpkgs(prevName).installed = false
+            } else { // install
               tlpkgs(prevName).installed = true
             }
-            pkgs(prevName).lrev = pkgs(prevName).rrev
-            pkgs(prevName).installed = StringProperty("Installed") // TODO support Mixed!!!
-            tlpkgs(prevName).lrev = tlpkgs(prevName).rrev
+            if (mode == "remove") {
+              pkgs(prevName).lrev = ObjectProperty[Int](0)
+              pkgs(prevName).installed = StringProperty("Not installed")
+              tlpkgs(prevName).lrev = 0
+            } else { // install and update
+              pkgs(prevName).lrev = pkgs(prevName).rrev
+              pkgs(prevName).installed = StringProperty("Installed") // TODO support Mixed!!!
+              tlpkgs(prevName).lrev = tlpkgs(prevName).rrev
+            }
             Platform.runLater {
-              // if (mode == "update") trigger_update("upds")
-              // trigger_update("pkgs")
               if (mode == "update") updateTable.refresh()
               packageTable.refresh()
             }
@@ -288,10 +293,16 @@ object ApplicationMain extends JFXApp {
               upds(pkgname).status = StringProperty("Updating ...")
               updateTable.refresh()
               pkgname
-            } else {
+            } else if (mode == "install") {
               val fields = l.split("\t")
               val pkgname = fields(0)
               pkgs(pkgname).installed = StringProperty("Installing ...")
+              packageTable.refresh()
+              pkgname
+            } else { // remove
+              val fields = l.split("\t")
+              val pkgname = fields(0)
+              pkgs(pkgname).installed = StringProperty("Removing ...")
               packageTable.refresh()
               pkgname
             }
@@ -312,61 +323,17 @@ object ApplicationMain extends JFXApp {
       }
     })
   }
-  /*
-  removing a package output:
-> remove collection-langitalian
-tlmgr: removing collection-langitalian
-tlmgr: removing package amsldoc-it
-tlmgr: removing package amsmath-it
-tlmgr: removing package amsthdoc-it
-tlmgr: removing package codicefiscaleitaliano
-tlmgr: removing package fancyhdr-it
-tlmgr: removing package fixltxhyph
-tlmgr: removing package frontespizio
-tlmgr: removing package itnumpar
-tlmgr: removing package l2tabu-italian
-tlmgr: removing package latex4wp-it
-tlmgr: removing package layaureo
-tlmgr: removing package lshort-italian
-tlmgr: removing package psfrag-italian
-tlmgr: removing package texlive-it
-tlmgr: ultimately removed these packages: amsldoc-it amsmath-it amsthdoc-it codicefiscaleitaliano collection-langitalian fancyhdr-it fixltxhyph frontespizio itnumpar l2tabu-italian latex4wp-it layaureo lshort-italian psfrag-italian texlive-it
-running mktexlsr ...
-done running mktexlsr.
-OK
 
-   */
   def callback_remove(pkg: String): Unit = {
-    var prevName = ""
-    stdoutLineUpdateFunc = (l: String) => {
-      if (prevName != "") {
-        tlpkgs(prevName).installed = false
-        pkgs(prevName).lrev = ObjectProperty[Int](0)
-        pkgs(prevName).installed = StringProperty("Not installed")
-        tlpkgs(prevName).lrev = 0
-        Platform.runLater {
-          packageTable.refresh()
-        }
-      }
-      if (l.startsWith("tlmgr: ultimately removed")) {
-        // nothing to be done, all has been done above
-        // println("DEBUG got end of updates")
-      } else if (l.startsWith("tlmgr: removing package ")) {
-        val pkgname = l.replace("tlmgr: removing package ","")
-        pkgs(pkgname).installed = StringProperty("Removing ...")
-        packageTable.refresh()
-        prevName = pkgname
-      } else {
-        errorText.append(s"Cannot parse output of removal: ${l}\n")
-      }
-    }
+    set_line_update_function("remove")
     tlmgr_send(s"remove $pkg", (_, _) => { stdoutLineUpdateFunc = defaultStdoutLineUpdateFunc })
   }
-
   def callback_install(pkg: String): Unit = {
     set_line_update_function("install")
     tlmgr_send(s"install $pkg", (_,_) => { stdoutLineUpdateFunc = defaultStdoutLineUpdateFunc })
   }
+
+
   def callback_restore(str: String, rev: String): Unit = {
     tlmgr_send(s"restore --force $str $rev", (_,_) => {
       load_tlpdb_update_pkgs_view()
@@ -499,7 +466,7 @@ OK
         // complicated part, determine whether it is a sub package or not!
         // we strip of initial texlive. prefixes to make sure we deal
         // with real packages
-        if (pkg._1.stripPrefix("texlive.").contains(".")) {
+        if (pkg._1.stripPrefix("texlive").contains(".")) {
           val foo: Array[String] = pkg._1.stripPrefix("texlive.infra").split('.')
           val pkgname = foo(0)
           if (pkgname != "") {
