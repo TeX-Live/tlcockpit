@@ -48,7 +48,6 @@ import scalafx.collections.ObservableMap
 import spray.json._
 import TeXLive.JsonProtocol._
 
-// TODO missing sub-packages for texlive.infra
 // TODO TreeTableView indentation is lazy
 
 object ApplicationMain extends JFXApp {
@@ -466,8 +465,12 @@ object ApplicationMain extends JFXApp {
         // complicated part, determine whether it is a sub package or not!
         // we strip of initial texlive. prefixes to make sure we deal
         // with real packages
-        if (pkg._1.stripPrefix("texlive").contains(".")) {
-          val foo: Array[String] = pkg._1.stripPrefix("texlive.infra").split('.')
+        if ((pkg._1.startsWith("texlive.infra") && pkg._1.stripPrefix("texlive.infra").contains(".")) ||
+            pkg._1.stripPrefix("texlive.infra").contains(".")) {
+          val foo: Array[String] = if (pkg._1.startsWith("texlive.infra"))
+            Array("texlive.infra", pkg._1.stripPrefix("texlive.infra"))
+          else
+            pkg._1.split('.')
           val pkgname = foo(0)
           if (pkgname != "") {
             val binname = foo(1)
