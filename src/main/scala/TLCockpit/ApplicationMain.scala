@@ -48,7 +48,6 @@ import scalafx.collections.ObservableMap
 import spray.json._
 import TeXLive.JsonProtocol._
 
-// TODO TreeTableView indentation is lazy
 
 object ApplicationMain extends JFXApp {
 
