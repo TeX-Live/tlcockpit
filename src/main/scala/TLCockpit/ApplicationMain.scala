@@ -1287,13 +1287,6 @@ object ApplicationMain extends JFXApp {
     load_tlpdb_update_pkgs_view()
   }
 
-
-  /* TODO implement splash screen - see example in ProScalaFX
-  val startalert = new Alert(AlertType.Information)
-  startalert.setTitle("Loading package database ...")
-  startalert.setContentText("Loading package database, this might take a while. Please wait!")
-  startalert.show()
-  */
   def defaultStdoutLineUpdateFunc(l: String) : Unit = { } // println(s"DEBUG: got ==$l== from tlmgr") }
   def defaultStderrLineUpdateFunc(l: String) : Unit = { Platform.runLater { logText.append(l) } }
 
