@@ -334,8 +334,9 @@ object ApplicationMain extends JFXApp {
 
   def callback_restore(str: String, rev: String): Unit = {
     tlmgr_send(s"restore --force $str $rev", (_,_) => {
-      load_tlpdb_update_pkgs_view()
-      load_updates_update_upds_view()
+      tlpkgs(str).lrev = rev.toLong
+      pkgs(str).lrev = ObjectProperty[Int](rev.toInt)
+      packageTable.refresh()
     })
   }
 
