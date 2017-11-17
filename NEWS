@@ -10,6 +10,8 @@ requires tlmgr >= 2017-11-15
 - support for paper configuration and general options
 - deal with dying tlmgr
 - add search capability (searches package names and sortdesc)
+- check whether tlmgr is new enough
+- updates, installs, removes are online updated during operation
 
 version 0.6 (20171012)
 ----------------------
