@@ -340,7 +340,7 @@ object ApplicationMain extends JFXApp {
   }
 
   bkps.onChange( (obs,chs) => {
-    var doit = chs match {
+    val doit = chs match {
       case ObservableMap.Add(k, v) => k.toString == "root"
       case ObservableMap.Replace(k, va, vr) => k.toString == "root"
       case ObservableMap.Remove(k, v) => k.toString == "root"
@@ -447,7 +447,7 @@ object ApplicationMain extends JFXApp {
     }.toMap
   }
   pkgs.onChange( (obs,chs) => {
-    var doit = chs match {
+    val doit = chs match {
       case ObservableMap.Add(k, v) => k.toString == "root"
       case ObservableMap.Replace(k, va, vr) => k.toString == "root"
         // don't call the trigger on root removal!
