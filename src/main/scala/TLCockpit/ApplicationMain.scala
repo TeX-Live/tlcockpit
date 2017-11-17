@@ -28,7 +28,6 @@ import scalafx.scene.input.{KeyCode, KeyEvent, MouseEvent}
 import scalafx.scene.paint.Color
 // needed see https://github.com/scalafx/scalafx/issues/137
 import scalafx.scene.control.TableColumn._
-import scalafx.scene.control.TreeItem._
 import scalafx.scene.control.TreeTableColumn._
 import scalafx.scene.control.TreeItem
 import scalafx.scene.control.Menu._
@@ -259,8 +258,17 @@ object ApplicationMain extends JFXApp {
         case u =>
           if (prevName != "") {
             if (mode == "update") {
-              // println("DEBUG Removing " + prevUpdName + " from list!")
+              // parallelism is a pain, I get concurrent access here, but don't know with whom?
+              // ConcurrentModificationExceptions often occur when you're modifying
+              // a collection while you are iterating over its elements.
+              // val newkids: ObservableBuffer[TreeItem[TLUpdateDisplay]] =
+              //   updateTable.root.value.children.filter(_.value.value.name.value != prevName)
+              //     .map(_.asInstanceOf[TreeItem[TLUpdateDisplay]])
+              // the last map is only necessary becasue ScalaFX is buggy and does not produce
+              // proper types here!!! Probably similar to https://github.com/scalafx/scalafx/issues/137
+              // updateTable.root.value.children = newkids
               upds.remove(prevName)
+              trigger_update("upds")
             } else if (mode == "remove") {
               tlpkgs(prevName).installed = false
             } else { // install
@@ -275,10 +283,7 @@ object ApplicationMain extends JFXApp {
               pkgs(prevName).installed = StringProperty("Installed") // TODO support Mixed!!!
               tlpkgs(prevName).lrev = tlpkgs(prevName).rrev
             }
-            Platform.runLater {
-              if (mode == "update") updateTable.refresh()
-              packageTable.refresh()
-            }
+            packageTable.refresh()
           }
           if (u.startsWith("end-of-updates")) {
             // nothing to be done, all has been done above
@@ -1237,7 +1242,7 @@ object ApplicationMain extends JFXApp {
         }
       case Failure(e) =>
         errorText += "lineUpdateFunc(stdout) thread got interrupted -- probably old tlmgr, ignoring it!"
-        //e.printStackTrace
+        e.printStackTrace
     }
     val stderrFuture = Future {
       var alive = true
@@ -1253,7 +1258,7 @@ object ApplicationMain extends JFXApp {
       case Success(value) => // println(s"tlmgr stderr reader terminated: ${value}")
       case Failure(e) =>
         errorText += "lineUpdateFunc(stderr) thread got interrupted -- probably old tlmgr, ignoring it!"
-      //e.printStackTrace
+        e.printStackTrace
     }
     tt
   }
