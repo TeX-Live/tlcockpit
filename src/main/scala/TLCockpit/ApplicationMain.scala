@@ -935,13 +935,33 @@ object ApplicationMain extends JFXApp {
       val infoMI = new MenuItem("Info") {
         onAction = (ae) => new PkgInfoDialog(row.item.value.name.value).showAndWait()
       }
-      val removeMI = new MenuItem("Remove") {
-        onAction = (ae) => callback_remove(row.item.value.name.value)
-      }
       val updateMI = new MenuItem("Update") {
         onAction = (ae) => callback_update(row.item.value.name.value)
       }
-      val ctm = new ContextMenu(infoMI, removeMI, updateMI)
+      val installMI = new MenuItem("Install") {
+        onAction = (ae) => callback_install(row.item.value.name.value)
+      }
+      val removeMI = new MenuItem("Remove") {
+        onAction = (ae) => callback_remove(row.item.value.name.value)
+      }
+      val ctm = new ContextMenu(infoMI, updateMI, installMI, removeMI)
+      row.item.onChange { (_,_,newTL) =>
+        if (newTL != null) {
+          if (newTL.status.value == "New on server") {
+            installMI.disable = false
+            removeMI.disable = true
+            updateMI.disable = true
+          } else if (newTL.status.value == "Removed on server") {
+            installMI.disable = true
+            removeMI.disable = false
+            updateMI.disable = true
+          } else {
+            installMI.disable = true
+            removeMI.disable = false
+            updateMI.disable = false
+          }
+        }
+      }
       row.contextMenu = ctm
       row
     }
