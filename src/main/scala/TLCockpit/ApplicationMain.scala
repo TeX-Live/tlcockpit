@@ -1279,12 +1279,33 @@ object ApplicationMain extends JFXApp {
       Platform.exit()
       sys.exit(1)
     }
-    // Thread.sleep(1000)
-    // update_pkg_lists_to_be_renamed() // this is async done
-    pkgs.clear()
-    upds.clear()
-    bkps.clear()
-    load_tlpdb_update_pkgs_view()
+
+    // check for tlmgr revision
+    tlmgr_send("version", (status,output) => {
+      output.foreach ( l => {
+        if (l.startsWith("revision ")) {
+          val tlmgrRev = l.stripPrefix("revision ")
+          if (tlmgrRev == "unknown") {
+            println("Unknown tlmgr revision, assuming git/svn version")
+            logText += "Unknown tlmgr revision, assuming git/svn version"
+          } else {
+            if (tlmgrRev.toInt < 45838) {
+              new Alert(AlertType.Error) {
+                initOwner(stage)
+                title = "TeX Live Manager tlmgr is too old"
+                headerText = "TeX Live Manager tlmgr is too old"
+                contentText = "Please update from the command line\nusing 'tlmgr update --self'\nTerminating!"
+              }.showAndWait()
+              callback_quit()
+            }
+          }
+        }
+      })
+      pkgs.clear()
+      upds.clear()
+      bkps.clear()
+      load_tlpdb_update_pkgs_view()
+    })
   }
 
   def defaultStdoutLineUpdateFunc(l: String) : Unit = { } // println(s"DEBUG: got ==$l== from tlmgr") }
