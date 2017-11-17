@@ -726,7 +726,6 @@ object ApplicationMain extends JFXApp {
       vb.prefHeight = 150
       vb.maxHeight = 200
       vb.vgrow = Priority.Always
-      // TODO tighter spacing for ListView
       vb.orientation = Orientation.Vertical
       vb.cellFactory = { p => {
         val foo = new ListCell[String]
