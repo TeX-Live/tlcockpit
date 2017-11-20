@@ -54,8 +54,9 @@ class OptionsDialog(opts: List[TLOption]) {
         val end: Option[Int] = if (splits.length > 1) Some(splits(1).toInt) else None
         new Spinner[Int](start, end.getOrElse(50), value.toInt) {
           value.onChange( (_,_,newVal) => { changedValues(nm) = newVal.toString })
+          if (nm == "autobackup")
+            tooltip = new Tooltip("-1 ... arbitrary many backups\n0 ... no backups\notherwise number of backups")
         }
-        // TODO spinner for autobackup could give explanations!
       } else {
         new Spinner[Int](-50, 50, value.toInt) {
           value.onChange( (_,_,newVal) => { changedValues(nm) = newVal.toString })
