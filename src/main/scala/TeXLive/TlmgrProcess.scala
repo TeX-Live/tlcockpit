@@ -91,8 +91,7 @@ class TlmgrProcess(updout: String => Unit, upderr: String => Unit) {
           updfun(line)
         } catch {
           case exc: Throwable =>
-            upderr("Update output line function failed, continuing anyway (probably old tlmgr)!")
-            // println("Update output line function failed, continuing anyway (probably old tlmgr)!")
+            upderr("Update output line function failed, continuing anyway. Exception: " + exc)
         }
       }
       outStr.close()
