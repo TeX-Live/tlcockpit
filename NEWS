@@ -1,8 +1,8 @@
 NEWS for tlcockpit
 
-version 0.7 (201711XX)
+version 0.7 (20171124)
 ----------------------
-requires tlmgr >= 2017-11-15
+requires tlmgr >= 2017-11-23 (version 45888 of texlive.infra)
 - fix behavior when closing using the Window Manager X on Windows (Issue: 2)
 - use tlmgr json output
 - allow ordering packages by name and by collection
