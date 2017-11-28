@@ -666,6 +666,7 @@ object ApplicationMain extends JFXApp {
     val prevph = packageTable.placeholder.value
     packageTable.placeholder = SpinnerPlaceHolder("Loading database")
     tlmgr_send("info --json", (status, lines) => {
+      println(s"DEBUG load tlpdb update pkgs: got status ${status} and lines = " + lines.head)
       val jsonAst = lines.mkString("").parseJson
       tlpkgs.clear()
       tlpkgs ++= jsonAst.convertTo[List[TLPackage]].map { p => (p.name, p)}
@@ -1221,8 +1222,14 @@ object ApplicationMain extends JFXApp {
   def initialize_tlmgr(): TlmgrProcess = {
     tlmgrBusy.value = true
     val tt = new TlmgrProcess(
-      (s: String) => outputLine.put(s),
-      (s: String) => errorLine.put(s)
+      (s: String) => {
+        println(s"outputline put ${s}")
+        outputLine.put(s)
+      },
+      (s: String) => {
+        println(s"errorline put ${s}")
+        errorLine.put(s)
+      }
     )
     /* val tlmgrMonitor = Future {
       while (true) {
@@ -1239,24 +1246,28 @@ object ApplicationMain extends JFXApp {
       var tlmgrStatus = ""
       var alive = true
       while (alive) {
+        println("stdout reader bfore outputLine.take")
         val s = outputLine.take
+        println("stdout reader after outputLine.take")
         if (s == null) {
           alive = false
-          // println("GOT NULL from outputline tlmgr dead???")
+          println("GOT NULL from outputline tlmgr dead???")
         } else {
-          //println(s"DEBUG: got " + s)
+          println(s"DEBUG: got ==" + s + "==")
           if (s == "OK") {
             tlmgrStatus = s
           } else if (s == "ERROR") {
             tlmgrStatus = s
           } else if (s == "tlmgr> ") {
-            // println("DEBUG: fulfilling current promise!")
+            println("DEBUG: fulfilling current promise!")
             currentPromise.success((tlmgrStatus, tlmgrOutput.toArray))
             tlmgrStatus = ""
             tlmgrOutput.clear()
             tlmgrBusy.value = false
             if (pendingJobs.nonEmpty) {
+              println("pending Job found!")
               val nextCmd = pendingJobs.dequeue()
+              println(s"running ${nextCmd._1}")
               tlmgr_run_one_cmd(nextCmd._1, nextCmd._2)
             }
           } else {
@@ -1312,14 +1323,16 @@ object ApplicationMain extends JFXApp {
     tlmgrBusy.value = true
     currentPromise.future.onComplete {
       case Success((a, b)) =>
-        // println("DEBUG current future completed!")
+        println("DEBUG current future completed!")
         Platform.runLater {
+          println("Running on complete functio")
           onCompleteFunc(a, b)
         }
       case Failure(ex) =>
+        println("Runnung tlmgr command did no succeed" + ex.getMessage)
         errorText += "Running a tlmgr command did not succeed: " + ex.getMessage
     }
-    // println(s"DEBUG sending ${s}")
+    println(s"DEBUG sending ${s}")
     tlmgr.send_command(s)
   }
 
@@ -1328,9 +1341,10 @@ object ApplicationMain extends JFXApp {
     outputText.clear()
     outerrpane.expanded = false
     if (!currentPromise.isCompleted) {
-      // println(s"DEBUG tlmgr busy, put onto pending jobs: $s")
+      println(s"DEBUG tlmgr busy, put onto pending jobs: $s")
       pendingJobs += ((s, onCompleteFunc))
     } else {
+      println(s"tlmgr_send sending $s")
       tlmgr_run_one_cmd(s, onCompleteFunc)
     }
   }
@@ -1352,6 +1366,7 @@ object ApplicationMain extends JFXApp {
 
     // check for tlmgr revision
     tlmgr_send("version", (status,output) => {
+      println(s"DDD Callback after version, got ${status} and ${output.mkString}")
       output.foreach ( l => {
         if (l.startsWith("revision ")) {
           val tlmgrRev = l.stripPrefix("revision ")
@@ -1374,11 +1389,13 @@ object ApplicationMain extends JFXApp {
       pkgs.clear()
       upds.clear()
       bkps.clear()
+      println("Before loading tlpdb")
       load_tlpdb_update_pkgs_view()
+      println("after loading tlpdb")
     })
   }
 
-  def defaultStdoutLineUpdateFunc(l: String) : Unit = { } // println(s"DEBUG: got ==$l== from tlmgr") }
+  def defaultStdoutLineUpdateFunc(l: String) : Unit = { println(s"DEBUG: got ==$l== from tlmgr") }
   def defaultStderrLineUpdateFunc(l: String) : Unit = { Platform.runLater { logText.append(l) } }
 
   var stdoutLineUpdateFunc: String => Unit = defaultStdoutLineUpdateFunc

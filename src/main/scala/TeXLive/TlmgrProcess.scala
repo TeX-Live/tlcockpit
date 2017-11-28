@@ -26,6 +26,7 @@ class TlmgrProcess(updout: String => Unit, upderr: String => Unit) {
   var process: Process = _
 
   def send_command(input: String): Unit = {
+    println(s"send_command: ${input}")
     try {
       assert(!inputString.isSet)
       inputString.put(input)
