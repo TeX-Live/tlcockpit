@@ -1136,16 +1136,22 @@ object ApplicationMain extends JFXApp {
     // menus.addAll(mainMenu, optionsMenu, helpMenu)
     menus.addAll(mainMenu, pkgsMenu, toolsMenu, optionsMenu, statusMenu)
   }
+  var updLoaded = false
+  var bckLoaded = false
   pkgstabs.selectionModel().selectedItem.onChange(
     (a,b,c) => {
       if (a.value.text() == "Backups") {
-        if (backupTable.root.value.children.length == 0)
+        if (!bckLoaded) {
           load_backups_update_bkps_view()
+          bckLoaded = true
+        }
         menuBar.menus = Seq(mainMenu, toolsMenu, optionsMenu, statusMenu)
       } else if (a.value.text() == "Updates") {
         // only update if not done already
-        if (updateTable.root.value.children.length == 0)
+        if (!updLoaded) {
           load_updates_update_upds_view()
+          updLoaded = true
+        }
         menuBar.menus = Seq(mainMenu, updMenu, toolsMenu, optionsMenu, statusMenu)
       } else if (a.value.text() == "Packages") {
         menuBar.menus = Seq(mainMenu, pkgsMenu, toolsMenu, optionsMenu, statusMenu)
