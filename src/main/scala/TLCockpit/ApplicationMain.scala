@@ -6,6 +6,8 @@
 
 package TLCockpit
 
+import javafx.scene.Node
+
 import TLCockpit.Utils._
 import TeXLive._
 
@@ -61,6 +63,7 @@ object ApplicationMain extends JFXApp {
 
   val iconImage = new Image(getClass.getResourceAsStream("tlcockpit-48.jpg"))
   val logoImage = new Image(getClass.getResourceAsStream("tlcockpit-128.jpg"))
+  val busyImage: Image = new Image(getClass.getResourceAsStream("spinner.gif"))
 
   val tlpkgs: ObservableMap[String, TLPackage] = ObservableMap[String,TLPackage]()
   val pkgs: ObservableMap[String, TLPackageDisplay] = ObservableMap[String, TLPackageDisplay]()
@@ -286,6 +289,15 @@ object ApplicationMain extends JFXApp {
             packageTable.refresh()
           }
           if (u.startsWith("end-of-updates")) {
+            if (mode == "update") {
+              // TODO scale spinner a bit smaller!
+              val tmp = new Label("Post actions running, please wait ...")
+              tmp.wrapText = true
+              tmp.opacity = 0.4f
+              tmp.font = new Font(30f)
+              tmp.graphic = new ImageView(busyImage)
+              Platform.runLater { updateTable.placeholder = tmp }
+            }
             // nothing to be done, all has been done above
             // println("DEBUG got end of updates")
           } else {
@@ -315,10 +327,12 @@ object ApplicationMain extends JFXApp {
   }
 
   def callback_update(s: String): Unit = {
+    val prevph = updateTable.placeholder.value
     set_line_update_function("update")
     val cmd = if (s == "--self") "update --self" else s"update $s"
     tlmgr_send(cmd, (a,b) => {
       stdoutLineUpdateFunc = defaultStdoutLineUpdateFunc
+      Platform.runLater { updateTable.placeholder = prevph }
       if (s == "--self") {
         reinitialize_tlmgr()
         // this doesn't work seemingly

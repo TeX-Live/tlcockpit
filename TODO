@@ -3,6 +3,7 @@ TODO
 
 * add a spinner (in resources/spinner.gif) with some text to the background of the empty
   update table when the background activities are running (updmap, fmtutil etc)
+  Partially done, do it also for other post-action stuff!
 
 * convert all the commented println to some debug facility with command line activation
 
