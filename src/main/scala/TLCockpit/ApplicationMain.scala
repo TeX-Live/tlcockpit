@@ -50,6 +50,7 @@ import spray.json._
 import TeXLive.JsonProtocol._
 
 
+
 object ApplicationMain extends JFXApp {
 
   val version: String = getClass.getPackage.getImplementationVersion
@@ -63,7 +64,21 @@ object ApplicationMain extends JFXApp {
 
   val iconImage = new Image(getClass.getResourceAsStream("tlcockpit-48.jpg"))
   val logoImage = new Image(getClass.getResourceAsStream("tlcockpit-128.jpg"))
-  val busyImage: Image = new Image(getClass.getResourceAsStream("spinner.gif"))
+  val busyImage = new Image(getClass.getResourceAsStream("spinner.gif"))
+
+  val busySpinner = new ImageView(busyImage) {
+    scaleX = 0.3
+    scaleY = 0.3
+  }
+
+  def SpinnerPlaceHolder(txt: String): Node = {
+    val tmp = new Label(txt)
+    tmp.wrapText = true
+    tmp.opacity = 0.4f
+    tmp.font = new Font(30f)
+    tmp.graphic = busySpinner
+    tmp
+  }
 
   val tlpkgs: ObservableMap[String, TLPackage] = ObservableMap[String,TLPackage]()
   val pkgs: ObservableMap[String, TLPackageDisplay] = ObservableMap[String, TLPackageDisplay]()
@@ -291,12 +306,9 @@ object ApplicationMain extends JFXApp {
           if (u.startsWith("end-of-updates")) {
             if (mode == "update") {
               // TODO scale spinner a bit smaller!
-              val tmp = new Label("Post actions running, please wait ...")
-              tmp.wrapText = true
-              tmp.opacity = 0.4f
-              tmp.font = new Font(30f)
-              tmp.graphic = new ImageView(busyImage)
-              Platform.runLater { updateTable.placeholder = tmp }
+              Platform.runLater {
+                updateTable.placeholder = SpinnerPlaceHolder("Post actions running, please wait ...")
+              }
             }
             // nothing to be done, all has been done above
             // println("DEBUG got end of updates")
@@ -592,12 +604,8 @@ object ApplicationMain extends JFXApp {
   }
 
   def load_backups_update_bkps_view(): Unit = {
-    val tmp = new Label("Loading backups, please wait ...")
-    tmp.wrapText = true
-    tmp.opacity = 0.4f
-    tmp.font = new Font(30f)
     val prevph = backupTable.placeholder.value
-    backupTable.placeholder = tmp
+    backupTable.placeholder = SpinnerPlaceHolder("Loading backups, please wait ...")
     tlmgr_send("restore --json", (status, lines) => {
       val jsonAst = lines.mkString("").parseJson
       val backups: Map[String, Map[String, TLBackupDisplay]] =
@@ -634,12 +642,8 @@ object ApplicationMain extends JFXApp {
   }
 
   def load_tlpdb_update_pkgs_view():Unit = {
-    val tmp = new Label("Loading database, please wait ...")
-    tmp.wrapText = true
-    tmp.opacity = 0.4f
-    tmp.font = new Font(30f)
     val prevph = packageTable.placeholder.value
-    packageTable.placeholder = tmp
+    packageTable.placeholder = SpinnerPlaceHolder("Loading database, please wait ...")
     tlmgr_send("info --json", (status, lines) => {
       val jsonAst = lines.mkString("").parseJson
       tlpkgs.clear()
@@ -682,12 +686,8 @@ object ApplicationMain extends JFXApp {
   }
 
   def load_updates_update_upds_view(): Unit = {
-    val tmp = new Label("Loading updates, please wait ...")
-    tmp.wrapText = true
-    tmp.opacity = 0.4f
-    tmp.font = new Font(30f)
     val prevph = updateTable.placeholder.value
-    updateTable.placeholder = tmp
+    updateTable.placeholder = SpinnerPlaceHolder("Loading updates, please wait ...")
     tlmgr_send("update --list", (status, lines) => {
       // println(s"DEBUG got updates length ${lines.length}")
       // println(s"DEBUG tlmgr last output = ${lines}")
