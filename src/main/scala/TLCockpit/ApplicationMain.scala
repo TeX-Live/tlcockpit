@@ -173,14 +173,21 @@ object ApplicationMain extends JFXApp {
 
   // read the perl dump of ctan mirrors by converting it to JSON code and parsing it
   def parse_ctan_mirrors(tlroot: String): Map[String,Map[String,Seq[String]]] = {
-    val fileName = tlroot + "/tlpkg/installer/ctan-mirrors.pl"
-    val foo: String = Source.fromFile(fileName).getLines.mkString("")
-    val jsonMirrorString = foo.substring(10).replace("=>",":").replace("""'""", "\"").replace(";","")
-    val ast = jsonMirrorString.parseJson
-    ast.convertTo[Map[String,Map[String,Map[String,Int]]]].map {
-      contpair => (contpair._1, contpair._2.map {
-        countrypair => (countrypair._1, countrypair._2.keys.toSeq)
-      })
+    try {
+      val fileName = tlroot + "/tlpkg/installer/ctan-mirrors.pl"
+      val foo: String = Source.fromFile(fileName).getLines.mkString("")
+      val jsonMirrorString = foo.substring(10).replace("=>", ":").replace("""'""", "\"").replace(";", "")
+      val ast = jsonMirrorString.parseJson
+      ast.convertTo[Map[String, Map[String, Map[String, Int]]]].map {
+        contpair =>
+          (contpair._1, contpair._2.map {
+            countrypair => (countrypair._1, countrypair._2.keys.toSeq)
+          })
+      }
+    } catch { case e: Exception =>
+        logText.append("Cannot find or parse ctan-mirrors.pl")
+        // println("Cannot find or parse ctan-mirrors.pl")
+        Map[String,Map[String,Seq[String]]]()
     }
   }
 
