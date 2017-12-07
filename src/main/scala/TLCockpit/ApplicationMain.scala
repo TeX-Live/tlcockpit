@@ -65,6 +65,7 @@ object ApplicationMain extends JFXApp {
   val iconImage = new Image(getClass.getResourceAsStream("tlcockpit-48.jpg"))
   val logoImage = new Image(getClass.getResourceAsStream("tlcockpit-128.jpg"))
   val busyImage = new Image(getClass.getResourceAsStream("spinner.gif"))
+  val msgFont = new Font(30f)
 
   val busySpinner = new ImageView(busyImage) {
     scaleX = 0.3
@@ -75,7 +76,7 @@ object ApplicationMain extends JFXApp {
     val tmp = new Label(txt)
     tmp.wrapText = true
     tmp.opacity = 0.4f
-    tmp.font = new Font(30f)
+    tmp.font = msgFont
     tmp.graphic = busySpinner
     tmp
   }
@@ -307,7 +308,7 @@ object ApplicationMain extends JFXApp {
             if (mode == "update") {
               // TODO scale spinner a bit smaller!
               Platform.runLater {
-                updateTable.placeholder = SpinnerPlaceHolder("Post actions running, please wait ...")
+                updateTable.placeholder = SpinnerPlaceHolder("Post actions running")
               }
             }
             // nothing to be done, all has been done above
@@ -605,7 +606,7 @@ object ApplicationMain extends JFXApp {
 
   def load_backups_update_bkps_view(): Unit = {
     val prevph = backupTable.placeholder.value
-    backupTable.placeholder = SpinnerPlaceHolder("Loading backups, please wait ...")
+    backupTable.placeholder = SpinnerPlaceHolder("Loading backups")
     tlmgr_send("restore --json", (status, lines) => {
       val jsonAst = lines.mkString("").parseJson
       val backups: Map[String, Map[String, TLBackupDisplay]] =
@@ -643,7 +644,7 @@ object ApplicationMain extends JFXApp {
 
   def load_tlpdb_update_pkgs_view():Unit = {
     val prevph = packageTable.placeholder.value
-    packageTable.placeholder = SpinnerPlaceHolder("Loading database, please wait ...")
+    packageTable.placeholder = SpinnerPlaceHolder("Loading database")
     tlmgr_send("info --json", (status, lines) => {
       val jsonAst = lines.mkString("").parseJson
       tlpkgs.clear()
@@ -687,7 +688,7 @@ object ApplicationMain extends JFXApp {
 
   def load_updates_update_upds_view(): Unit = {
     val prevph = updateTable.placeholder.value
-    updateTable.placeholder = SpinnerPlaceHolder("Loading updates, please wait ...")
+    updateTable.placeholder = SpinnerPlaceHolder("Loading updates")
     tlmgr_send("update --list", (status, lines) => {
       // println(s"DEBUG got updates length ${lines.length}")
       // println(s"DEBUG tlmgr last output = ${lines}")
@@ -947,7 +948,10 @@ object ApplicationMain extends JFXApp {
     colDesc.prefWidth.bind(table.width - colName.width - colLRev.width - colRRev.width - colSize.width - colStatus. width - 15)
     table.prefHeight = 300
     table.vgrow = Priority.Always
-    table.placeholder = new Label("No updates available")
+    table.placeholder = new Label("No updates available") {
+      opacity = 0.4f
+      font = msgFont
+    }
     table.showRoot = false
     table.rowFactory = { _ =>
       val row = new TreeTableRow[TLUpdateDisplay] {}
