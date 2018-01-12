@@ -1,5 +1,10 @@
 NEWS for tlcockpit
 
+version 0.8 (2018MMDD)
+----------------------
+- add debug facility (-d and -dd)
+- nice spinner while waiting for loading of db
+
 version 0.7 (20171124)
 ----------------------
 requires tlmgr >= 2017-11-23 (version 45888 of texlive.infra)
