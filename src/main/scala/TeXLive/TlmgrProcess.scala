@@ -1,3 +1,9 @@
+// TLCockpit
+// Copyright 2017-2018 Norbert Preining
+// Licensed according to GPLv3+
+//
+// Front end for tlmgr
+
 package TeXLive
 
 import java.io._

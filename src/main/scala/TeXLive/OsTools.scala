@@ -1,4 +1,9 @@
 package TeXLive
+// TLCockpit
+// Copyright 2017-2018 Norbert Preining
+// Licensed according to GPLv3+
+//
+// Front end for tlmgr
 
 import scala.concurrent.Future
 import scala.concurrent.ExecutionContext.Implicits.global
