@@ -23,6 +23,8 @@ and greatest, get [tlcockpit.jar](jar/tlcockpit.jar) and put it into
 After this you can run it by simply typing `tlcockpit`, or via a direct `java`
 call as in `java -jar PATH/TO/tlcockpit.jar`.
 
+Debugging can be enabled by passing the option `-d` or, for more detailed debugging `-dd`.
+
 Requirements
 ------------
 You need at least `tlmgr` from after 2017-11-23, in TeX Live language at least
