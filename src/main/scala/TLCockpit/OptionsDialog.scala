@@ -8,6 +8,7 @@ package TLCockpit
 
 import TLCockpit.ApplicationMain.{not_implemented_info, stage}
 import TeXLive.{OsTools, TLOption, TLPaperConf}
+import com.typesafe.scalalogging.LazyLogging
 
 import scalafx.Includes._
 import scalafx.collections.ObservableBuffer
@@ -17,7 +18,7 @@ import scalafx.scene.Node
 import scalafx.scene.control._
 import scalafx.scene.layout._
 
-class OptionsDialog(opts: List[TLOption]) {
+class OptionsDialog(opts: List[TLOption]) extends LazyLogging  {
 
   case class Result(selected: Map[String,String])
 
@@ -122,10 +123,10 @@ class OptionsDialog(opts: List[TLOption]) {
 
     result match {
       case Some(Result(foo)) =>
-        // println("Got resutl " + foo)
+        logger.debug("Got result " + foo)
         Some(foo)
       case Some(foo) =>
-        // println("Got strange result " + foo)
+        logger.debug("Got strange result " + foo)
         None
       case None =>
         None

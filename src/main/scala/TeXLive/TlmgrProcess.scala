@@ -9,24 +9,25 @@ package TeXLive
 import java.io._
 
 import TeXLive.OsTools._
+import com.typesafe.scalalogging.LazyLogging
 
 import scala.collection.mutable.ArrayBuffer
 import scala.concurrent.SyncVar
 import scala.sys.process._
 
-class TlmgrProcess(updout: String => Unit, upderr: String => Unit) {
+class TlmgrProcess(updout: String => Unit, upderr: String => Unit)  extends LazyLogging  {
   val inputString = new SyncVar[String]                 // used for the tlmgr process input
   // val outputString = new SyncVar[String]                // used for the tlmgr process output
   // val errorBuffer: StringBuffer = new StringBuffer()    // buffer used for both tmgr process error console AND logging
 
   val tlroot = "kpsewhich -var-value SELFAUTOPARENT".!!.trim
-  // println("tlroot ==" + tlroot + "==")
+  logger.debug("tlroot ==" + tlroot + "==")
 
   // set in only one place, in the main thread
   var process: Process = _
 
   def send_command(input: String): Unit = {
-    println(s"send_command: ${input}")
+    logger.debug(s"send_command: ${input}")
     try {
       assert(!inputString.isSet)
       inputString.put(input)
@@ -74,7 +75,7 @@ class TlmgrProcess(updout: String => Unit, upderr: String => Unit) {
           return
         } else {
           writer.write(input + "\n")
-          // println("writing " + input + " to process")
+          logger.trace("writing " + input + " to process")
           writer.flush()
         }
       }
@@ -82,7 +83,7 @@ class TlmgrProcess(updout: String => Unit, upderr: String => Unit) {
     } catch {
       case exc: Throwable =>
         stdin.close()
-        // println("Exception in inputFn thread: " + exc + "\n")
+        logger.debug("Exception in inputFn thread: " + exc + "\n")
         upderr("Input thread: Exception: " + exc + "\n")
     }
   }
@@ -93,7 +94,7 @@ class TlmgrProcess(updout: String => Unit, upderr: String => Unit) {
       var line: String = ""
       while (true) {
         line = reader.readLine
-        // println("DDD did read " + line + " from process")
+        logger.trace("DDD did read " + line + " from process")
         try {
           updfun(line)
         } catch {

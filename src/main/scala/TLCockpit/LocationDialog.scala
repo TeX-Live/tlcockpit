@@ -6,8 +6,9 @@
 
 package TLCockpit
 
-import TLCockpit.ApplicationMain.{not_implemented_info, stage}
+import TLCockpit.ApplicationMain.stage
 import TeXLive.{OsTools, TLOption}
+import com.typesafe.scalalogging.LazyLogging
 
 import scalafx.Includes._
 import scalafx.event.ActionEvent
@@ -16,7 +17,7 @@ import scalafx.scene.Node
 import scalafx.scene.control._
 import scalafx.scene.layout._
 
-class LocationDialog(locs: Map[String,String]) {
+class LocationDialog(locs: Map[String,String]) extends LazyLogging {
 
   case class Result(selected: Map[String, String])
 
@@ -68,7 +69,7 @@ class LocationDialog(locs: Map[String,String]) {
     val tagNode = new TextField()
     val urlNode = new TextField()
     newlocs += ((tagNode, urlNode))
-    // println(s"current row = ${crow}")
+    logger.trace(s"current row = ${crow}")
     grid.children.remove(addButton)
     grid.add(tagNode, 0, crow)
     grid.add(urlNode, 1, crow)
@@ -80,7 +81,7 @@ class LocationDialog(locs: Map[String,String]) {
       }
     }, 2, crow)
     crow += 1
-    // println(s"adding addButton at row ${crow}")
+    logger.trace(s"adding addButton at row ${crow}")
     grid.add(addButton, 2, crow)
     dialog.dialogPane.value.scene.value.window.value.sizeToScene()
   }
@@ -110,10 +111,10 @@ class LocationDialog(locs: Map[String,String]) {
 
     result match {
       case Some(Result(foo)) =>
-        // println("Got resutl " + foo)
+        logger.debug("Got result " + foo)
         Some(foo)
       case Some(foo) =>
-        // println("Got strange result " + foo)
+        logger.debug("Got strange result " + foo)
         None
       case None =>
         None

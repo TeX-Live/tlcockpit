@@ -8,6 +8,7 @@ package TLCockpit
 
 import TLCockpit.ApplicationMain.stage
 import TeXLive.TLPaperConf
+import com.typesafe.scalalogging.LazyLogging
 
 import scalafx.Includes._
 import scalafx.collections.ObservableBuffer
@@ -15,7 +16,7 @@ import scalafx.geometry.{HPos, Insets}
 import scalafx.scene.control._
 import scalafx.scene.layout._
 
-class PaperDialog(paperconf: Map[String, TLPaperConf])  {
+class PaperDialog(paperconf: Map[String, TLPaperConf]) extends LazyLogging   {
 
   case class Result(selected: Map[String,String])
 
@@ -76,10 +77,10 @@ class PaperDialog(paperconf: Map[String, TLPaperConf])  {
 
     result match {
       case Some(Result(foo)) =>
-        // println("Got resutl " + foo)
+        logger.debug("Got result " + foo)
         Some(foo)
       case Some(foo) =>
-        // println("Got strange result " + foo)
+        logger.debug("Got strange result " + foo)
         None
       case None =>
         None

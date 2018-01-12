@@ -50,11 +50,30 @@ import scalafx.collections.ObservableMap
 import spray.json._
 import TeXLive.JsonProtocol._
 
+// logging
+import com.typesafe.scalalogging.LazyLogging
+import ch.qos.logback.classic.{Level,Logger}
+import org.slf4j.LoggerFactory
 
-
-object ApplicationMain extends JFXApp {
+object ApplicationMain extends JFXApp with LazyLogging {
 
   val version: String = getClass.getPackage.getImplementationVersion
+
+  // parse command line arguments
+  // nothing => INFO
+  // -q WARN -qq ERROR
+  // -d => DEBUG -dd => TRACE
+  logger.info(parameters.unnamed.mkString(" == "))
+
+  LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME).
+    asInstanceOf[Logger].setLevel(Level.toLevel(parameters.unnamed.map( {
+    case "-d" => Level.DEBUG_INT
+    case "-dd" => Level.TRACE_INT
+    case "-q" => Level.WARN_INT
+    case "-qq" => Level.ERROR_INT
+  } ).foldLeft(0)(scala.math.min(_,_))))
+
+  logger.trace("starting program tlcockpit")
 
   var tlmgrBusy = BooleanProperty(false)
 
@@ -186,7 +205,7 @@ object ApplicationMain extends JFXApp {
       }
     } catch { case e: Exception =>
         logText.append("Cannot find or parse ctan-mirrors.pl")
-        // println("Cannot find or parse ctan-mirrors.pl")
+        logger.debug("Cannot find or parse ctan-mirrors.pl")
         Map[String,Map[String,Seq[String]]]()
     }
   }
@@ -287,7 +306,7 @@ object ApplicationMain extends JFXApp {
   def set_line_update_function(mode: String) = {
     var prevName = ""
     stdoutLineUpdateFunc = (l:String) => {
-      // println("DEBUG line update: " + l + "=")
+      logger.trace("DEBUG line update: " + l + "=")
       l match {
         case u if u.startsWith("location-url") => None
         case u if u.startsWith("total-bytes") => None
@@ -332,9 +351,9 @@ object ApplicationMain extends JFXApp {
               }
             }
             // nothing to be done, all has been done above
-            // println("DEBUG got end of updates")
+            logger.debug("DEBUG got end of updates")
           } else {
-            // println("DEBUG getting update line")
+            logger.debug("DEBUG getting update line")
             prevName = if (mode == "update") {
               val foo = parse_one_update_line(l)
               val pkgname = foo.name.value
@@ -399,7 +418,7 @@ object ApplicationMain extends JFXApp {
       case ObservableMap.Remove(k, v) => k.toString == "root"
     }
     if (doit) {
-      // println("DEBUG bkps.onChange called new length = " + bkps.keys.toArray.length)
+      logger.debug("DEBUG bkps.onChange called new length = " + bkps.keys.toArray.length)
       val newroot = new TreeItem[TLBackupDisplay](new TLBackupDisplay("root", "", "")) {
         children = bkps
           .filter(_._1 != "root")
@@ -508,7 +527,7 @@ object ApplicationMain extends JFXApp {
       case ObservableMap.Remove(k,v) => false
     }
     if (doit) {
-      // println("DEBUG: entering pkgs.onChange")
+      logger.debug("DEBUG: entering pkgs.onChange")
       // val pkgbuf: ArrayBuffer[TLPackageDisplay] = ArrayBuffer.empty[TLPackageDisplay]
       val pkgbuf = scala.collection.mutable.Map.empty[String, TLPackageDisplay]
       val binbuf = scala.collection.mutable.Map.empty[String, ArrayBuffer[TLPackageDisplay]]
@@ -546,9 +565,9 @@ object ApplicationMain extends JFXApp {
         if (!pkgbuf.contains(p._1)) {
           if (p._2.length > 1) {
             errorText += "THAT SHOULD NOT HAPPEN: >>" + p._1 + "<< >>" + p._2.length + "<<"
-            // p._2.foreach(f => println("-> " + f.name.value))
+            p._2.foreach(f => logger.trace("-> " + f.name.value))
           } else {
-            // println("DEBUG Moving " + p._2.head.name.value + " up to pkgbuf " + p._1)
+            logger.trace("DEBUG Moving " + p._2.head.name.value + " up to pkgbuf " + p._1)
             pkgbuf(p._2.head.name.value) = p._2.head
             // TODO will this work out with the foreach loop above???
             binbuf -= p._1
@@ -578,7 +597,7 @@ object ApplicationMain extends JFXApp {
           view_pkgs_by_names(pkgbuf, binbuf)
         else
           view_pkgs_by_collections(pkgbuf, binbuf, colbuf)
-      // println("DEBUG: leaving pkgs.onChange before runLater")
+      logger.debug("DEBUG: leaving pkgs.onChange before runLater")
       Platform.runLater {
         packageTable.root = new TreeItem[TLPackageDisplay](new TLPackageDisplay("root", "0", "0", "", "0", "")) {
           expanded = true
@@ -666,7 +685,8 @@ object ApplicationMain extends JFXApp {
     val prevph = packageTable.placeholder.value
     packageTable.placeholder = SpinnerPlaceHolder("Loading database")
     tlmgr_send("info --json", (status, lines) => {
-      println(s"DEBUG load tlpdb update pkgs: got status ${status} and lines = " + lines.head)
+      logger.debug(s"load tlpdb update pkgs: got status ${status}")
+      logger.trace(s"load tlpdb update pkgs: got lines = " + lines.head)
       val jsonAst = lines.mkString("").parseJson
       tlpkgs.clear()
       tlpkgs ++= jsonAst.convertTo[List[TLPackage]].map { p => (p.name, p)}
@@ -711,8 +731,8 @@ object ApplicationMain extends JFXApp {
     val prevph = updateTable.placeholder.value
     updateTable.placeholder = SpinnerPlaceHolder("Loading updates")
     tlmgr_send("update --list", (status, lines) => {
-      // println(s"DEBUG got updates length ${lines.length}")
-      // println(s"DEBUG tlmgr last output = ${lines}")
+      logger.debug(s"got updates length ${lines.length}")
+      logger.trace(s"tlmgr last output = ${lines}")
       val newupds: Map[String, TLUpdateDisplay] = lines.filter { l =>
         l match {
           case u if u.startsWith("location-url") => false
@@ -738,7 +758,7 @@ object ApplicationMain extends JFXApp {
   }
 
   def trigger_update(s:String): Unit = {
-    // println("DEBUG: Triggering update of " + s)
+    logger.debug("DEBUG: Triggering update of " + s)
     if (s == "pkgs") {
       pkgs("root") = new TLPackageDisplay("root", "0", "0", "", "0", "")
     } else if (s == "upds") {
@@ -879,10 +899,10 @@ object ApplicationMain extends JFXApp {
         val dg = new PaperDialog(paperconfs)
         dg.showAndWait() match {
           case Some(newPapers) =>
-            // println(s"Got result ${newPapers}")
+            logger.debug(s"Got result ${newPapers}")
             // collect changed settings
             val changedPapers = newPapers.filter(p => currentPapers(p._1) != p._2)
-            // println(s"Got changed papers ${changedPapers}")
+            logger.debug(s"Got changed papers ${changedPapers}")
             changedPapers.foreach(p => {
               tlmgr_send(s"paper ${p._1} paper ${p._2}", (_,_) => None)
             })
@@ -1223,18 +1243,18 @@ object ApplicationMain extends JFXApp {
     tlmgrBusy.value = true
     val tt = new TlmgrProcess(
       (s: String) => {
-        println(s"outputline put ${s}")
+        logger.trace(s"outputline put ${s}")
         outputLine.put(s)
       },
       (s: String) => {
-        println(s"errorline put ${s}")
+        logger.trace(s"errorline put ${s}")
         errorLine.put(s)
       }
     )
     /* val tlmgrMonitor = Future {
       while (true) {
         if (!tlmgr.isAlive) {
-          println("TLMGR HAS DIED!!!!")
+          logger.debug("TLMGR HAS DIED!!!!")
           // Platform.exit()
           // sys.exit(1)
         }
@@ -1246,28 +1266,28 @@ object ApplicationMain extends JFXApp {
       var tlmgrStatus = ""
       var alive = true
       while (alive) {
-        println("stdout reader bfore outputLine.take")
+        logger.trace("stdout reader before outputLine.take")
         val s = outputLine.take
-        println("stdout reader after outputLine.take")
+        logger.trace("stdout reader after outputLine.take")
         if (s == null) {
           alive = false
-          println("GOT NULL from outputline tlmgr dead???")
+          logger.debug("GOT NULL from outputline tlmgr dead???")
         } else {
-          println(s"DEBUG: got ==" + s + "==")
+          logger.trace(s"DEBUG: got ==" + s + "==")
           if (s == "OK") {
             tlmgrStatus = s
           } else if (s == "ERROR") {
             tlmgrStatus = s
           } else if (s == "tlmgr> ") {
-            println("DEBUG: fulfilling current promise!")
+            logger.debug("DEBUG: fulfilling current promise!")
             currentPromise.success((tlmgrStatus, tlmgrOutput.toArray))
             tlmgrStatus = ""
             tlmgrOutput.clear()
             tlmgrBusy.value = false
             if (pendingJobs.nonEmpty) {
-              println("pending Job found!")
+              logger.debug("pending Job found!")
               val nextCmd = pendingJobs.dequeue()
-              println(s"running ${nextCmd._1}")
+              logger.debug(s"running ${nextCmd._1}")
               tlmgr_run_one_cmd(nextCmd._1, nextCmd._2)
             }
           } else {
@@ -1280,7 +1300,7 @@ object ApplicationMain extends JFXApp {
     tlmgrBusy.onChange({ Platform.runLater{ statusMenu.text = "Status: " + (if (tlmgrBusy.value) "Busy" else "Idle") }})
     stdoutFuture.onComplete {
       case Success(value) =>
-        // println(s"tlmgr stdout reader terminated: ${value}")
+        logger.debug(s"tlmgr stdout reader terminated: ${value}")
         Platform.runLater {
           outerrpane.expanded = true
           outerrtabs.selectionModel().select(1)
@@ -1310,7 +1330,7 @@ object ApplicationMain extends JFXApp {
       }
     }
     stderrFuture.onComplete {
-      case Success(value) => // println(s"tlmgr stderr reader terminated: ${value}")
+      case Success(value) => // logger.debug(s"tlmgr stderr reader terminated: ${value}")
       case Failure(e) =>
         errorText += "lineUpdateFunc(stderr) thread got interrupted -- probably old tlmgr, ignoring it!"
         e.printStackTrace
@@ -1323,16 +1343,16 @@ object ApplicationMain extends JFXApp {
     tlmgrBusy.value = true
     currentPromise.future.onComplete {
       case Success((a, b)) =>
-        println("DEBUG current future completed!")
+        logger.debug("DEBUG current future completed!")
         Platform.runLater {
-          println("Running on complete functio")
+          logger.debug("Running on complete function")
           onCompleteFunc(a, b)
         }
       case Failure(ex) =>
-        println("Runnung tlmgr command did no succeed" + ex.getMessage)
+        logger.debug("Runnung tlmgr command did no succeed" + ex.getMessage)
         errorText += "Running a tlmgr command did not succeed: " + ex.getMessage
     }
-    println(s"DEBUG sending ${s}")
+    logger.debug(s"sending to tlmgr: ${s}")
     tlmgr.send_command(s)
   }
 
@@ -1341,10 +1361,10 @@ object ApplicationMain extends JFXApp {
     outputText.clear()
     outerrpane.expanded = false
     if (!currentPromise.isCompleted) {
-      println(s"DEBUG tlmgr busy, put onto pending jobs: $s")
+      logger.debug(s"tlmgr busy, put onto pending jobs: $s")
       pendingJobs += ((s, onCompleteFunc))
     } else {
-      println(s"tlmgr_send sending $s")
+      logger.debug(s"tlmgr_send sending $s")
       tlmgr_run_one_cmd(s, onCompleteFunc)
     }
   }
@@ -1359,19 +1379,19 @@ object ApplicationMain extends JFXApp {
 
   def tlmgr_post_init():Unit = {
     if (!tlmgr.start_process()) {
-      println("Cannot start tlmgr process, terminating!")
+      logger.debug("Cannot start tlmgr process, terminating!")
       Platform.exit()
       sys.exit(1)
     }
 
     // check for tlmgr revision
     tlmgr_send("version", (status,output) => {
-      println(s"DDD Callback after version, got ${status} and ${output.mkString}")
+      logger.debug(s"Callback after version, got ${status} and ${output.mkString}")
       output.foreach ( l => {
         if (l.startsWith("revision ")) {
           val tlmgrRev = l.stripPrefix("revision ")
           if (tlmgrRev == "unknown") {
-            println("Unknown tlmgr revision, assuming git/svn version")
+            logger.debug("Unknown tlmgr revision, assuming git/svn version")
             logText += "Unknown tlmgr revision, assuming git/svn version"
           } else {
             if (tlmgrRev.toInt < 45838) {
@@ -1389,17 +1409,19 @@ object ApplicationMain extends JFXApp {
       pkgs.clear()
       upds.clear()
       bkps.clear()
-      println("Before loading tlpdb")
+      logger.trace("Before loading tlpdb")
       load_tlpdb_update_pkgs_view()
-      println("after loading tlpdb")
+      logger.trace("after loading tlpdb")
     })
   }
 
-  def defaultStdoutLineUpdateFunc(l: String) : Unit = { println(s"DEBUG: got ==$l== from tlmgr") }
+  def defaultStdoutLineUpdateFunc(l: String) : Unit = { logger.trace(s"DEBUG: got ==$l== from tlmgr") }
   def defaultStderrLineUpdateFunc(l: String) : Unit = { Platform.runLater { logText.append(l) } }
 
   var stdoutLineUpdateFunc: String => Unit = defaultStdoutLineUpdateFunc
   var stderrLineUpdateFunc: String => Unit = defaultStderrLineUpdateFunc
+
+
   var tlmgr = initialize_tlmgr()
   tlmgr_post_init()
 }  // object ApplicationMain
