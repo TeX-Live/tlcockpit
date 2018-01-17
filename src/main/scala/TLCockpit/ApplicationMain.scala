@@ -63,15 +63,24 @@ object ApplicationMain extends JFXApp with LazyLogging {
   // nothing => INFO
   // -q WARN -qq ERROR
   // -d => DEBUG -dd => TRACE
-  logger.info(parameters.unnamed.mkString(" == "))
-
-  LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME).
-    asInstanceOf[Logger].setLevel(Level.toLevel(parameters.unnamed.map( {
+  val cmdlnlog: Int = parameters.unnamed.map( {
     case "-d" => Level.DEBUG_INT
     case "-dd" => Level.TRACE_INT
     case "-q" => Level.WARN_INT
     case "-qq" => Level.ERROR_INT
-  } ).foldLeft(0)(scala.math.min(_,_))))
+    case _ => -1
+  } ).foldLeft(Level.OFF_INT)(scala.math.min(_,_))
+  if (cmdlnlog == -1) {
+    // Unknown log level has been passed in, error out
+    Console.err.println("Unsupported command line argument passed in, terminating.")
+    Platform.exit()
+    sys.exit(0)
+  }
+  // if nothing has been passed on the command line, use INFO
+  val newloglevel = if (cmdlnlog == Level.OFF_INT) Level.INFO_INT else cmdlnlog
+
+  LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME).
+    asInstanceOf[Logger].setLevel(Level.toLevel(newloglevel))
 
   logger.trace("starting program tlcockpit")
 
