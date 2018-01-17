@@ -84,12 +84,12 @@ object ApplicationMain extends JFXApp with LazyLogging {
 
   val iconImage = new Image(getClass.getResourceAsStream("tlcockpit-48.jpg"))
   val logoImage = new Image(getClass.getResourceAsStream("tlcockpit-128.jpg"))
-  val busyImage = new Image(getClass.getResourceAsStream("spinner.gif"))
+  val busyImage = new Image(getClass.getResourceAsStream("spinner-small.gif"))
   val msgFont = new Font(30f)
 
   val busySpinner = new ImageView(busyImage) {
-    scaleX = 0.3
-    scaleY = 0.3
+    // scaleX = 0.3
+    // scaleY = 0.3
   }
 
   def SpinnerPlaceHolder(txt: String): Node = {
