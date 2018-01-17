@@ -38,6 +38,8 @@ class LocationDialog(locs: Map[String,String]) extends LazyLogging {
 
   var crow = 0
 
+  val mirrorlocs: Map[String, Map[String, Seq[String]]] = TLCockpit.ApplicationMain.parse_ctan_mirrors(TLCockpit.ApplicationMain.tlmgr.tlroot)
+
   def do_one(tag: String, url: String): Unit = {
     val tagNode = new TextField() {
       text = tag
@@ -49,7 +51,19 @@ class LocationDialog(locs: Map[String,String]) extends LazyLogging {
     grid.add(tagNode, 0, crow)
     grid.add(urlNode, 1, crow)
     newlocs += ((tagNode, urlNode))
-    if (tag != "main") {
+    if (tag == "main") {
+      grid.add(new MenuButton("Choose Mirror") {
+        items = mirrorlocs.toSeq.sortWith(_._1 < _._1)
+          .map(continent_pair => new Menu(continent_pair._1) {
+            items = continent_pair._2.toSeq.sortWith(_._1 < _._1)
+              .map(country_pair => new Menu(country_pair._1) {
+                items = country_pair._2.sortWith(_ < _).map(mirror => new MenuItem(mirror) {
+                  onAction = (ae) => urlNode.text = mirror
+                })
+              })
+          })
+      }, 2, crow)
+    } else {
       grid.add(new Button("Delete") {
         onAction = _ => {
           tagNode.disable = true
