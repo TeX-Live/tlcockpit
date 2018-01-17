@@ -5,5 +5,7 @@ TODO
   update table when the background activities are running (updmap, fmtutil etc)
   Partially done, do it also for other post-action stuff!
 
-
+* speed up initial loading
+  - load only necessary information with tlmgr info --only-installed --data name,shortdesc
+  - provide a "Load repositories" buttonps ax
 

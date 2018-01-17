@@ -4,6 +4,7 @@ version 0.8 (2018MMDD)
 ----------------------
 - add debug facility (-d and -dd)
 - nice spinner while waiting for loading of db
+- select mirrors for main repository facility added
 
 version 0.7 (20171124)
 ----------------------
