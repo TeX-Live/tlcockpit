@@ -52,17 +52,19 @@ class LocationDialog(locs: Map[String,String]) extends LazyLogging {
     grid.add(urlNode, 1, crow)
     newlocs += ((tagNode, urlNode))
     if (tag == "main") {
-      grid.add(new MenuButton("Choose Mirror") {
-        items = mirrorlocs.toSeq.sortWith(_._1 < _._1)
-          .map(continent_pair => new Menu(continent_pair._1) {
-            items = continent_pair._2.toSeq.sortWith(_._1 < _._1)
-              .map(country_pair => new Menu(country_pair._1) {
-                items = country_pair._2.sortWith(_ < _).map(mirror => new MenuItem(mirror) {
-                  onAction = (ae) => urlNode.text = mirror
+      if (mirrorlocs.nonEmpty) {
+        grid.add(new MenuButton("Choose Mirror") {
+          items = mirrorlocs.toSeq.sortWith(_._1 < _._1)
+            .map(continent_pair => new Menu(continent_pair._1) {
+              items = continent_pair._2.toSeq.sortWith(_._1 < _._1)
+                .map(country_pair => new Menu(country_pair._1) {
+                  items = country_pair._2.sortWith(_ < _).map(mirror => new MenuItem(mirror) {
+                    onAction = (ae) => urlNode.text = mirror
+                  })
                 })
-              })
-          })
-      }, 2, crow)
+            })
+        }, 2, crow)
+      }
     } else {
       grid.add(new Button("Delete") {
         onAction = _ => {
