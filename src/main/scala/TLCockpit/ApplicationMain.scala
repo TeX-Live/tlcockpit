@@ -669,6 +669,18 @@ object ApplicationMain extends JFXApp with LazyLogging {
     })
   }
 
+  def filter_pkgs_view(): Unit = {
+    val newpkgs: Map[String, TLPackageDisplay] =
+      pkgs.filter { p =>
+        val searchTerm = searchEntry.text.value.toLowerCase
+        p._1.toLowerCase.contains(searchTerm) ||
+        p._2.shortdesc.value.toLowerCase.contains(searchTerm)
+      }.toMap
+    pkgs.clear()
+    pkgs ++= newpkgs
+    trigger_update("pkgs")
+  }
+
   def update_pkgs_view(): Unit = {
     val newpkgs: Map[String, TLPackageDisplay] =
       tlpkgs
@@ -700,6 +712,29 @@ object ApplicationMain extends JFXApp with LazyLogging {
       tlpkgs.clear()
       tlpkgs ++= jsonAst.convertTo[List[TLPackage]].map { p => (p.name, p)}
       update_pkgs_view()
+      packageTable.placeholder = prevph
+    })
+  }
+
+  // TODO does not work by now because we need tlpkgs earray with information on Collection or not!!!!
+  // used in pkg.onChange!
+  def load_tlpdb_update_pkgs_view_no_json():Unit = {
+    val prevph = packageTable.placeholder.value
+    packageTable.placeholder = SpinnerPlaceHolder("Loading database")
+    tlmgr_send("info --data name,localrev,remoterev,size,installed,shortdesc", (status, lines) => {
+      logger.debug(s"load tlpdb update (no json) pkgs: got status ${status}")
+      logger.trace(s"load tlpdb update (no json) pkgs: got lines = " + lines.head)
+      val newtlpkgd: Map[String, TLPackageDisplay] = lines.map(l => {
+        val fields = l.split(",",6)
+        new TLPackageDisplay(fields(0), fields(1), fields(2), fields(5), fields(3),
+          if (fields(4) == "1") "Installed" else "Not installed")
+      }).map{ p =>
+        logger.trace("Constructed TLPackageDisplay: " + p)
+        (p.name.value, p)
+      }.toMap
+      pkgs.clear()
+      pkgs ++= newtlpkgd
+      filter_pkgs_view()
       packageTable.placeholder = prevph
     })
   }
@@ -1420,6 +1455,7 @@ object ApplicationMain extends JFXApp with LazyLogging {
       bkps.clear()
       logger.trace("Before loading tlpdb")
       load_tlpdb_update_pkgs_view()
+      // load_tlpdb_update_pkgs_view_no_json()
       logger.trace("after loading tlpdb")
     })
   }
