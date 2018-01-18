@@ -711,7 +711,7 @@ object ApplicationMain extends JFXApp with LazyLogging {
       logger.debug(s"load tlpdb update (no json) pkgs: got status ${status}")
       logger.trace(s"load tlpdb update (no json) pkgs: got lines = " + lines.head)
       val newtlpkgs: Map[String, TLPackage] = lines.map(l => {
-        val fields = l.split(",",6)
+        val fields = l.split(",",8)
         val pkgname = fields(0)
         val shortdesc = fields(7).stripMargin('"').replaceAll("""\"""",""""""")
         val lrev = fields(1).toLong
@@ -949,6 +949,16 @@ object ApplicationMain extends JFXApp with LazyLogging {
     })
   }
 
+  def callback_pkg_info(pkg: String) = {
+    tlmgr_send(s"info --json ${pkg}", (status, lines) => {
+      val jsonAst = lines.mkString("").parseJson
+      val tlpkgs = jsonAst.convertTo[List[TLFullPackage]]
+      Platform.runLater {
+        new PkgInfoDialog(tlpkgs(0)).showAndWait()
+      }
+    })
+  }
+
   val optionsMenu: Menu = new Menu("Options") {
     items = List(
       new MenuItem("General ...") { onAction = (ae) => callback_general_options() },
@@ -1034,7 +1044,7 @@ object ApplicationMain extends JFXApp with LazyLogging {
     table.rowFactory = { _ =>
       val row = new TreeTableRow[TLUpdateDisplay] {}
       val infoMI = new MenuItem("Info") {
-        onAction = (ae) => new PkgInfoDialog(row.item.value.name.value).showAndWait()
+        onAction = (ae) => callback_pkg_info(row.item.value.name.value)
       }
       val updateMI = new MenuItem("Update") {
         onAction = (ae) => callback_update(row.item.value.name.value)
@@ -1097,7 +1107,7 @@ object ApplicationMain extends JFXApp with LazyLogging {
     table.rowFactory = { p =>
       val row = new TreeTableRow[TLPackageDisplay] {}
       val infoMI = new MenuItem("Info") {
-        onAction = (ae) => new PkgInfoDialog(row.item.value.name.value).showAndWait()
+        onAction = (ae) => callback_pkg_info(row.item.value.name.value)
       }
       val installMI = new MenuItem("Install") {
         onAction = (ae) => callback_install(row.item.value.name.value)
@@ -1148,7 +1158,7 @@ object ApplicationMain extends JFXApp with LazyLogging {
       val row = new TreeTableRow[TLBackupDisplay] {}
       val ctm = new ContextMenu(
         new MenuItem("Info") {
-          onAction = (ae) => new PkgInfoDialog(row.item.value.name.value).showAndWait()
+          onAction = (ae) => callback_pkg_info(row.item.value.name.value)
         },
         new MenuItem("Restore") {
           onAction = (ae) => callback_restore(row.item.value.name.value, row.item.value.rev.value)

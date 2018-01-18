@@ -6,9 +6,9 @@
 
 package TLCockpit
 
-import TLCockpit.ApplicationMain.{tlpkgs,tlmgr,stage}
+import TLCockpit.ApplicationMain.{stage, tlmgr, tlpkgs}
 import TLCockpit.Utils._
-import TeXLive.OsTools
+import TeXLive.{OsTools, TLFullPackage}
 
 import scalafx.Includes._
 import scalafx.collections.ObservableBuffer
@@ -19,7 +19,7 @@ import scalafx.scene.control._
 import scalafx.scene.input.MouseEvent
 import scalafx.scene.paint.Color
 
-class PkgInfoDialog(pkg: String) extends Dialog {
+class PkgInfoDialog(tlp: TLFullPackage) extends Dialog {
   val dialog = new Dialog() {
     initOwner(stage)
     title = s"Package Information for $pkg"
@@ -27,7 +27,7 @@ class PkgInfoDialog(pkg: String) extends Dialog {
     resizable = true
   }
   dialog.dialogPane().buttonTypes = Seq(ButtonType.OK)
-  val isInstalled = tlpkgs(pkg).installed
+  val isInstalled = tlp.installed
   val grid = new GridPane() {
     hgap = 10
     vgap = 10
@@ -43,7 +43,7 @@ class PkgInfoDialog(pkg: String) extends Dialog {
   }
 
   var crow = 0
-  val tlp = tlpkgs(pkg)
+  val pkg = tlp.name
   crow = do_one("package", pkg, crow)
   crow = do_one("category", tlp.category, crow)
   crow = do_one("shortdesc", tlp.shortdesc.getOrElse(""), crow)
@@ -73,25 +73,25 @@ class PkgInfoDialog(pkg: String) extends Dialog {
     crow = do_one("cat-related", catdata.related.get, crow)
   // add files section
   //println(tlpkgs(pkg))
-  val docFiles = tlpkgs(pkg).docfiles
+  val docFiles = tlp.docfiles
   if (docFiles.nonEmpty) {
     grid.add(new Label("doc files"), 0, crow)
     grid.add(doListView(docFiles.map(s => s.file.replaceFirst("RELOC", "texmf-dist")), isInstalled), 1, crow)
     crow += 1
   }
-  val runFiles = tlpkgs(pkg).runfiles
+  val runFiles = tlp.runfiles
   if (runFiles.nonEmpty) {
     grid.add(new Label("run files"), 0, crow)
     grid.add(doListView(runFiles.map(s => s.replaceFirst("RELOC", "texmf-dist")), false), 1, crow)
     crow += 1
   }
-  val srcFiles = tlpkgs(pkg).srcfiles
+  val srcFiles = tlp.srcfiles
   if (srcFiles.nonEmpty) {
     grid.add(new Label("src files"), 0, crow)
     grid.add(doListView(srcFiles.map(s => s.replaceFirst("RELOC", "texmf-dist")), false), 1, crow)
     crow += 1
   }
-  val binFiles = tlpkgs(pkg).binfiles
+  val binFiles = tlp.binfiles
   if (binFiles.nonEmpty) {
     grid.add(new Label("bin files"), 0, crow)
     grid.add(doListView(binFiles.flatMap(_._2).toSeq.map(s => s.replaceFirst("RELOC", "texmf-dist")), false), 1, crow)

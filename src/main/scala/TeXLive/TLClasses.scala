@@ -28,6 +28,29 @@ case class TLPackage
   available: Boolean
 )
 
+case class TLFullPackage
+(
+  name: String,
+  shortdesc: Option[String],
+  longdesc: Option[String],
+  var lrev: Long,
+  rrev: Long,
+  category: String,
+  docfiles: List[DocFile],
+  runfiles: List[String],
+  srcfiles: List[String],
+  binfiles: Map[String,List[String]],
+  docsize: Long,
+  runsize: Long,
+  srcsize: Long,
+  binsize: Map[String,Long],
+  cataloguedata: CatalogueData,
+  depends: List[String],
+  catalogue: Option[String],
+  var installed: Boolean,
+  available: Boolean
+)
+
 case class TLOption (name: String, description: String, format: String,
   tlmgrname: String, value: Option[String], default: String)
 
@@ -48,4 +71,5 @@ case class TLOptions
   w32_multi_user: Option[Boolean],
   file_assocs: Option[Long]
 )
+
 
