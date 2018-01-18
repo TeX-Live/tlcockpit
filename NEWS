@@ -5,6 +5,8 @@ version 0.8 (2018MMDD)
 - add debug facility (-d and -dd)
 - nice spinner while waiting for loading of db
 - select mirrors for main repository facility added
+- speed up initial loading by using info --data and load
+  pkg info on demand using info --json
 
 version 0.7 (20171124)
 ----------------------
