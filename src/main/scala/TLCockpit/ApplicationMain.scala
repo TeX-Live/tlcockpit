@@ -77,7 +77,7 @@ object ApplicationMain extends JFXApp with LazyLogging {
     sys.exit(0)
   }
   // if nothing has been passed on the command line, use INFO
-  val newloglevel = if (cmdlnlog == Level.OFF_INT) Level.INFO_INT else cmdlnlog
+  val newloglevel = if (cmdlnlog == Level.OFF_INT) Level.DEBUG_INT else cmdlnlog
 
   LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME).
     asInstanceOf[Logger].setLevel(Level.toLevel(newloglevel))
@@ -312,6 +312,28 @@ object ApplicationMain extends JFXApp with LazyLogging {
     }.showAndWait()
   }
 
+  // Output of update --self
+  /*
+tlmgr>
+update --self
+location-url	/home/norbert/public_html/tlnet /home/norbert/public_html/tlcritical /home/norbert/Domains/server/texlive.info/contrib/2017 /home/norbert/public_html/tltexjp
+total-bytes	381087
+end-of-header
+texlive.infra	u	4629	46295	381087	??:??	??:??	tlcritical	-	-
+end-of-updates
+STDERR running mktexlsr ...
+STDERR done running mktexlsr.
+STDERR running mtxrun --generate ...
+STDERR done running mtxrun --generate.
+OK
+STDOUT (with patch STDERR) tlmgr has been updated, restarting!
+protocol 1
+tlmgr>
+
+  The problem with the update function lies in the
+    protocol 1
+  which is not accepted/expected by the update function!
+   */
   def set_line_update_function(mode: String) = {
     var prevName = ""
     stdoutLineUpdateFunc = (l:String) => {
@@ -361,6 +383,11 @@ object ApplicationMain extends JFXApp with LazyLogging {
             }
             // nothing to be done, all has been done above
             logger.debug("DEBUG got end of updates")
+          // } else if (u.startsWith("protocol ")) {
+          //   logger.debug("Got protocol line, seems tlmgr got updated and restarted!")
+          //   // nothing else to be done
+          // } else if (u.startsWith("tlmgr has been updated, restarting")) {
+          //   logger.debug("tlmgr got updated and restarted, ignoring output")
           } else {
             logger.debug("DEBUG getting update line")
             prevName = if (mode == "update") {
@@ -390,7 +417,7 @@ object ApplicationMain extends JFXApp with LazyLogging {
   def callback_update(s: String): Unit = {
     val prevph = updateTable.placeholder.value
     set_line_update_function("update")
-    val cmd = if (s == "--self") "update --self" else s"update $s"
+    val cmd = if (s == "--self") "update --self --no-restart" else s"update $s"
     tlmgr_send(cmd, (a,b) => {
       stdoutLineUpdateFunc = defaultStdoutLineUpdateFunc
       Platform.runLater { updateTable.placeholder = prevph }
@@ -735,7 +762,9 @@ object ApplicationMain extends JFXApp with LazyLogging {
   }
 
   def parse_one_update_line(l: String): TLUpdateDisplay = {
+    logger.debug(s"Got update line >>${l}")
     val fields = l.split("\t")
+    logger.debug(s"Splitting into ${fields}")
     val pkgname = fields(0)
     val status = fields(1) match {
       case "d" => "Removed on server"
