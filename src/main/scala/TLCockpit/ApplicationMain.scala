@@ -953,10 +953,28 @@ object ApplicationMain extends JFXApp with LazyLogging {
 
   def callback_pkg_info(pkg: String) = {
     tlmgr_send(s"info --json ${pkg}", (status, lines) => {
-      val jsonAst = lines.mkString("").parseJson
-      val tlpkgs = jsonAst.convertTo[List[TLPackage]]
-      Platform.runLater {
-        new PkgInfoDialog(tlpkgs(0)).showAndWait()
+      try {
+        val jsonAst = lines.mkString("").parseJson
+        val tlpkgs = jsonAst.convertTo[List[TLPackage]]
+        Platform.runLater {
+          new PkgInfoDialog(tlpkgs(0)).showAndWait()
+        }
+      } catch {
+        case foo : spray.json.DeserializationException =>
+          new Alert(AlertType.Warning) {
+            initOwner(stage)
+            title = "Warning"
+            headerText = s"Cannot display information for ${pkg}"
+            contentText = s"We couldn't parse the output of\ntlmgr info --json ${pkg}\n"
+          }.showAndWait()
+        case bar : ArrayIndexOutOfBoundsException => {
+          new Alert(AlertType.Warning) {
+            initOwner(stage)
+            title = "Warning"
+            headerText = s"Cannot find information for ${pkg}"
+            contentText = s"We couldn't find information for ${pkg}\n"
+          }.showAndWait()
+        }
       }
     })
   }
