@@ -1367,7 +1367,11 @@ tlmgr>
         logger.trace("stdout reader after outputLine.take")
         if (s == null) {
           alive = false
-          logger.debug("GOT NULL from outputline tlmgr dead???")
+          logger.debug("got null from stdout, tlmgr seems to be terminated for restart")
+          currentPromise.success((tlmgrStatus, tlmgrOutput.toArray))
+          tlmgrStatus = ""
+          tlmgrOutput.clear()
+          tlmgrBusy.value = false
         } else {
           logger.trace(s"DEBUG: got ==" + s + "==")
           if (s == "OK") {
@@ -1397,6 +1401,7 @@ tlmgr>
     stdoutFuture.onComplete {
       case Success(value) =>
         logger.debug(s"tlmgr stdout reader terminated: ${value}")
+        /*
         Platform.runLater {
           outerrpane.expanded = true
           outerrtabs.selectionModel().select(1)
@@ -1411,9 +1416,24 @@ tlmgr>
           // Platform.exit()
           // sys.exit(1)
         }
+        */
       case Failure(e) =>
         errorText += "lineUpdateFunc(stdout) thread got interrupted -- probably old tlmgr, ignoring it!"
         e.printStackTrace
+        Platform.runLater {
+          outerrpane.expanded = true
+          outerrtabs.selectionModel().select(1)
+          errorfield.scrollTop = Double.MaxValue
+          logfield.scrollTop = Double.MaxValue
+          new Alert(AlertType.Error) {
+            initOwner(stage)
+            title = "TeX Live Manager tlmgr has terminated"
+            headerText = "TeX Live Manager tlmgr has terminated - we cannot continue"
+            contentText = "Please inspect the debug output in the main window lower pane!"
+          }.showAndWait()
+          // Platform.exit()
+          // sys.exit(1)
+        }
     }
     val stderrFuture = Future {
       var alive = true
@@ -1426,10 +1446,10 @@ tlmgr>
       }
     }
     stderrFuture.onComplete {
-      case Success(value) => // logger.debug(s"tlmgr stderr reader terminated: ${value}")
+      case Success(value) => logger.debug(s"tlmgr stderr reader terminated: ${value}")
       case Failure(e) =>
+        logger.debug("tlmgr stderr reader terminated with failure: " + e.toString)
         errorText += "lineUpdateFunc(stderr) thread got interrupted -- probably old tlmgr, ignoring it!"
-        e.printStackTrace
     }
     tt
   }
