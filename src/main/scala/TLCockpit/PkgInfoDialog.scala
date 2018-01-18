@@ -8,7 +8,7 @@ package TLCockpit
 
 import TLCockpit.ApplicationMain.{stage, tlmgr, tlpkgs}
 import TLCockpit.Utils._
-import TeXLive.{OsTools, TLFullPackage}
+import TeXLive.{OsTools, TLPackage}
 
 import scalafx.Includes._
 import scalafx.collections.ObservableBuffer
@@ -19,7 +19,7 @@ import scalafx.scene.control._
 import scalafx.scene.input.MouseEvent
 import scalafx.scene.paint.Color
 
-class PkgInfoDialog(tlp: TLFullPackage) extends Dialog {
+class PkgInfoDialog(tlp: TLPackage) extends Dialog {
   val dialog = new Dialog() {
     initOwner(stage)
     title = s"Package Information for $pkg"

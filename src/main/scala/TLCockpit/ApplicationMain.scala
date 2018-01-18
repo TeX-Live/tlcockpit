@@ -110,7 +110,7 @@ object ApplicationMain extends JFXApp with LazyLogging {
     tmp
   }
 
-  val tlpkgs: ObservableMap[String, TLPackage] = ObservableMap[String,TLPackage]()
+  val tlpkgs: ObservableMap[String, TLPackageShort] = ObservableMap[String,TLPackageShort]()
   val pkgs: ObservableMap[String, TLPackageDisplay] = ObservableMap[String, TLPackageDisplay]()
   val upds: ObservableMap[String, TLUpdateDisplay] = ObservableMap[String, TLUpdateDisplay]()
   val bkps: ObservableMap[String, Map[String, TLBackupDisplay]] = ObservableMap[String, Map[String,TLBackupDisplay]]()  // pkgname -> (version -> TLBackup)*
@@ -690,6 +690,7 @@ object ApplicationMain extends JFXApp with LazyLogging {
     trigger_update("pkgs")
   }
 
+  /*
   def load_tlpdb_update_pkgs_view():Unit = {
     val prevph = packageTable.placeholder.value
     packageTable.placeholder = SpinnerPlaceHolder("Loading database")
@@ -703,6 +704,7 @@ object ApplicationMain extends JFXApp with LazyLogging {
       packageTable.placeholder = prevph
     })
   }
+  */
 
   def load_tlpdb_update_pkgs_view_no_json():Unit = {
     val prevph = packageTable.placeholder.value
@@ -710,7 +712,7 @@ object ApplicationMain extends JFXApp with LazyLogging {
     tlmgr_send("info --data name,localrev,remoterev,category,size,installed,depends,shortdesc", (status, lines) => {
       logger.debug(s"load tlpdb update (no json) pkgs: got status ${status}")
       logger.trace(s"load tlpdb update (no json) pkgs: got lines = " + lines.head)
-      val newtlpkgs: Map[String, TLPackage] = lines.map(l => {
+      val newtlpkgs: Map[String, TLPackageShort] = lines.map(l => {
         val fields = l.split(",",8)
         val pkgname = fields(0)
         val shortdesc = fields(7).stripMargin('"').replaceAll("""\"""",""""""")
@@ -720,7 +722,7 @@ object ApplicationMain extends JFXApp with LazyLogging {
         val size = fields(4).toLong
         val installed = fields(5) == "1"
         val depends = fields(6).split(":").toList
-        new TLPackage(pkgname,if(shortdesc == "") None else Some(shortdesc),lrev, rrev, cat, depends, installed, lrev > 0)
+        new TLPackageShort(pkgname,if(shortdesc == "") None else Some(shortdesc),lrev, rrev, cat, depends, installed, lrev > 0)
       }).map{ p =>
         logger.trace("Constructed TLPackage: " + p)
         (p.name, p)
@@ -952,7 +954,7 @@ object ApplicationMain extends JFXApp with LazyLogging {
   def callback_pkg_info(pkg: String) = {
     tlmgr_send(s"info --json ${pkg}", (status, lines) => {
       val jsonAst = lines.mkString("").parseJson
-      val tlpkgs = jsonAst.convertTo[List[TLFullPackage]]
+      val tlpkgs = jsonAst.convertTo[List[TLPackage]]
       Platform.runLater {
         new PkgInfoDialog(tlpkgs(0)).showAndWait()
       }
@@ -1456,10 +1458,9 @@ object ApplicationMain extends JFXApp with LazyLogging {
       pkgs.clear()
       upds.clear()
       bkps.clear()
-      logger.trace("Before loading tlpdb")
-      // load_tlpdb_update_pkgs_view()
+      logger.debug("Before loading tlpdb")
       load_tlpdb_update_pkgs_view_no_json()
-      logger.trace("after loading tlpdb")
+      logger.debug("after loading tlpdb")
     })
   }
 

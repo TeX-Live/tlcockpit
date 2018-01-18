@@ -16,7 +16,7 @@ case class DocFile(file: String, details: Option[String], language: Option[Strin
 case class TLPaperConf(program: String, file: String, options: List[String])
 case class TLBackup(name: String, rev: String, date: String)
 
-case class TLPackage
+case class TLPackageShort
 (
   name: String,
   shortdesc: Option[String],
@@ -28,7 +28,7 @@ case class TLPackage
   available: Boolean
 )
 
-case class TLFullPackage
+case class TLPackage
 (
   name: String,
   shortdesc: Option[String],
