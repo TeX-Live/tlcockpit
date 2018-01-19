@@ -77,7 +77,7 @@ object ApplicationMain extends JFXApp with LazyLogging {
     sys.exit(0)
   }
   // if nothing has been passed on the command line, use INFO
-  val newloglevel = if (cmdlnlog == Level.OFF_INT) Level.INFO_INT else cmdlnlog
+  val newloglevel = if (cmdlnlog == Level.OFF_INT) Level.DEBUG_INT else cmdlnlog
 
   LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME).
     asInstanceOf[Logger].setLevel(Level.toLevel(newloglevel))
@@ -1523,7 +1523,7 @@ tlmgr>
     currentPromise = Promise[(String, Array[String])]()
     tlmgrBusy.value = true
     actionLabel.text = s"[${s}]"
-      currentPromise.future.onComplete {
+    currentPromise.future.onComplete {
       case Success((a, b)) =>
         logger.debug("tlmgr run one cmd: current future completed!")
         Platform.runLater {
@@ -1547,7 +1547,7 @@ tlmgr>
       logger.debug("Currently running job: " + currentPromise)
       pendingJobs += ((s, onCompleteFunc))
     } else {
-      logger.debug(s"tlmgr_send sending $s")
+      logger.debug(s"tlmgr_send sending ${s}")
       tlmgr_run_one_cmd(s, onCompleteFunc)
     }
   }

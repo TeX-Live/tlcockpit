@@ -1,5 +1,6 @@
 TODO
 ====
+* debug NullPointers when passing *any* command line option??!?!
 
 * fix status info when external programs are run (in particular in parallel!)
 
