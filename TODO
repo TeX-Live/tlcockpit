@@ -1,11 +1,5 @@
 TODO
 ====
 
-* add a spinner (in resources/spinner.gif) with some text to the background of the empty
-  update table when the background activities are running (updmap, fmtutil etc)
-  Partially done, do it also for other post-action stuff!
-
-* speed up initial loading
-  - load only necessary information with tlmgr info --only-installed --data name,shortdesc
-  - provide a "Load repositories" buttonps ax
+* fix status info when external programs are run (in particular in parallel!)
 

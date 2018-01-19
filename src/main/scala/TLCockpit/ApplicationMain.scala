@@ -272,6 +272,11 @@ object ApplicationMain extends JFXApp with LazyLogging {
     outerrpane.expanded = true
     outerrtabs.selectionModel().select(0)
     outputText.append(s"Running $s" + (if (unbuffered) " (unbuffered)" else " (buffered)"))
+    // TODO we need to switch back this manually as tlmgr is not busy here!
+    // but we are running mktexlsr and mtxrun .. in *parallel* so the label will
+    // be cleared the moment the faster one terminates.
+    // needs improvement!!!
+    actionLabel.text = s"[${s}]"
     val foo = Future {
       s ! ProcessLogger(
         line => if (unbuffered) Platform.runLater( outputText.append(line) )
@@ -282,6 +287,8 @@ object ApplicationMain extends JFXApp with LazyLogging {
     foo.onComplete {
       case Success(ret) =>
         Platform.runLater {
+          // if (actionLabel.text == s"[${s}]")
+            actionLabel.text = ""
           outputText.append(OutputBuffer.slice(OutputBufferIndex,OutputBuffer.length).mkString(""))
           outputText.append("Completed")
           reset_output_buffer()
@@ -289,6 +296,8 @@ object ApplicationMain extends JFXApp with LazyLogging {
         }
       case Failure(t) =>
         Platform.runLater {
+          // if (actionLabel.text == s"[${s}]")
+            actionLabel.text = ""
           outputText.append(OutputBuffer.slice(OutputBufferIndex,OutputBuffer.length).mkString(""))
           outputText.append("Completed")
           reset_output_buffer()
@@ -378,6 +387,7 @@ tlmgr>
             if (mode == "update") {
               Platform.runLater {
                 updateTable.placeholder = SpinnerPlaceHolder("Post actions running")
+                actionLabel.text = "[post actions running]"
               }
             }
             // nothing to be done, all has been done above
@@ -419,7 +429,9 @@ tlmgr>
     val cmd = if (s == "--self") "update --self --no-restart" else s"update $s"
     tlmgr_send(cmd, (a,b) => {
       stdoutLineUpdateFunc = defaultStdoutLineUpdateFunc
-      Platform.runLater { updateTable.placeholder = prevph }
+      Platform.runLater {
+        updateTable.placeholder = prevph
+      }
       if (s == "--self") {
         reinitialize_tlmgr()
         // this doesn't work seemingly
@@ -430,11 +442,15 @@ tlmgr>
 
   def callback_remove(pkg: String): Unit = {
     set_line_update_function("remove")
-    tlmgr_send(s"remove $pkg", (_, _) => { stdoutLineUpdateFunc = defaultStdoutLineUpdateFunc })
+    tlmgr_send(s"remove $pkg", (_, _) => {
+      stdoutLineUpdateFunc = defaultStdoutLineUpdateFunc
+    })
   }
   def callback_install(pkg: String): Unit = {
     set_line_update_function("install")
-    tlmgr_send(s"install $pkg", (_,_) => { stdoutLineUpdateFunc = defaultStdoutLineUpdateFunc })
+    tlmgr_send(s"install $pkg", (_,_) => {
+      stdoutLineUpdateFunc = defaultStdoutLineUpdateFunc
+    })
   }
 
 
@@ -443,6 +459,7 @@ tlmgr>
       tlpkgs(str).lrev = rev.toLong
       pkgs(str).lrev = ObjectProperty[Int](rev.toInt)
       packageTable.refresh()
+      Platform.runLater { actionLabel.text = "[running post actions]" }
     })
   }
 

@@ -7,6 +7,9 @@ version 0.8 (2018MMDD)
 - select mirrors for main repository facility added
 - speed up initial loading by using info --data and load
   pkg info on demand using info --json
+- (hopefully) fixed self updated of tlmgr
+- move status indicator below the package pane, and add currently
+  running command indication
 
 version 0.7 (20171124)
 ----------------------
