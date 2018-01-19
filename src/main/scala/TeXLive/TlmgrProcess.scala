@@ -33,7 +33,7 @@ class TlmgrProcess(updout: String => Unit, upderr: String => Unit)  extends Lazy
       inputString.put(input)
     } catch {
       case exc: Throwable =>
-        upderr("Main thread: " +
+        logger.warn("Main thread: " +
           (if (exc.isInstanceOf[NoSuchElementException]) "Timeout" else "Exception: " + exc))
     }
   }
@@ -47,18 +47,26 @@ class TlmgrProcess(updout: String => Unit, upderr: String => Unit)  extends Lazy
   }
 
   def start_process(): Boolean = {
+    logger.debug("tlmgr process: entering starting process")
     // process creation
     if (process == null) {
+      logger.debug("tlmgr process: start_process: creating procIO")
       val procIO = new ProcessIO(inputFn(_), outputFn(_, updout), outputFn(_, upderr))
       val processBuilder: ProcessBuilder = Seq({if (isWindows) "tlmgr.bat" else "tlmgr"}, "-v", "--machine-readable", "shell")
+      logger.debug("tlmgr process: start_process: running new tlmgr process")
       process = processBuilder.run(procIO)
     }
+    logger.debug("tlmgr process: start_process: checking for being alive")
     process.isAlive()
   }
 
   def cleanup(): Unit = {
     if (process != null) {
+      logger.debug("tlmgr process: cleanup - sending quit")
       send_command("quit")
+      logger.debug("tlmgr process: cleanup - sleeping 2s")
+      Thread.sleep(1000)
+      logger.debug("tlmgr process: cleanup - destroying process")
       process.destroy()
     }
   }
@@ -83,8 +91,7 @@ class TlmgrProcess(updout: String => Unit, upderr: String => Unit)  extends Lazy
     } catch {
       case exc: Throwable =>
         stdin.close()
-        logger.debug("Exception in inputFn thread: " + exc + "\n")
-        upderr("Input thread: Exception: " + exc + "\n")
+        logger.warn("Exception in inputFn thread: " + exc + "\n")
     }
   }
 
@@ -99,14 +106,14 @@ class TlmgrProcess(updout: String => Unit, upderr: String => Unit)  extends Lazy
           updfun(line)
         } catch {
           case exc: Throwable =>
-            upderr("Update output line function failed, continuing anyway. Exception: " + exc)
+            logger.debug("Update output line function failed, continuing anyway. Exception: " + exc)
         }
       }
       outStr.close()
     } catch {
       case exc: Throwable =>
         outStr.close()
-        upderr("Output thread: Exception: " + exc + "\n")
+        logger.warn("Exception in outputFn thread: " + exc + "\n")
     }
   }
 }

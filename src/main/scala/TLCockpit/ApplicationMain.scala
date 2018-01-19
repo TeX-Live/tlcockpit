@@ -77,7 +77,7 @@ object ApplicationMain extends JFXApp with LazyLogging {
     sys.exit(0)
   }
   // if nothing has been passed on the command line, use INFO
-  val newloglevel = if (cmdlnlog == Level.OFF_INT) Level.DEBUG_INT else cmdlnlog
+  val newloglevel = if (cmdlnlog == Level.OFF_INT) Level.INFO_INT else cmdlnlog
 
   LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME).
     asInstanceOf[Logger].setLevel(Level.toLevel(newloglevel))
@@ -195,8 +195,7 @@ object ApplicationMain extends JFXApp with LazyLogging {
   cmdline.onKeyPressed = {
     (ae: KeyEvent) => if (ae.code == KeyCode.Enter) callback_run_cmdline()
   }
-  val outputLine = new SyncVar[String]
-  val errorLine  = new SyncVar[String]
+
 
 
   // read the perl dump of ctan mirrors by converting it to JSON code and parsing it
@@ -1337,6 +1336,10 @@ tlmgr>
 
   def initialize_tlmgr(): TlmgrProcess = {
     tlmgrBusy.value = true
+    // create new sync vars for each process
+    val outputLine = new SyncVar[String]
+    val errorLine  = new SyncVar[String]
+
     val tt = new TlmgrProcess(
       (s: String) => {
         logger.trace(s"outputline put ${s}")
@@ -1347,6 +1350,13 @@ tlmgr>
         errorLine.put(s)
       }
     )
+    if (!tt.start_process()) {
+      logger.debug("Cannot start tlmgr process, terminating!")
+      Platform.exit()
+      sys.exit(1)
+    }
+    logger.debug("initialize_tlmgr: sleeping after starting process")
+    Thread.sleep(1000)
     /* val tlmgrMonitor = Future {
       while (true) {
         if (!tlmgr.isAlive) {
@@ -1361,6 +1371,7 @@ tlmgr>
       val tlmgrOutput = ArrayBuffer[String]()
       var tlmgrStatus = ""
       var alive = true
+      logger.debug("initialize tlmgr: starting stdout reader thread")
       while (alive) {
         logger.trace("stdout reader before outputLine.take")
         val s = outputLine.take
@@ -1368,7 +1379,10 @@ tlmgr>
         if (s == null) {
           alive = false
           logger.debug("got null from stdout, tlmgr seems to be terminated for restart")
-          currentPromise.success((tlmgrStatus, tlmgrOutput.toArray))
+          if (!currentPromise.isCompleted) {
+            logger.debug(s"Fulfilling remaining open promise with ${tlmgrStatus} and ${tlmgrOutput.toArray.mkString}")
+            currentPromise.success((tlmgrStatus, tlmgrOutput.toArray))
+          }
           tlmgrStatus = ""
           tlmgrOutput.clear()
           tlmgrBusy.value = false
@@ -1379,8 +1393,10 @@ tlmgr>
           } else if (s == "ERROR") {
             tlmgrStatus = s
           } else if (s == "tlmgr> ") {
-            logger.debug("DEBUG: fulfilling current promise!")
-            currentPromise.success((tlmgrStatus, tlmgrOutput.toArray))
+            logger.trace(s"Fulfilling current promise with ${tlmgrStatus} and ${tlmgrOutput.toArray.mkString}!")
+            if (!currentPromise.isCompleted) {
+              currentPromise.success((tlmgrStatus, tlmgrOutput.toArray))
+            }
             tlmgrStatus = ""
             tlmgrOutput.clear()
             tlmgrBusy.value = false
@@ -1396,47 +1412,20 @@ tlmgr>
           }
         }
       }
+      logger.debug("initialize tlmgr: finishing stdout reader thread")
     }
     tlmgrBusy.onChange({ Platform.runLater{ statusMenu.text = "Status: " + (if (tlmgrBusy.value) "Busy" else "Idle") }})
+
     stdoutFuture.onComplete {
       case Success(value) =>
         logger.debug(s"tlmgr stdout reader terminated: ${value}")
-        /*
-        Platform.runLater {
-          outerrpane.expanded = true
-          outerrtabs.selectionModel().select(1)
-          errorfield.scrollTop = Double.MaxValue
-          logfield.scrollTop = Double.MaxValue
-          new Alert(AlertType.Error) {
-            initOwner(stage)
-            title = "TeX Live Manager tlmgr has terminated"
-            headerText = "TeX Live Manager tlmgr has terminated - we cannot continue"
-            contentText = "Please inspect the debug output in the main window lower pane!"
-          }.showAndWait()
-          // Platform.exit()
-          // sys.exit(1)
-        }
-        */
       case Failure(e) =>
-        errorText += "lineUpdateFunc(stdout) thread got interrupted -- probably old tlmgr, ignoring it!"
-        e.printStackTrace
-        Platform.runLater {
-          outerrpane.expanded = true
-          outerrtabs.selectionModel().select(1)
-          errorfield.scrollTop = Double.MaxValue
-          logfield.scrollTop = Double.MaxValue
-          new Alert(AlertType.Error) {
-            initOwner(stage)
-            title = "TeX Live Manager tlmgr has terminated"
-            headerText = "TeX Live Manager tlmgr has terminated - we cannot continue"
-            contentText = "Please inspect the debug output in the main window lower pane!"
-          }.showAndWait()
-          // Platform.exit()
-          // sys.exit(1)
-        }
+        logger.debug(s"tlmgr stdout reader terminated with error: ${e}")
     }
+
     val stderrFuture = Future {
       var alive = true
+      logger.debug("initialize tlmgr: starting stderr reader thread")
       while (alive) {
         val s = errorLine.take
         if (s == null)
@@ -1444,65 +1433,19 @@ tlmgr>
         else
           stderrLineUpdateFunc(s)
       }
+      logger.debug("initialize tlmgr: finishing stderr reader thread")
     }
     stderrFuture.onComplete {
-      case Success(value) => logger.debug(s"tlmgr stderr reader terminated: ${value}")
+      case Success(value) =>
+        logger.debug(s"tlmgr stderr reader terminated: ${value}")
       case Failure(e) =>
-        logger.debug("tlmgr stderr reader terminated with failure: " + e.toString)
-        errorText += "lineUpdateFunc(stderr) thread got interrupted -- probably old tlmgr, ignoring it!"
+        logger.debug(s"tlmgr stderr reader terminated with failure: ${e}")
     }
-    tt
-  }
 
-  def tlmgr_run_one_cmd(s: String, onCompleteFunc: (String, Array[String]) => Unit): Unit = {
-    currentPromise = Promise[(String, Array[String])]()
-    tlmgrBusy.value = true
-    currentPromise.future.onComplete {
-      case Success((a, b)) =>
-        logger.debug("DEBUG current future completed!")
-        Platform.runLater {
-          logger.debug("Running on complete function")
-          onCompleteFunc(a, b)
-        }
-      case Failure(ex) =>
-        logger.debug("Runnung tlmgr command did no succeed" + ex.getMessage)
-        errorText += "Running a tlmgr command did not succeed: " + ex.getMessage
-    }
-    logger.debug(s"sending to tlmgr: ${s}")
-    tlmgr.send_command(s)
-  }
-
-  def tlmgr_send(s: String, onCompleteFunc: (String, Array[String]) => Unit): Unit = {
-    // logText.clear()
-    outputText.clear()
-    outerrpane.expanded = false
-    if (!currentPromise.isCompleted) {
-      logger.debug(s"tlmgr busy, put onto pending jobs: $s")
-      pendingJobs += ((s, onCompleteFunc))
-    } else {
-      logger.debug(s"tlmgr_send sending $s")
-      tlmgr_run_one_cmd(s, onCompleteFunc)
-    }
-  }
-
-  def reinitialize_tlmgr(): Unit = {
-    tlmgr.cleanup()
-    // Thread.sleep(1000)
-    tlmgr = initialize_tlmgr()
-    tlmgr_post_init()
-    pkgstabs.getSelectionModel().select(0)
-  }
-
-  def tlmgr_post_init():Unit = {
-    if (!tlmgr.start_process()) {
-      logger.debug("Cannot start tlmgr process, terminating!")
-      Platform.exit()
-      sys.exit(1)
-    }
 
     // check for tlmgr revision
     tlmgr_send("version", (status,output) => {
-      logger.debug(s"Callback after version, got ${status} and ${output.mkString}")
+      logger.debug(s"Callback after version, got ${status} and ${output.mkString("\n")}")
       output.foreach ( l => {
         if (l.startsWith("revision ")) {
           val tlmgrRev = l.stripPrefix("revision ")
@@ -1529,6 +1472,59 @@ tlmgr>
       load_tlpdb_update_pkgs_view_no_json()
       logger.debug("after loading tlpdb")
     })
+    tt
+  }
+
+  def tlmgr_run_one_cmd(s: String, onCompleteFunc: (String, Array[String]) => Unit): Unit = {
+    currentPromise = Promise[(String, Array[String])]()
+    tlmgrBusy.value = true
+    currentPromise.future.onComplete {
+      case Success((a, b)) =>
+        logger.debug("tlmgr run one cmd: current future completed!")
+        Platform.runLater {
+          logger.debug("tlmgr run one cmd: running on complete function")
+          onCompleteFunc(a, b)
+        }
+      case Failure(ex) =>
+        logger.debug("Running tlmgr command did no succeed" + ex.getMessage)
+        errorText += "Running a tlmgr command did not succeed: " + ex.getMessage
+    }
+    logger.debug(s"sending to tlmgr: ${s}")
+    tlmgr.send_command(s)
+  }
+
+  def tlmgr_send(s: String, onCompleteFunc: (String, Array[String]) => Unit): Unit = {
+    // logText.clear()
+    outputText.clear()
+    outerrpane.expanded = false
+    if (!currentPromise.isCompleted) {
+      logger.debug(s"tlmgr busy, put onto pending jobs: $s")
+      logger.debug("Currently running job: " + currentPromise)
+      pendingJobs += ((s, onCompleteFunc))
+    } else {
+      logger.debug(s"tlmgr_send sending $s")
+      tlmgr_run_one_cmd(s, onCompleteFunc)
+    }
+  }
+
+  def reinitialize_tlmgr(): Unit = {
+    logger.debug("reinit tlmgr: entering, clearing pending jobs")
+    pendingJobs.clear()
+    logger.debug("reinit tlmgr: cleared pending jobs")
+    // if (!currentPromise.isCompleted) {
+    //   logger.debug("reinit tlmgr: current promise not complete, completing it")
+    //   currentPromise.success(("",Array[String]()))
+    //   logger.debug("reinit tlmgr: after completing current promise")
+    // }
+    logger.debug("reinit tlmgr: cleaning up tlmgr")
+    tlmgr.cleanup()
+    logger.debug("reinit tlmgr: sleeping 1s")
+    Thread.sleep(1000)
+    logger.debug("reinit tlmgr: initializaing new tlmgr")
+    tlmgr = initialize_tlmgr()
+    logger.debug("reinit tlmgr: finished")
+    updLoaded = false
+    pkgstabs.getSelectionModel().select(0)
   }
 
   def defaultStdoutLineUpdateFunc(l: String) : Unit = { logger.trace(s"DEBUG: got ==$l== from tlmgr") }
@@ -1539,7 +1535,6 @@ tlmgr>
 
 
   var tlmgr = initialize_tlmgr()
-  tlmgr_post_init()
 }  // object ApplicationMain
 
 // vim:set tabstop=2 expandtab : //
