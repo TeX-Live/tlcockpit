@@ -77,7 +77,7 @@ object ApplicationMain extends JFXApp with LazyLogging {
     sys.exit(0)
   }
   // if nothing has been passed on the command line, use INFO
-  val newloglevel = if (cmdlnlog == Level.OFF_INT) Level.DEBUG_INT else cmdlnlog
+  val newloglevel = if (cmdlnlog == Level.OFF_INT) Level.INFO_INT else cmdlnlog
 
   LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME).
     asInstanceOf[Logger].setLevel(Level.toLevel(newloglevel))
@@ -1486,6 +1486,10 @@ tlmgr>
         logger.debug(s"tlmgr stderr reader terminated with failure: ${e}")
     }
 
+    tt
+  }
+
+  def tlmgr_post_init() = {
 
     // check for tlmgr revision
     tlmgr_send("version", (status,output) => {
@@ -1516,7 +1520,6 @@ tlmgr>
       load_tlpdb_update_pkgs_view_no_json()
       logger.debug("after loading tlpdb")
     })
-    tt
   }
 
   def tlmgr_run_one_cmd(s: String, onCompleteFunc: (String, Array[String]) => Unit): Unit = {
@@ -1568,6 +1571,8 @@ tlmgr>
     logger.debug("reinit tlmgr: initializaing new tlmgr")
     tlmgr = initialize_tlmgr()
     logger.debug("reinit tlmgr: finished")
+    tlmgr_post_init()
+    logger.debug("reinit tlmgr: post init done")
     updLoaded = false
     pkgstabs.getSelectionModel().select(0)
   }
@@ -1580,6 +1585,8 @@ tlmgr>
 
 
   var tlmgr = initialize_tlmgr()
+  tlmgr_post_init();
+
 }  // object ApplicationMain
 
 // vim:set tabstop=2 expandtab : //
