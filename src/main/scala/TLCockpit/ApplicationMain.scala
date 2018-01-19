@@ -1019,9 +1019,6 @@ tlmgr>
       new CheckMenuItem("Disable auto-removal of server-deleted packages") { disable = true } */
     )
   }
-  val statusMenu: Menu = new Menu("Status: Idle") {
-    disable = true
-  }
   val expertPane: TitledPane = new TitledPane {
     text = "Experts only"
     collapsible = true
@@ -1222,6 +1219,28 @@ tlmgr>
   searchEntry.onKeyPressed = {
     (ae: KeyEvent) => if (ae.code == KeyCode.Enter) update_pkgs_view()
   }
+  val statusLabel = new Label("Idle")
+  val actionLabel = new Label("") {
+    hgrow = Priority.Always
+    maxWidth = Double.MaxValue
+  }
+  val statusBox = new HBox {
+    children = Seq(
+      new Label("Tlmgr status:") {
+        vgrow = Priority.Always
+        alignmentInParent = Pos.CenterLeft
+      },
+      statusLabel,
+      actionLabel
+    )
+    maxWidth = Double.MaxValue
+    hgrow = Priority.Always
+    alignment = Pos.Center
+    alignmentInParent = Pos.CenterLeft
+    padding = Insets(10)
+    spacing = 10
+  }
+
   val searchBox = new HBox {
     children = Seq(
       new Label("Search:") {
@@ -1240,7 +1259,8 @@ tlmgr>
       }
     )
     alignment = Pos.Center
-    padding = Insets(10)
+    // do not add padding at the bottom as we have one from the status field
+    padding = Insets(10,10,0,10)
     spacing = 10
   }
   val pkgsContainer = new VBox {
@@ -1274,7 +1294,7 @@ tlmgr>
   val menuBar: MenuBar = new MenuBar {
     useSystemMenuBar = true
     // menus.addAll(mainMenu, optionsMenu, helpMenu)
-    menus.addAll(mainMenu, pkgsMenu, toolsMenu, optionsMenu, statusMenu)
+    menus.addAll(mainMenu, pkgsMenu, toolsMenu, optionsMenu)
   }
   var updLoaded = false
   var bckLoaded = false
@@ -1285,16 +1305,16 @@ tlmgr>
           load_backups_update_bkps_view()
           bckLoaded = true
         }
-        menuBar.menus = Seq(mainMenu, toolsMenu, optionsMenu, statusMenu)
+        menuBar.menus = Seq(mainMenu, toolsMenu, optionsMenu)
       } else if (a.value.text() == "Updates") {
         // only update if not done already
         if (!updLoaded) {
           load_updates_update_upds_view()
           updLoaded = true
         }
-        menuBar.menus = Seq(mainMenu, updMenu, toolsMenu, optionsMenu, statusMenu)
+        menuBar.menus = Seq(mainMenu, updMenu, toolsMenu, optionsMenu)
       } else if (a.value.text() == "Packages") {
-        menuBar.menus = Seq(mainMenu, pkgsMenu, toolsMenu, optionsMenu, statusMenu)
+        menuBar.menus = Seq(mainMenu, pkgsMenu, toolsMenu, optionsMenu)
       }
     }
   )
@@ -1312,7 +1332,7 @@ tlmgr>
         val topBox = menuBar
         val centerBox = new VBox {
           padding = Insets(10)
-          children = List(pkgstabs, expertPane, outerrpane)
+          children = List(pkgstabs, statusBox, expertPane, outerrpane)
         }
         new BorderPane {
           // padding = Insets(20)
@@ -1336,6 +1356,7 @@ tlmgr>
 
   def initialize_tlmgr(): TlmgrProcess = {
     tlmgrBusy.value = true
+    actionLabel.text = "[initializing tlmgr]"
     // create new sync vars for each process
     val outputLine = new SyncVar[String]
     val errorLine  = new SyncVar[String]
@@ -1414,7 +1435,13 @@ tlmgr>
       }
       logger.debug("initialize tlmgr: finishing stdout reader thread")
     }
-    tlmgrBusy.onChange({ Platform.runLater{ statusMenu.text = "Status: " + (if (tlmgrBusy.value) "Busy" else "Idle") }})
+    tlmgrBusy.onChange({
+      Platform.runLater {
+        statusLabel.text = if (tlmgrBusy.value) "Busy" else "Idle"
+        if (!tlmgrBusy.value)
+          actionLabel.text = ""
+      }
+    })
 
     stdoutFuture.onComplete {
       case Success(value) =>
@@ -1478,7 +1505,8 @@ tlmgr>
   def tlmgr_run_one_cmd(s: String, onCompleteFunc: (String, Array[String]) => Unit): Unit = {
     currentPromise = Promise[(String, Array[String])]()
     tlmgrBusy.value = true
-    currentPromise.future.onComplete {
+    actionLabel.text = s"[${s}]"
+      currentPromise.future.onComplete {
       case Success((a, b)) =>
         logger.debug("tlmgr run one cmd: current future completed!")
         Platform.runLater {
