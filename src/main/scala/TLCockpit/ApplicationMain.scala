@@ -266,29 +266,29 @@ object ApplicationMain extends JFXApp with LazyLogging {
     OutputBufferIndex = 0
   }
 
-  def callback_run_external(s: String, unbuffered: Boolean = true): Unit = {
+  def callback_run_external(ss: Array[String], unbuffered: Boolean = true): Unit = {
     outputText.clear()
     // logText.clear()
     outerrpane.expanded = true
     outerrtabs.selectionModel().select(0)
-    outputText.append(s"Running $s" + (if (unbuffered) " (unbuffered)" else " (buffered)"))
-    // TODO we need to switch back this manually as tlmgr is not busy here!
-    // but we are running mktexlsr and mtxrun .. in *parallel* so the label will
-    // be cleared the moment the faster one terminates.
-    // needs improvement!!!
-    actionLabel.text = s"[${s}]"
+    // outputText.append(s"Running ${ss.mkString(" ")}" + (if (unbuffered) " (unbuffered)" else " (buffered)"))
     val foo = Future {
-      s ! ProcessLogger(
-        line => if (unbuffered) Platform.runLater( outputText.append(line) )
-                else OutputBuffer.synchronized( OutputBuffer.append(line + "\n") ),
-        line => Platform.runLater( logText.append(line) )
-      )
+      ss.foreach { s =>
+        Platform.runLater {
+          outputText.append(s"Running ${s}" + (if (unbuffered) " (unbuffered)" else " (buffered)"))
+          actionLabel.text = s"[${s}]"
+        }
+        s ! ProcessLogger(
+          line => if (unbuffered) Platform.runLater(outputText.append(line))
+          else OutputBuffer.synchronized(OutputBuffer.append(line + "\n")),
+          line => Platform.runLater(logText.append(line))
+        )
+      }
     }
     foo.onComplete {
       case Success(ret) =>
         Platform.runLater {
-          // if (actionLabel.text == s"[${s}]")
-            actionLabel.text = ""
+          actionLabel.text = ""
           outputText.append(OutputBuffer.slice(OutputBufferIndex,OutputBuffer.length).mkString(""))
           outputText.append("Completed")
           reset_output_buffer()
@@ -296,13 +296,12 @@ object ApplicationMain extends JFXApp with LazyLogging {
         }
       case Failure(t) =>
         Platform.runLater {
-          // if (actionLabel.text == s"[${s}]")
-            actionLabel.text = ""
+          actionLabel.text = ""
           outputText.append(OutputBuffer.slice(OutputBufferIndex,OutputBuffer.length).mkString(""))
           outputText.append("Completed")
           reset_output_buffer()
           outputfield.scrollTop = Double.MaxValue
-          errorText.append("An ERROR has occurred running $s: " + t.getMessage)
+          errorText.append(s"An ERROR has occurred running one of ${ss.mkString(" ")}: " + t.getMessage)
           errorfield.scrollTop = Double.MaxValue
           outerrpane.expanded = true
           outerrtabs.selectionModel().select(2)
@@ -907,15 +906,15 @@ tlmgr>
     items = List(
       new MenuItem("Update filename databases ...") {
         onAction = (ae) => {
-          callback_run_external("mktexlsr")
-          callback_run_external("mtxrun --generate")
+          callback_run_external(Array("mktexlsr", "mtxrun --generate"))
+          // callback_run_external("mtxrun --generate")
         }
       },
       // too many lines are quickly output -> GUI becomes hanging until
       // all the callbacks are done - call fmtutil with unbuffered = false
-      new MenuItem("Rebuild all formats ...") { onAction = (ae) => callback_run_external("fmtutil --sys --all", false) },
+      new MenuItem("Rebuild all formats ...") { onAction = (ae) => callback_run_external(Array("fmtutil --sys --all"), false) },
       new MenuItem("Update font map database ...") {
-        onAction = (ae) => callback_run_external("updmap --sys")
+        onAction = (ae) => callback_run_external(Array("updmap --sys"))
       }
     )
   }
