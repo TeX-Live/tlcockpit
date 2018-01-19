@@ -69,7 +69,7 @@ object ApplicationMain extends JFXApp with LazyLogging {
     case "-q" => Level.WARN_INT
     case "-qq" => Level.ERROR_INT
     case _ => -1
-  } ).foldLeft(Level.OFF_INT)(scala.math.min(_,_))
+  } ).foldLeft(Level.OFF_INT)(scala.math.min)
   if (cmdlnlog == -1) {
     // Unknown log level has been passed in, error out
     Console.err.println("Unsupported command line argument passed in, terminating.")
@@ -77,7 +77,7 @@ object ApplicationMain extends JFXApp with LazyLogging {
     sys.exit(0)
   }
   // if nothing has been passed on the command line, use INFO
-  val newloglevel = if (cmdlnlog == Level.OFF_INT) Level.INFO_INT else cmdlnlog
+  val newloglevel: Int = if (cmdlnlog == Level.OFF_INT) Level.INFO_INT else cmdlnlog
 
   LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME).
     asInstanceOf[Logger].setLevel(Level.toLevel(newloglevel))
@@ -96,7 +96,7 @@ object ApplicationMain extends JFXApp with LazyLogging {
   val busyImage = new Image(getClass.getResourceAsStream("spinner-small.gif"))
   val msgFont = new Font(30f)
 
-  val busySpinner = new ImageView(busyImage) {
+  val busySpinner: ImageView = new ImageView(busyImage) {
     // scaleX = 0.3
     // scaleY = 0.3
   }
@@ -152,7 +152,7 @@ object ApplicationMain extends JFXApp with LazyLogging {
   })
 
   val update_all_menu: MenuItem = new MenuItem("Update all") {
-    val cmd = "--all" + {
+    val cmd: String = "--all" + {
       if (disable_auto_install) " --no-auto-install" else "" } + {
       if (disable_auto_removal) " --no-auto-remove" else "" } + {
       if (enable_reinstall_forcible) " --reinstall-forcibly-removed" else "" }
@@ -341,7 +341,7 @@ tlmgr>
     protocol 1
   which is not accepted/expected by the update function!
    */
-  def set_line_update_function(mode: String) = {
+  def set_line_update_function(mode: String): Unit = {
     var prevName = ""
     stdoutLineUpdateFunc = (l:String) => {
       logger.trace("DEBUG line update: " + l + "=")
@@ -633,7 +633,7 @@ tlmgr>
             colbuf(pkg._1) = ArrayBuffer[TLPackageDisplay]()
             // TODO we need to deal with packages that get removed!!!
             // for now just make sure we don't add them here!
-            colbuf(pkg._1) ++= foo.filter(pkgbuf.contains(_)).map(pkgbuf(_))
+            colbuf(pkg._1) ++= foo.filter(pkgbuf.contains).map(pkgbuf(_))
           }
         } else if (pkg._1 == "root") {
           // do nothing
@@ -764,7 +764,7 @@ tlmgr>
         val size = fields(4).toLong
         val installed = fields(5) == "1"
         val depends = fields(6).split(":").toList
-        new TLPackageShort(pkgname,if(shortdesc == "") None else Some(shortdesc),lrev, rrev, cat, depends, installed, lrev > 0)
+        TLPackageShort(pkgname, if (shortdesc == "") None else Some(shortdesc), lrev, rrev, cat, depends, installed, lrev > 0)
       }).map{ p =>
         logger.trace("Constructed TLPackage: " + p)
         (p.name, p)
@@ -816,14 +816,12 @@ tlmgr>
     tlmgr_send("update --list", (status, lines) => {
       logger.debug(s"got updates length ${lines.length}")
       logger.trace(s"tlmgr last output = ${lines}")
-      val newupds: Map[String, TLUpdateDisplay] = lines.filter { l =>
-        l match {
-          case u if u.startsWith("location-url") => false
-          case u if u.startsWith("total-bytes") => false
-          case u if u.startsWith("end-of-header") => false
-          case u if u.startsWith("end-of-updates") => false
-          case u => true
-        }
+      val newupds: Map[String, TLUpdateDisplay] = lines.filter {
+        case u if u.startsWith("location-url") => false
+        case u if u.startsWith("total-bytes") => false
+        case u if u.startsWith("end-of-header") => false
+        case u if u.startsWith("end-of-updates") => false
+        case u => true
       }.map { l =>
         val foo = parse_one_update_line(l)
         (foo.name.value, foo)
@@ -1001,7 +999,7 @@ tlmgr>
         val jsonAst = lines.mkString("").parseJson
         val tlpkgs = jsonAst.convertTo[List[TLPackage]]
         Platform.runLater {
-          new PkgInfoDialog(tlpkgs(0)).showAndWait()
+          new PkgInfoDialog(tlpkgs.head).showAndWait()
         }
       } catch {
         case foo : spray.json.DeserializationException =>
@@ -1011,14 +1009,13 @@ tlmgr>
             headerText = s"Cannot display information for ${pkg}"
             contentText = s"We couldn't parse the output of\ntlmgr info --json ${pkg}\n"
           }.showAndWait()
-        case bar : ArrayIndexOutOfBoundsException => {
+        case bar : ArrayIndexOutOfBoundsException =>
           new Alert(AlertType.Warning) {
             initOwner(stage)
             title = "Warning"
             headerText = s"Cannot find information for ${pkg}"
             contentText = s"We couldn't find information for ${pkg}\n"
           }.showAndWait()
-        }
       }
     })
   }
@@ -1573,7 +1570,7 @@ tlmgr>
     tlmgr_post_init()
     logger.debug("reinit tlmgr: post init done")
     updLoaded = false
-    pkgstabs.getSelectionModel().select(0)
+    pkgstabs.getSelectionModel.select(0)
   }
 
   def defaultStdoutLineUpdateFunc(l: String) : Unit = { logger.trace(s"DEBUG: got ==$l== from tlmgr") }
@@ -1584,7 +1581,7 @@ tlmgr>
 
 
   var tlmgr = initialize_tlmgr()
-  tlmgr_post_init();
+  tlmgr_post_init()
 
 }  // object ApplicationMain
 

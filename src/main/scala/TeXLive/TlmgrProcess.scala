@@ -20,7 +20,7 @@ class TlmgrProcess(updout: String => Unit, upderr: String => Unit)  extends Lazy
   // val outputString = new SyncVar[String]                // used for the tlmgr process output
   // val errorBuffer: StringBuffer = new StringBuffer()    // buffer used for both tmgr process error console AND logging
 
-  val tlroot = "kpsewhich -var-value SELFAUTOPARENT".!!.trim
+  val tlroot: String = "kpsewhich -var-value SELFAUTOPARENT".!!.trim
   logger.debug("tlroot ==" + tlroot + "==")
 
   // set in only one place, in the main thread
@@ -51,7 +51,7 @@ class TlmgrProcess(updout: String => Unit, upderr: String => Unit)  extends Lazy
     // process creation
     if (process == null) {
       logger.debug("tlmgr process: start_process: creating procIO")
-      val procIO = new ProcessIO(inputFn(_), outputFn(_, updout), outputFn(_, upderr))
+      val procIO = new ProcessIO(inputFn, outputFn(_, updout), outputFn(_, upderr))
       val processBuilder: ProcessBuilder = Seq({if (isWindows) "tlmgr.bat" else "tlmgr"}, "-v", "--machine-readable", "shell")
       logger.debug("tlmgr process: start_process: running new tlmgr process")
       process = processBuilder.run(procIO)

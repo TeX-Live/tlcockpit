@@ -54,22 +54,22 @@ class PkgInfoDialog(tlp: TLPackage) extends Dialog {
     crow = do_one("local revision", tlp.lrev.toString, crow)
   if (tlp.available)
     crow = do_one("remote revision", tlp.rrev.toString, crow)
-  val binsizesum = tlp.binsize.map { _._2}.toList.foldLeft[Long](0)(_ + _) * TeXLive.tlBlockSize
-  val binsizestr = if (binsizesum > 0) "bin " + humanReadableByteSize(binsizesum) + " " else "";
-  val runsizestr = if (tlp.runsize > 0) "run " + humanReadableByteSize(tlp.runsize) + " " else "";
-  val srcsizestr = if (tlp.srcsize > 0) "src " + humanReadableByteSize(tlp.srcsize) + " " else "";
-  val docsizestr = if (tlp.docsize > 0) "doc " + humanReadableByteSize(tlp.docsize) + " " else "";
+  val binsizesum = tlp.binsize.values.toList.sum * TeXLive.tlBlockSize
+  val binsizestr = if (binsizesum > 0) "bin " + humanReadableByteSize(binsizesum) + " " else ""
+  val runsizestr = if (tlp.runsize > 0) "run " + humanReadableByteSize(tlp.runsize) + " " else ""
+  val srcsizestr = if (tlp.srcsize > 0) "src " + humanReadableByteSize(tlp.srcsize) + " " else ""
+  val docsizestr = if (tlp.docsize > 0) "doc " + humanReadableByteSize(tlp.docsize) + " " else ""
   crow = do_one("sizes", runsizestr + docsizestr + binsizestr + srcsizestr, crow)
   val catdata = tlp.cataloguedata
-  if (catdata.version != None)
+  if (catdata.version.isDefined)
     crow = do_one("cat-version", catdata.version.get, crow)
-  if (catdata.date != None)
+  if (catdata.date.isDefined)
     crow = do_one("cat-date", catdata.date.get, crow)
-  if (catdata.license != None)
+  if (catdata.license.isDefined)
     crow = do_one("cat-license", catdata.license.get, crow)
-  if (catdata.topics != None)
+  if (catdata.topics.isDefined)
     crow = do_one("cat-topics", catdata.topics.get, crow)
-  if (catdata.related != None)
+  if (catdata.related.isDefined)
     crow = do_one("cat-related", catdata.related.get, crow)
   // add files section
   //println(tlpkgs(pkg))
