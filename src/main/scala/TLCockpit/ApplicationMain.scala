@@ -758,7 +758,7 @@ tlmgr>
       val newtlpkgs: Map[String, TLPackageShort] = lines.map(l => {
         val fields = l.split(",",8)
         val pkgname = fields(0)
-        val shortdesc = fields(7).stripMargin('"').replaceAll("""\"""",""""""")
+        val shortdesc = fields(7).stripPrefix(""""""").stripSuffix(""""""").replaceAll("""\\"""",""""""")
         val lrev = fields(1).toLong
         val rrev = fields(2).toLong
         val cat = fields(3)
