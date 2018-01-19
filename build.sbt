@@ -1,6 +1,6 @@
 name := "tlcockpit"
 
-version := "0.8dev"
+version := "0.8"
 
 scalaVersion := "2.12.3"
 
