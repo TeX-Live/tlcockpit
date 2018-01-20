@@ -29,6 +29,7 @@ mkdir -p "$tl/Master/texmf-dist/doc/support/tlcockpit"
 rm -rf "$tl/Master/texmf-dist/doc/support/tlcockpit"/*
 cp README.md NEWS LICENSE "$tl/Master/texmf-dist/doc/support/tlcockpit/"
 cp -a screenshots "$tl/Master/texmf-dist/doc/support/tlcockpit/"
+cp scripts/tlcockpit-runner.sh "$tl/Master/texmf-dist/scripts/tlcockpit/tlcockpit-runner.sh"
 
 
 # build deployment jar
