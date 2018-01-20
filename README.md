@@ -72,9 +72,13 @@ View packages by collections
 
 ![Packages by collections](screenshots/tlcockpit-collections.jpg)
 
-Updates listing
+Updates listing, with one package being updated
 
 ![Updates listing view](screenshots/tlcockpit-updates.jpg)
+
+After updating all packages during the run of postactions like `mktexlsr`
+
+![Postaction view](screenshots/tlcockpit-postactions.jpg)
 
 Backup/Restore listing
 
@@ -88,9 +92,17 @@ Configuration dialog
 
 ![Config screen](screenshots/tlcockpit-config.jpg)
 
+Repository seup dialog with dropdown for mirror selection
+
+![Repository screen](screenshots/tlcockpit-repositories.jpg)
+
 Paper setting dialog
 
 ![Config screen](screenshots/tlcockpit-paper.jpg)
+
+The Tools menu, as well as the expert and debug panes open
+
+![Menu, Expert, Debug](screenshots/tlcockpit-menu-debug-expert.jpg)
 
 License
 -------

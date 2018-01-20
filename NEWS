@@ -1,6 +1,6 @@
 NEWS for tlcockpit
 
-version 0.8 (2018MMDD)
+version 0.8 (20180120)
 ----------------------
 - add debug facility (-d and -dd)
 - nice spinner while waiting for loading of db
