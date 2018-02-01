@@ -34,11 +34,23 @@ class PkgInfoDialog(tlp: TLPackage) extends Dialog {
     padding = Insets(20)
   }
 
+  def copyableTextfield(k: String): TextField = {
+    new TextField() {
+      text = k
+      editable = false
+      style = "-fx-background-color: rgba(0, 0, 0, 0);"
+      margin = Insets(0)
+      padding = Insets(0)
+    }
+  }
+
   def do_one(k: String, v: String, row: Int): Int = {
-    grid.add(new Label(k), 0, row)
-    grid.add(new Label(v) {
-      wrapText = true
-    }, 1, row)
+    grid.add(copyableTextfield(k), 0, row)
+    grid.add(copyableTextfield(v), 1, row)
+    // grid.add(new Label(k), 0, row)
+    // grid.add(new Label(v) {
+    //   wrapText = true
+    // }, 1, row)
     row + 1
   }
 
@@ -75,25 +87,29 @@ class PkgInfoDialog(tlp: TLPackage) extends Dialog {
   //println(tlpkgs(pkg))
   val docFiles = tlp.docfiles
   if (docFiles.nonEmpty) {
-    grid.add(new Label("doc files"), 0, crow)
+    // grid.add(new Label("doc files"), 0, crow)
+    grid.add(copyableTextfield("doc files"), 0, crow)
     grid.add(doListView(docFiles.map(s => s.file.replaceFirst("RELOC", "texmf-dist")), isInstalled), 1, crow)
     crow += 1
   }
   val runFiles = tlp.runfiles
   if (runFiles.nonEmpty) {
-    grid.add(new Label("run files"), 0, crow)
+    // grid.add(new Label("run files"), 0, crow)
+    grid.add(copyableTextfield("run files"), 0, crow)
     grid.add(doListView(runFiles.map(s => s.replaceFirst("RELOC", "texmf-dist")), false), 1, crow)
     crow += 1
   }
   val srcFiles = tlp.srcfiles
   if (srcFiles.nonEmpty) {
-    grid.add(new Label("src files"), 0, crow)
+    // grid.add(new Label("src files"), 0, crow)
+    grid.add(copyableTextfield("src files"), 0, crow)
     grid.add(doListView(srcFiles.map(s => s.replaceFirst("RELOC", "texmf-dist")), false), 1, crow)
     crow += 1
   }
   val binFiles = tlp.binfiles
   if (binFiles.nonEmpty) {
-    grid.add(new Label("bin files"), 0, crow)
+    // grid.add(new Label("bin files"), 0, crow)
+    grid.add(copyableTextfield("bin files"), 0, crow)
     grid.add(doListView(binFiles.flatMap(_._2).toSeq.map(s => s.replaceFirst("RELOC", "texmf-dist")), false), 1, crow)
     crow += 1
   }
@@ -110,13 +126,20 @@ class PkgInfoDialog(tlp: TLPackage) extends Dialog {
       val vb = new VBox()
       vb.children = files.map { f =>
         val fields = f.split(" ")
-        new Label(fields(0)) {
-          if (clickable) {
-            textFill = Color.Blue
-            onMouseClicked = { me: MouseEvent => OsTools.openFile(tlmgr.tlroot + "/" + fields(0)) }
-            cursor = Cursor.Hand
-          }
+        val foo = copyableTextfield(fields(0))
+        if (clickable) {
+          foo.style = foo.getStyle + "-fx-text-fill: blue;"
+          foo.onMouseClicked = { me: MouseEvent => OsTools.openFile(tlmgr.tlroot + "/" + fields(0)) }
+          foo.cursor = Cursor.Hand
         }
+        foo
+        // new Label(fields(0)) {
+        //   if (clickable) {
+        //     textFill = Color.Blue
+        //     onMouseClicked = { me: MouseEvent => OsTools.openFile(tlmgr.tlroot + "/" + fields(0)) }
+        //     cursor = Cursor.Hand
+        //   }
+        // }
       }
       vb
     } else {
