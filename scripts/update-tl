@@ -29,7 +29,7 @@ mkdir -p "$tl/Master/texmf-dist/doc/support/tlcockpit"
 rm -rf "$tl/Master/texmf-dist/doc/support/tlcockpit"/*
 cp README.md NEWS LICENSE "$tl/Master/texmf-dist/doc/support/tlcockpit/"
 cp -a screenshots "$tl/Master/texmf-dist/doc/support/tlcockpit/"
-cp scripts/tlcockpit-runner.sh "$tl/Master/texmf-dist/scripts/tlcockpit/tlcockpit-runner.sh"
+cp scripts/tlcockpit.sh "$tl/Master/texmf-dist/scripts/tlcockpit/tlcockpit.sh"
 
 
 # build deployment jar
@@ -47,7 +47,7 @@ for i in "$tl"/Master/bin/* ; do
       cp "$i/wrunscript.exe" "$i/tlcockpit.exe"
     else
       if [ -x "$i/pdftex" ] ; then
-        ln -sf ../../texmf-dist/scripts/tlcockpit/tlcockpit-runner.sh "$i/tlcockpit"
+        ln -sf ../../texmf-dist/scripts/tlcockpit/tlcockpit.sh "$i/tlcockpit"
       fi
     fi
   fi
