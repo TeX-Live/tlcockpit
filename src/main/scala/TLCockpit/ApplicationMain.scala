@@ -1212,6 +1212,10 @@ tlmgr>
     table.prefHeight = 300
     table.showRoot = false
     table.vgrow = Priority.Always
+    table.placeholder = new Label("No backups available") {
+      opacity = 0.4f
+      font = msgFont
+    }
     table.rowFactory = { _ =>
       val row = new TreeTableRow[TLBackupDisplay] {}
       val ctm = new ContextMenu(
