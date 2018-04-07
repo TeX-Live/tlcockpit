@@ -7,4 +7,4 @@ then
 else
  jarpath=`kpsewhich --progname=tlcockpit --format=texmfscripts tlcockpit.jar`
 fi
-java -jar "$jarpath" $*
+exec java -jar "$jarpath" "$@"
