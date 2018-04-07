@@ -15,7 +15,7 @@ Since TLCockpit is included in TeX Live, it will be probably already installed
 on your system. In case it isn't, a simple call to `tlmgr install tlcockpit`
 should suffice.
 
-We are providing new jar files on a daily bases in the github page, but update
+We are providing new jar files on the github page, but update
 the copy in TeX Live only at certain intervals. If you want to try out the latest
 and greatest, get [tlcockpit.jar](jar/tlcockpit.jar) and put it into
 `TEXLIVEROOT/texmf-dist/scripts/tlcockpit` replacing the current `tlcockpit.jar`.
