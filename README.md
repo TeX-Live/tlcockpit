@@ -30,7 +30,7 @@ Requirements
 You need at least `tlmgr` from after 2017-11-23, in TeX Live language at least
 version 45888  or `texlive.infra`.
 
-A recent Java installation that includes JavaFX is required. If you see
+A recent Java (at least Java 8) installation that includes JavaFX is required. If you see
 errors like
 ```
 Error: A JNI error has occurred, please check your installation and try again
