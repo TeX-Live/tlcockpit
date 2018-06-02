@@ -84,6 +84,24 @@ object ApplicationMain extends JFXApp with LazyLogging {
 
   logger.trace("starting program tlcockpit")
 
+  val javaVersion = System.getProperty("java.version")
+  val javaVersionSplit: Array[String] = javaVersion.split('.')
+  logger.info(s"Got javaVersion ${javaVersion}, split ${javaVersionSplit}")
+  if (javaVersionSplit.length == 1) {
+    logger.warn(s"Cannot find Java version from ${javaVersion}, continuing anyway!")
+  } else {
+    val major = javaVersionSplit(0).toInt
+    val minor = javaVersionSplit(1).toInt
+    if (major == 1 && minor < 8) {
+      logger.error(s"Java version ${javaVersion} too old, need >= 1.8, terminating!")
+      Platform.exit()
+      sys.exit(1)
+    }
+    // in all other cases just hope it is fine
+    logger.debug(s"Running Java Version ${major}.${minor} (${javaVersion}")
+  }
+
+
   var tlmgrBusy = BooleanProperty(false)
 
   // necessary action when Window is closed with X or some other operation
