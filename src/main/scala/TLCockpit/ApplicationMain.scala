@@ -49,6 +49,9 @@ import scalafx.collections.ObservableMap
 // JSON support - important load TLPackageJsonProtocol later!
 import spray.json._
 import TeXLive.JsonProtocol._
+import org.json4s._
+import org.json4s.jackson.JsonMethods._
+
 
 // logging
 import com.typesafe.scalalogging.LazyLogging
