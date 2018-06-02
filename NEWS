@@ -1,5 +1,9 @@
 NEWS for tlcockpit
 
+version 1.0 (2018MMDD)
+----------------------
+- check for used Java version and abort if less than < 1.8 (Java 8)
+
 version 0.9 (20180408)
 ----------------------
 - make package info dialog content copyable (as far as possible)
