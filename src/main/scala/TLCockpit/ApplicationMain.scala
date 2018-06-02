@@ -89,19 +89,33 @@ object ApplicationMain extends JFXApp with LazyLogging {
 
   val javaVersion = System.getProperty("java.version")
   val javaVersionSplit: Array[String] = javaVersion.split('.')
-  logger.info(s"Got javaVersion ${javaVersion}, split ${javaVersionSplit}")
+  logger.debug(s"Got javaVersion ${javaVersion}")
   if (javaVersionSplit.length == 1) {
     logger.warn(s"Cannot find Java version from ${javaVersion}, continuing anyway!")
   } else {
-    val major = javaVersionSplit(0).toInt
-    val minor = javaVersionSplit(1).toInt
-    if (major == 1 && minor < 8) {
-      logger.error(s"Java version ${javaVersion} too old, need >= 1.8, terminating!")
-      Platform.exit()
-      sys.exit(1)
+    val major = toInt(javaVersionSplit(0))
+    val minor = toInt(javaVersionSplit(1))
+    major match {
+      case Some(i) =>
+        if (major.get == 1) {
+          minor match {
+            case Some(j) =>
+              if (minor.get < 8) {
+                logger.error(s"Java version ${javaVersion} too old, need >= 1.8, terminating!")
+                Platform.exit()
+                sys.exit(1)
+              }
+            case None =>
+              logger.warn(s"Cannot find Java version from ${javaVersion}, continuing anyway!")
+          }
+        } else {
+          logger.warn(s"Cannot find Java version from ${javaVersion}, continuing anyway!")
+        }
+      case None =>
+        logger.warn(s"Cannot find Java version from ${javaVersion}, continuing anyway!")
     }
     // in all other cases just hope it is fine
-    logger.debug(s"Running Java Version ${major}.${minor} (${javaVersion}")
+    logger.info(s"Running on Java Version ${javaVersion}")
   }
 
 

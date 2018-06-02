@@ -21,4 +21,12 @@ object Utils {
     f"${fileSize/Math.pow(1024, digitGroup)}%3.1f ${units(digitGroup)}"
   }
 
+  def toInt(s: String): Option[Int] = {
+    try {
+      Some(s.toInt)
+    } catch {
+      case e: Exception => None
+    }
+  }
+
 }
