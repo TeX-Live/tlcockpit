@@ -109,7 +109,11 @@ object ApplicationMain extends JFXApp with LazyLogging {
               logger.warn(s"Cannot find Java version from ${javaVersion}, continuing anyway!")
           }
         } else {
-          logger.warn(s"Cannot find Java version from ${javaVersion}, continuing anyway!")
+          if (major.get > 9) {
+            // seems to be all fine..
+          } else {
+            logger.warn(s"Strange version number, please report: ${javaVersion}, continuing anyway!")
+          }
         }
       case None =>
         logger.warn(s"Cannot find Java version from ${javaVersion}, continuing anyway!")
