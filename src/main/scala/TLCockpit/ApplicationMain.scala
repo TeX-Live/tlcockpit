@@ -1583,7 +1583,8 @@ tlmgr>
   def tlmgr_send(s: String, onCompleteFunc: (String, Array[String]) => Unit): Unit = {
     // logText.clear()
     outputText.clear()
-    outerrpane.expanded = false
+    // don't close debug panel when it is open
+    // outerrpane.expanded = false
     if (!currentPromise.isCompleted) {
       logger.debug(s"tlmgr busy, put onto pending jobs: $s")
       logger.debug("Currently running job: " + currentPromise)
