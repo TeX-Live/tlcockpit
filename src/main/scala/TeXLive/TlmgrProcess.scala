@@ -90,8 +90,8 @@ class TlmgrProcess(updout: String => Unit, upderr: String => Unit)  extends Lazy
       stdin.close()
     } catch {
       case exc: Throwable =>
-        stdin.close()
         logger.warn("Exception in inputFn thread: " + exc + "\n")
+        stdin.close()
     }
   }
 
@@ -112,8 +112,8 @@ class TlmgrProcess(updout: String => Unit, upderr: String => Unit)  extends Lazy
       outStr.close()
     } catch {
       case exc: Throwable =>
-        outStr.close()
         logger.warn("Exception in outputFn thread: " + exc + "\n")
+        outStr.close()
     }
   }
 }
