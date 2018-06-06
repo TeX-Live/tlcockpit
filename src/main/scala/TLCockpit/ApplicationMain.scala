@@ -205,6 +205,7 @@ object ApplicationMain extends JFXApp with LazyLogging {
 
   val outerrtabs: TabPane = new TabPane {
     minWidth = 400
+    vgrow = Priority.Always
     tabs = Seq(
       new Tab {
         text = "Output"
@@ -228,6 +229,7 @@ object ApplicationMain extends JFXApp with LazyLogging {
     collapsible = true
     expanded = false
     content = outerrtabs
+    vgrow = Priority.Always
   }
 
   val cmdline = new TextField()
@@ -1386,10 +1388,28 @@ tlmgr>
         // topBox.hgrow = Priority.Always
         // topBox.maxWidth = Double.MaxValue
         val topBox = menuBar
-        val centerBox = new VBox {
-          padding = Insets(10)
-          children = List(pkgstabs, statusBox, expertPane, outerrpane)
+        val mainBox = new VBox {
+          children = List(pkgstabs, statusBox, expertPane)
         }
+        val centerBox = new SplitPane {
+          orientation = Orientation.Vertical
+          padding = Insets(10)
+          vgrow = Priority.Always
+          items ++= Seq(mainBox, outerrpane)
+        }
+        centerBox.dividers.onChange({
+          println("DIVIDERS HAVE CHANGED!")
+        })
+        outerrpane.expanded.onChange({
+          println(s"current dividerPosition: ${centerBox.dividerPositions(0)}")
+          if (outerrpane.expanded.value) {
+            println("adjusting dividerPosition to 0.3")
+            centerBox.dividerPositions(0) = 0.3
+            centerBox.setDividerPosition(0, 0.3)
+            mainBox.prefHeight = mainBox.prefHeight.value * 0.7
+          }
+        })
+        centerBox.dividers.onChange({println(s"dividers change: ${centerBox.dividerPositions}")})
         new BorderPane {
           // padding = Insets(20)
           top = topBox
