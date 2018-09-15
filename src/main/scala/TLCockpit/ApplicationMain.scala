@@ -57,6 +57,11 @@ import org.json4s._
 import org.json4s.jackson.JsonMethods._
 
 
+// translations
+import Translations._
+import ru.makkarpov.scalingua.I18n._
+import ru.makkarpov.scalingua.LanguageId
+
 // logging
 import com.typesafe.scalalogging.LazyLogging
 import ch.qos.logback.classic.{Level,Logger}
@@ -198,7 +203,7 @@ object ApplicationMain extends JFXApp with LazyLogging {
     outputfield.scrollTop = Double.MaxValue
   })
 
-  val update_all_menu: MenuItem = new MenuItem("Update all") {
+  val update_all_menu: MenuItem = new MenuItem(t"Update all") {
     val cmd: String = "--all" + {
       if (disable_auto_install) " --no-auto-install" else "" } + {
       if (disable_auto_removal) " --no-auto-remove" else "" } + {
@@ -206,7 +211,7 @@ object ApplicationMain extends JFXApp with LazyLogging {
     onAction = (ae) => callback_update(cmd)
     disable = true
   }
-  val update_self_menu: MenuItem = new MenuItem("Update self") {
+  val update_self_menu: MenuItem = new MenuItem(t"Update self") {
     onAction = (ae) => callback_update("--self")
     disable = true
   }
@@ -215,24 +220,24 @@ object ApplicationMain extends JFXApp with LazyLogging {
     minWidth = 400
     tabs = Seq(
       new Tab {
-        text = "Output"
+        text = t"Output"
         closable = false
         content = outputfield
       },
       new Tab {
-        text = "Logging"
+        text = t"Logging"
         closable = false
         content = logfield
       },
       new Tab {
-        text = "Errors"
+        text = t"Errors"
         closable = false
         content = errorfield
       }
     )
   }
   val outerrpane: TitledPane = new TitledPane {
-    text = "Debug"
+    text = t"Debug"
     collapsible = true
     expanded = false
     content = outerrtabs
@@ -286,9 +291,9 @@ object ApplicationMain extends JFXApp with LazyLogging {
   def not_implemented_info(): Unit = {
     new Alert(AlertType.Warning) {
       initOwner(stage)
-      title = "Warning"
-      headerText = "This functionality is not implemented by now!"
-      contentText = "Sorry for the inconveniences."
+      title = t"Warning"
+      headerText = t"This functionality is not implemented by now!"
+      contentText = t"Sorry for the inconveniences."
     }.showAndWait()
   }
 
@@ -323,7 +328,7 @@ object ApplicationMain extends JFXApp with LazyLogging {
       ss.foreach { s =>
         val runcmd = if (isCygwin) "bash -l -c \"" + s + "\"" else s
         Platform.runLater {
-          outputText.append(s"Running ${s}" + (if (unbuffered) " (unbuffered)" else " (buffered)"))
+          outputText.append(t"Running ${s}" + (if (unbuffered) " (unbuffered)" else " (buffered)"))
           actionLabel.text = s"[${s}]"
         }
         runcmd ! ProcessLogger(
@@ -338,7 +343,7 @@ object ApplicationMain extends JFXApp with LazyLogging {
         Platform.runLater {
           actionLabel.text = ""
           outputText.append(OutputBuffer.slice(OutputBufferIndex,OutputBuffer.length).mkString(""))
-          outputText.append("Completed")
+          outputText.append(t"Completed")
           reset_output_buffer()
           outputfield.scrollTop = Double.MaxValue
         }
@@ -346,10 +351,10 @@ object ApplicationMain extends JFXApp with LazyLogging {
         Platform.runLater {
           actionLabel.text = ""
           outputText.append(OutputBuffer.slice(OutputBufferIndex,OutputBuffer.length).mkString(""))
-          outputText.append("Completed")
+          outputText.append(t"Completed")
           reset_output_buffer()
           outputfield.scrollTop = Double.MaxValue
-          errorText.append(s"An ERROR has occurred running one of ${ss.mkString(" ")}: " + t.getMessage)
+          errorText.append(t"An ERROR has occurred running one of ${ss.mkString(" ")}: " + t.getMessage)
           errorfield.scrollTop = Double.MaxValue
           outerrpane.expanded = true
           outerrtabs.selectionModel().select(2)
@@ -360,10 +365,10 @@ object ApplicationMain extends JFXApp with LazyLogging {
   def callback_about(): Unit = {
     new Alert(AlertType.Information) {
       initOwner(stage)
-      title = "About TLCockpit"
+      title = t"About TLCockpit"
       graphic = new ImageView(logoImage)
-      headerText = "TLCockpit version " + version + "\n\nManage your TeX Live with speed!"
-      contentText = "Copyright 2017-2018 Norbert Preining\nLicense: GPL3+\nSources: https://github.com/TeX-Live/tlcockpit"
+      headerText = t"TLCockpit version " + version + "\n\nManage your TeX Live with speed!"
+      contentText = t"Copyright 2017-2018 Norbert Preining\nLicense: GPL3+\nSources: https://github.com/TeX-Live/tlcockpit"
     }.showAndWait()
   }
 
@@ -421,11 +426,11 @@ tlmgr>
             }
             if (mode == "remove") {
               pkgs(prevName).lrev = ObjectProperty[Int](0)
-              pkgs(prevName).installed = StringProperty("Not installed")
+              pkgs(prevName).installed = StringProperty(t"Not installed")
               tlpkgs(prevName).lrev = 0
             } else { // install and update
               pkgs(prevName).lrev = pkgs(prevName).rrev
-              pkgs(prevName).installed = StringProperty("Installed") // TODO support Mixed!!!
+              pkgs(prevName).installed = StringProperty(t"Installed") // TODO support Mixed!!!
               tlpkgs(prevName).lrev = tlpkgs(prevName).rrev
             }
             packageTable.refresh()
@@ -434,7 +439,7 @@ tlmgr>
             if (mode == "update") {
               Platform.runLater {
                 updateTable.placeholder = SpinnerPlaceHolder("Post actions running")
-                actionLabel.text = "[post actions running]"
+                actionLabel.text = t"[post actions running]"
               }
             }
             // nothing to be done, all has been done above
@@ -449,19 +454,19 @@ tlmgr>
             prevName = if (mode == "update") {
               val foo = parse_one_update_line(l)
               val pkgname = foo.name.value
-              upds(pkgname).status = StringProperty("Updating ...")
+              upds(pkgname).status = StringProperty(t"Updating ...")
               updateTable.refresh()
               pkgname
             } else if (mode == "install") {
               val fields = l.split("\t")
               val pkgname = fields(0)
-              pkgs(pkgname).installed = StringProperty("Installing ...")
+              pkgs(pkgname).installed = StringProperty(t"Installing ...")
               packageTable.refresh()
               pkgname
             } else { // remove
               val fields = l.split("\t")
               val pkgname = fields(0)
-              pkgs(pkgname).installed = StringProperty("Removing ...")
+              pkgs(pkgname).installed = StringProperty(t"Removing ...")
               packageTable.refresh()
               pkgname
             }
@@ -506,7 +511,7 @@ tlmgr>
       tlpkgs(str).lrev = rev.toLong
       pkgs(str).lrev = ObjectProperty[Int](rev.toInt)
       packageTable.refresh()
-      Platform.runLater { actionLabel.text = "[running post actions]" }
+      Platform.runLater { actionLabel.text = t"[running post actions]" }
     })
   }
 
