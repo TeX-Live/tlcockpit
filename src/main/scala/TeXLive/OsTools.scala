@@ -33,6 +33,8 @@ object OsTools {
     val absf = new java.io.File(f).getCanonicalPath
     if (isWindows) {
       Seq("cmd", "/c", "start", absf)
+    } else if (isCygwin) {
+      Seq("cygstart", absf)
     } else if (isApple) {
       Seq("open", absf)
     } else {

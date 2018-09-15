@@ -10,6 +10,7 @@ import javafx.scene.Node
 
 import TLCockpit.Utils._
 import TeXLive._
+import TeXLive.OsTools._
 
 import scala.collection.{immutable, mutable}
 import scala.collection.mutable.ArrayBuffer
@@ -313,11 +314,12 @@ object ApplicationMain extends JFXApp with LazyLogging {
     // outputText.append(s"Running ${ss.mkString(" ")}" + (if (unbuffered) " (unbuffered)" else " (buffered)"))
     val foo = Future {
       ss.foreach { s =>
+        val runcmd = if (isCygwin) "bash -l -c " + s else s
         Platform.runLater {
           outputText.append(s"Running ${s}" + (if (unbuffered) " (unbuffered)" else " (buffered)"))
           actionLabel.text = s"[${s}]"
         }
-        s ! ProcessLogger(
+        runcmd ! ProcessLogger(
           line => if (unbuffered) Platform.runLater(outputText.append(line))
           else OutputBuffer.synchronized(OutputBuffer.append(line + "\n")),
           line => Platform.runLater(logText.append(line))
