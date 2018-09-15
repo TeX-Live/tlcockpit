@@ -1,10 +1,16 @@
 #!/bin/sh
+# Public domain. Originally written by Norbert Preining and Karl Berry, 2018.
 
-kernel=`uname -s`
+scriptname=`basename "$0"`
+jar="$scriptname.jar"
+jarpath=`kpsewhich --progname="$scriptname" --format=texmfscripts "$jar"`
+
+kernel=`uname -s 2>/dev/null`
 if test "${kernel#*CYGWIN}" != "$kernel"
-then
- jarpath=`cygpath -w $(kpsewhich --progname=tlcockpit --format=texmfscripts tlcockpit.jar)`
-else
- jarpath=`kpsewhich --progname=tlcockpit --format=texmfscripts tlcockpit.jar`
+  CYGWIN_ROOT=`cygpath -w /`
+  export CYGWIN_ROOT
+  jarpath=`cygpath -w "$jarpath"`
 fi
+
 exec java -jar "$jarpath" "$@"
+
