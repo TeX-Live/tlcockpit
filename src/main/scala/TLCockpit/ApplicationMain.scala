@@ -314,7 +314,7 @@ object ApplicationMain extends JFXApp with LazyLogging {
     // outputText.append(s"Running ${ss.mkString(" ")}" + (if (unbuffered) " (unbuffered)" else " (buffered)"))
     val foo = Future {
       ss.foreach { s =>
-        val runcmd = if (isCygwin) "bash -l -c " + s else s
+        val runcmd = if (isCygwin) "bash -l -c \"" + s + "\"" else s
         Platform.runLater {
           outputText.append(s"Running ${s}" + (if (unbuffered) " (unbuffered)" else " (buffered)"))
           actionLabel.text = s"[${s}]"
