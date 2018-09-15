@@ -52,7 +52,18 @@ class TlmgrProcess(updout: String => Unit, upderr: String => Unit)  extends Lazy
     if (process == null) {
       logger.debug("tlmgr process: start_process: creating procIO")
       val procIO = new ProcessIO(inputFn, outputFn(_, updout), outputFn(_, upderr))
-      val processBuilder: ProcessBuilder = Seq({if (isWindows) "tlmgr.bat" else "tlmgr"}, "-v", "--machine-readable", "shell")
+      val startCmd =
+        if (isWindows) {
+          logger.debug("detected Windows, using tlmgr.bat")
+          Seq("tlmgr.bat")
+        } else if (isCygwin) {
+          logger.debug("detected Cygwin, using bash -l -c tlmgr")
+          Seq("bash", "-l", "-c", "tlmgr")
+        } else {
+          logger.debug("detected Unixish, using tlmgr")
+          Seq("tlmgr")
+        }
+      val processBuilder: ProcessBuilder = startCmd ++ Seq("-v", "--machine-readable", "shell")
       logger.debug("tlmgr process: start_process: running new tlmgr process")
       process = processBuilder.run(procIO)
     }

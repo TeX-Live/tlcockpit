@@ -11,14 +11,22 @@ import sys.process._
 
 object OsTools {
   val OS: String = System.getProperty("os.name").map(_.toLower)
+  val CygwinRootIsSet: Boolean =
+    sys.env.get("CYGWIN_ROOT") match {
+      case Some(_) => true
+      case None => false
+    }
   def isWindows: Boolean = {
-    OS.startsWith("windows")
+    OS.startsWith("windows") && !CygwinRootIsSet
+  }
+  def isCygwin: Boolean = {
+    OS.startsWith("windows") && CygwinRootIsSet
   }
   def isApple: Boolean = {
     OS.startsWith("mac os")
   }
   def isUnix: Boolean = {
-    !(isWindows || isApple)
+    !(isWindows || isApple || isCygwin)
   }
 
   def openFileCmd(f: String): Seq[String] = {
