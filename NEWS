@@ -3,6 +3,7 @@ NEWS for tlcockpit
 version 1.0 (2018MMDD)
 ----------------------
 - check for used Java version and abort if less than < 1.8 (Java 8)
+- add support for Cygwin
 
 version 0.9 (20180408)
 ----------------------
