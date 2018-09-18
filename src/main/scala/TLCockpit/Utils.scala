@@ -4,7 +4,10 @@
 //
 // Front end for tlmgr
 
+
 package TLCockpit
+
+import ru.makkarpov.scalingua.Messages
 
 object Utils {
   /**
@@ -29,4 +32,5 @@ object Utils {
     }
   }
 
+  val messages = Messages.compiled()
 }

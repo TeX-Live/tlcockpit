@@ -7,10 +7,13 @@
 package TLCockpit
 
 import javafx.scene.Node
-
 import TLCockpit.Utils._
 import TeXLive._
 import TeXLive.OsTools._
+
+// translations
+import ru.makkarpov.scalingua.LanguageId
+import ru.makkarpov.scalingua.I18n._
 
 import scala.collection.{immutable, mutable}
 import scala.collection.mutable.ArrayBuffer
@@ -59,9 +62,13 @@ import com.typesafe.scalalogging.LazyLogging
 import ch.qos.logback.classic.{Level,Logger}
 import org.slf4j.LoggerFactory
 
+
+
 object ApplicationMain extends JFXApp with LazyLogging {
 
   val version: String = getClass.getPackage.getImplementationVersion
+
+  implicit val lang = LanguageId("en-US")
 
   // parse command line arguments
   // nothing => INFO
@@ -86,13 +93,13 @@ object ApplicationMain extends JFXApp with LazyLogging {
   LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME).
     asInstanceOf[Logger].setLevel(Level.toLevel(newloglevel))
 
-  logger.trace("starting program tlcockpit")
+  logger.trace(t"starting program tlcockpit")
 
   val javaVersion = System.getProperty("java.version")
   val javaVersionSplit: Array[String] = javaVersion.split('.')
-  logger.debug(s"Got javaVersion ${javaVersion}")
+  logger.debug(t"Got javaVersion ${javaVersion}")
   if (javaVersionSplit.length == 1) {
-    logger.warn(s"Cannot find Java version from ${javaVersion}, continuing anyway!")
+    logger.warn(t"Cannot find Java version from ${javaVersion}, continuing anyway!")
   } else {
     val major = toInt(javaVersionSplit(0))
     val minor = toInt(javaVersionSplit(1))
@@ -102,25 +109,25 @@ object ApplicationMain extends JFXApp with LazyLogging {
           minor match {
             case Some(j) =>
               if (minor.get < 8) {
-                logger.error(s"Java version ${javaVersion} too old, need >= 1.8, terminating!")
+                logger.error(t"Java version ${javaVersion} too old, need >= 1.8, terminating!")
                 Platform.exit()
                 sys.exit(1)
               }
             case None =>
-              logger.warn(s"Cannot find Java version from ${javaVersion}, continuing anyway!")
+              logger.warn(t"Cannot find Java version from ${javaVersion}, continuing anyway!")
           }
         } else {
           if (major.get > 9) {
             // seems to be all fine..
           } else {
-            logger.warn(s"Strange version number, please report: ${javaVersion}, continuing anyway!")
+            logger.warn(t"Strange version number, please report: ${javaVersion}, continuing anyway!")
           }
         }
       case None =>
-        logger.warn(s"Cannot find Java version from ${javaVersion}, continuing anyway!")
+        logger.warn(t"Cannot find Java version from ${javaVersion}, continuing anyway!")
     }
     // in all other cases just hope it is fine
-    logger.info(s"Running on Java Version ${javaVersion}")
+    logger.info(t"Running on Java Version ${javaVersion}")
   }
 
 
