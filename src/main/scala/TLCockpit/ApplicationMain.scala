@@ -796,6 +796,7 @@ tlmgr>
       logger.debug(s"load tlpdb update (no json) pkgs: got status ${status}")
       logger.trace(s"load tlpdb update (no json) pkgs: got lines = " + lines.head)
       val newtlpkgs: Map[String, TLPackageShort] = lines.map(l => {
+        // logger.debug(s"got line >>>${l}<<<")
         val fields = l.split(",",8)
         val pkgname = fields(0)
         val shortdesc = fields(7).stripPrefix(""""""").stripSuffix(""""""").replaceAll("""\\"""",""""""")
@@ -1566,7 +1567,9 @@ tlmgr>
   def tlmgr_run_one_cmd(s: String, onCompleteFunc: (String, Array[String]) => Unit): Unit = {
     currentPromise = Promise[(String, Array[String])]()
     tlmgrBusy.value = true
-    actionLabel.text = s"[${s}]"
+    Platform.runLater {
+      actionLabel.text = s"[${s}]"
+    }
     currentPromise.future.onComplete {
       case Success((a, b)) =>
         logger.debug("tlmgr run one cmd: current future completed!")
