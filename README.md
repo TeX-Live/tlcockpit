@@ -44,6 +44,12 @@ that means that the Java installation does not provides JavaFX.
 On Windows the latest JRE from Oracle include JavaFX. On Linux one might
 need to install some extra packages (Debian/Ubuntu: openjfx).
 
+With recent release of Java 11 problems are getting worse, since JavaFX is now
+separately packaged, and ScalaFX only supports (by now) JavaFX8. That means, for
+now it is necessary to have a Java 8 installation. As soon as ScalaFX supports
+JavaFX11 we will move to use it.
+
+
 Development
 -----------
 
