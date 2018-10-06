@@ -111,7 +111,7 @@ object ApplicationMain extends JFXApp with LazyLogging {
           }
         } else {
           if (major.get > 9) {
-            // seems to be all fine..
+            logger.warn(s"Currently Java versions > 8 (1.8) are not supported (${javaVersion}), trying anyway!")
           } else {
             logger.warn(s"Strange version number, please report: ${javaVersion}, continuing anyway!")
           }
