@@ -105,13 +105,19 @@ object ApplicationMain extends JFXApp with LazyLogging {
                 logger.error(s"Java version ${javaVersion} too old, need >= 1.8, terminating!")
                 Platform.exit()
                 sys.exit(1)
+              } else if (minor.get == 8) {
+                if (BuildInfo.javaVersion != 8) {
+                  logger.warn(s"Build and run versions disagree: build: ${BuildInfo.javaVersion}, run: ${major.get}.${minor.get}, trying anyway!")
+                }
               }
             case None =>
               logger.warn(s"Cannot find Java version from ${javaVersion}, continuing anyway!")
           }
         } else {
           if (major.get > 9) {
-            logger.warn(s"Currently Java versions > 8 (1.8) are not supported (${javaVersion}), trying anyway!")
+            if (major.get != BuildInfo.javaVersion) {
+              logger.warn(s"Build and run versions disagree: build: ${BuildInfo.javaVersion}, run: ${major.get}, trying anyway!")
+            }
           } else {
             logger.warn(s"Strange version number, please report: ${javaVersion}, continuing anyway!")
           }
