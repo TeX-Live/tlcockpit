@@ -1,0 +1,42 @@
+name := "tlcockpit"
+
+version := "1.0"
+
+scalaVersion := "2.12.7"
+
+libraryDependencies += "io.spray" %%  "spray-json" % "1.3.3"
+libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.7.2"
+libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3"
+libraryDependencies += "org.json4s" %% "json4s-native" % "3.6.0-M3"
+libraryDependencies += "org.json4s" %% "json4s-jackson" % "3.6.0-M3"
+
+// Add dependency on ScalaFX library
+libraryDependencies += "org.scalafx" %% "scalafx" % "11-R16"
+
+// Determine OS version of JavaFX binaries
+lazy val osName = System.getProperty("os.name") match {
+  case n if n.startsWith("Linux")   => "linux"
+  case n if n.startsWith("Mac")     => "mac"
+  case n if n.startsWith("Windows") => "win"
+  case _ => throw new Exception("Unknown platform!")
+}
+
+lazy val javaFXModules = Seq("base", "controls", "fxml", "graphics", "media", "swing", "web")
+libraryDependencies ++= javaFXModules.map( m =>
+  "org.openjfx" % s"javafx-$m" % "11" classifier osName
+)
+
+assemblyMergeStrategy in assembly := {
+ case PathList("module-info.class", xs @ _*) => MergeStrategy.discard
+ case PathList("META-INF", "MANIFEST.MF", xs @ _*) => MergeStrategy.discard
+ case x => MergeStrategy.first
+}
+
+mainClass in assembly := Some("TLCockpit.ApplicationMain")
+
+assemblyJarName in assembly := "tlcockpit-jdk11.jar"
+assemblyOutputPath in assembly := file("jar/tlcockpit-jdk11.jar")
+
+
+// for scalafx
+fork := true
