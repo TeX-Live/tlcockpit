@@ -106,7 +106,7 @@ class LocationDialog(locs: Map[String,String]) extends LazyLogging {
   // val changedValues = scala.collection.mutable.Map[String,String]()
 
 
-  grid.columnConstraints = Seq(new ColumnConstraints(100, 100, 200), new ColumnConstraints(250, 250, 5000, Priority.Always, new HPos(HPos.Left), true))
+  grid.columnConstraints = Seq(new ColumnConstraints(100, 100, 200), new ColumnConstraints(250, 250, 5000, Priority.Always, HPos.LEFT, true))
   dialog.dialogPane().content = grid
   dialog.width = 500
   dialog.height = 1500

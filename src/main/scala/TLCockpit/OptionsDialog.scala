@@ -106,7 +106,7 @@ class OptionsDialog(opts: List[TLOption]) extends LazyLogging  {
     (tlopt.name, nd)
   }).toMap
 
-  grid.columnConstraints = Seq(new ColumnConstraints(300, 300, 500), new ColumnConstraints(200, 200, 5000, Priority.Always, new HPos(HPos.Left), true))
+  grid.columnConstraints = Seq(new ColumnConstraints(300, 300, 500), new ColumnConstraints(200, 200, 5000, Priority.Always, HPos.LEFT, true))
   dialog.dialogPane().content = grid
   dialog.width = 500
   dialog.height = 1500

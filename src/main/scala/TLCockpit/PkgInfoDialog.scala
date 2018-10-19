@@ -113,7 +113,7 @@ class PkgInfoDialog(tlp: TLPackage) extends Dialog {
     grid.add(doListView(binFiles.flatMap(_._2).toSeq.map(s => s.replaceFirst("RELOC", "texmf-dist")), false), 1, crow)
     crow += 1
   }
-  grid.columnConstraints = Seq(new ColumnConstraints(100, 200, 200), new ColumnConstraints(100, 400, 5000, Priority.Always, new HPos(HPos.Left), true))
+  grid.columnConstraints = Seq(new ColumnConstraints(100, 200, 200), new ColumnConstraints(100, 400, 5000, Priority.Always, HPos.LEFT, true))
   dialog.dialogPane().content = grid
   dialog.width = 600
   dialog.height = 1500

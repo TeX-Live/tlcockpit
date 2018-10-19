@@ -61,7 +61,7 @@ class PaperDialog(paperconf: Map[String, TLPaperConf]) extends LazyLogging   {
     (prog, cb)
   }
 
-  grid.columnConstraints = Seq(new ColumnConstraints(100, 100, 150), new ColumnConstraints(150, 150, 5000, Priority.Always, new HPos(HPos.Left), true))
+  grid.columnConstraints = Seq(new ColumnConstraints(100, 100, 150), new ColumnConstraints(150, 150, 5000, Priority.Always, HPos.LEFT, true))
   dialog.dialogPane().content = grid
   dialog.width = 300
   dialog.height = 1500
