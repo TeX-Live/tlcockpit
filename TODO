@@ -1,4 +1,13 @@
 TODO
 ====
-(see TODOs in the code)
+
+JDK11 support
+-------------
+
+* sbt build and assembly works
+  if we do NOT include javafx in the fat jar (see build.sbt) then
+  we the user needs javafx installed, we need to search for it,
+  and add it to the java call:
+  	java -p /usr/share/openjfx/lib/ --add-modules javafx.controls,javafx.web -jar jar/tlcockpit-jdk11.jar
+
 
