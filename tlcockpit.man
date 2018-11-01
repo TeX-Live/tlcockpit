@@ -1,0 +1,32 @@
+.\"                                      Hey, EMACS: -*- nroff -*-
+.TH TLCOCKPIT 1x "1 Nov 2018"
+.SH NAME
+tlcockpit \- GUI frontend for the TeX Live Manager tlmgr
+.SH SYNOPSIS
+.B tlcockpit 
+.RI " [-d] [-dd] [-q] [-qq]"
+.SH DESCRIPTION
+TLCockpit aims at being a GUI for tlmgr, the 
+TeX Live Manager, with a modern look and feel. We take inspiration
+from the TeX Live Utility.
+
+.SH OPTIONS
+.TP
+.B \-d
+be verbose
+.TP
+.B \-dd
+be even more verbose
+.TP
+.B \-q
+be quiet
+.TP
+.B \-qq
+be even more quiet
+
+.SH AUTHOR
+TLCockpit was written by Norbert Preining.
+
+.SH LICENSE
+TLCockpit is licensed under the GNU General Public License version 3+.
+
