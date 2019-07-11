@@ -3,3 +3,4 @@ target/
 project/target/
 # ignore work sheets, they are for experimentation
 *.sc
+build.sbt
