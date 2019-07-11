@@ -1,5 +1,10 @@
 NEWS for tlcockpit
 
+version 1.1 (20190711)
+----------------------
+- use JDK11 to build the jar, include javafx since it is not
+  automatically distributed anymore
+
 version 1.0 (20181006)
 ----------------------
 - check for used Java version and abort if less than < 1.8 (Java 8)
