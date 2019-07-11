@@ -4,7 +4,7 @@ version := "1.0"
 
 scalaVersion := "2.12.7"
 
-val javaVersion:Int = 11
+val javaVersion:Int = 12
 
 libraryDependencies += "io.spray" %%  "spray-json" % "1.3.3"
 libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.7.2"
@@ -47,8 +47,8 @@ assemblyMergeStrategy in assembly := {
 
 mainClass in assembly := Some("TLCockpit.ApplicationMain")
 
-assemblyJarName in assembly := "tlcockpit-jdk11.jar"
-assemblyOutputPath in assembly := file("jar/tlcockpit-jdk11.jar")
+assemblyJarName in assembly := "tlcockpit-jdk12.jar"
+assemblyOutputPath in assembly := file("jar/tlcockpit-jdk12.jar")
 
 
 // for scalafx
