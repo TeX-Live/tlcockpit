@@ -2,8 +2,10 @@ NEWS for tlcockpit
 
 version 1.1 (20190711)
 ----------------------
-- use JDK11 to build the jar, include javafx since it is not
-  automatically distributed anymore
+- build jdk8 and jdk11 versions - jdk11 includes javafx
+  default is jdk11 version, but Unix starter script tries
+  to deduce the correct version.
+  On Windows JDK11 or above is expected
 
 version 1.0 (20181006)
 ----------------------
