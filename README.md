@@ -30,8 +30,15 @@ Requirements
 You need at least `tlmgr` from after 2017-11-23, in TeX Live language at least
 version 45888  or `texlive.infra`.
 
-A recent Java (at least Java 8) installation that includes JavaFX is required. If you see
-errors like
+Currently TLCockpit is shipped with two jars, one for JDK8 and one for JDK11+.
+The JDK8 version does *not* contain the JavaFX as it is normally shipped together
+with the JDK. The JDK11 version contains JavaFX modules and thus should work
+without the need for additional installations.
+
+The default for TLCockpit shell wrapper (used on Unix and Mac) is to check for the
+version of Java (using `java -version`) and use the appropriate jar.
+
+If you are running Java 8 and see the following errors
 ```
 Error: A JNI error has occurred, please check your installation and try again
 Exception in thread "main" java.lang.NoClassDefFoundError: javafx/event/EventTarget
@@ -43,11 +50,6 @@ that means that the Java installation does not provides JavaFX.
 
 On Windows the latest JRE from Oracle include JavaFX. On Linux one might
 need to install some extra packages (Debian/Ubuntu: openjfx).
-
-With recent release of Java 11 problems are getting worse, since JavaFX is now
-separately packaged, and ScalaFX only supports (by now) JavaFX8. That means, for
-now it is necessary to have a Java 8 installation. As soon as ScalaFX supports
-JavaFX11 we will move to use it.
 
 
 Development
@@ -110,10 +112,12 @@ The Tools menu, as well as the expert and debug panes open
 
 ![Menu, Expert, Debug](screenshots/tlcockpit-menu-debug-expert.jpg)
 
-License
--------
+Copyright and License
+---------------------
 
-GPL3+
+Copyright 2017-2019 Norbert Preining
+Licenced under the GNU General Public License, version 3 or any higher version
+(GPL3+)
 
 
 Author

@@ -362,7 +362,7 @@ object ApplicationMain extends JFXApp with LazyLogging {
       title = "About TLCockpit"
       graphic = new ImageView(logoImage)
       headerText = "TLCockpit version " + version + "\n\nManage your TeX Live with speed!"
-      contentText = "Copyright 2017-2018 Norbert Preining\nLicense: GPL3+\nSources: https://github.com/TeX-Live/tlcockpit"
+      contentText = "Copyright 2017-2019 Norbert Preining\nLicense: GPL3+\nSources: https://github.com/TeX-Live/tlcockpit"
     }.showAndWait()
   }
 
