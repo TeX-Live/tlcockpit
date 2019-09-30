@@ -51,6 +51,15 @@ that means that the Java installation does not provides JavaFX.
 On Windows the latest JRE from Oracle include JavaFX. On Linux one might
 need to install some extra packages (Debian/Ubuntu: openjfx).
 
+HiDPI support
+-------------
+Depending on your JDK version and operating system, Java might not correctly
+detect the presence of a HiDPI screen. In this case setting the environment
+varialbe
+```
+GDK_SCALE=2
+```
+(or even `=3`) might help.
 
 Development
 -----------
