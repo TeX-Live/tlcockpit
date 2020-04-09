@@ -1,5 +1,12 @@
 NEWS for tlcockpit
 
+version 1.2 (YYYYMMDD)
+----------------------
+- Allow configuration of startup tab from menu, configuration is
+  saved into ~/.tlcockpit.conf
+- build with jdk14
+- bump scala and sbt versions for jdk14 build
+
 version 1.1 (20190711)
 ----------------------
 - build jdk8 and jdk11 versions - jdk11 includes javafx

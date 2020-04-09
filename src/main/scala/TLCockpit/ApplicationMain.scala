@@ -47,6 +47,10 @@ import scalafx.event.ActionEvent
 import scalafx.collections.ObservableBuffer
 import scalafx.collections.ObservableMap
 
+// configuration file handling support
+import java.util.Properties
+import java.io.{ File, FileOutputStream, FileInputStream }
+
 // JSON support - important load TLPackageJsonProtocol later!
 import spray.json._
 import TeXLive.JsonProtocol._
@@ -129,6 +133,14 @@ object ApplicationMain extends JFXApp with LazyLogging {
     logger.info(s"Running on Java Version ${javaVersion}")
   }
 
+
+  val userHomeDirectory = System.getProperty("user.home")
+  val confPath = userHomeDirectory + "/.tlcockpit.conf"
+  val props = new Properties()
+  val propsFile = new File(confPath)
+  if (propsFile.exists()) {
+    props.load(new FileInputStream(propsFile))
+  }
 
   var tlmgrBusy = BooleanProperty(false)
 
@@ -1068,10 +1080,39 @@ tlmgr>
     })
   }
 
+  def save_properties(): Unit = {
+    props.store(new FileOutputStream(confPath), null)
+  }
+  val StartTabPkgs = new RadioMenuItem("Packages") {
+    onAction = (ae) => {
+      props.setProperty("StartupTab", "packages")
+      save_properties()
+    }
+  }
+  val StartTabUpds = new RadioMenuItem("Updates")  {
+    onAction = (ae) => {
+      props.setProperty("StartupTab","updates")
+      save_properties()
+    }
+  }
+  val StartTabBcks = new RadioMenuItem("Backups")  {
+    onAction = (ae) => {
+      props.setProperty("StartupTab","backups")
+      save_properties()
+    }
+  }
+
+  val startupTabMenu: Menu = new Menu("Startup Tab") {
+    val foo = new ToggleGroup
+    foo.toggles = Seq(StartTabPkgs, StartTabUpds, StartTabBcks)
+    items = List(StartTabPkgs, StartTabUpds, StartTabBcks)
+  }
+
   val optionsMenu: Menu = new Menu("Options") {
     items = List(
       new MenuItem("General ...") { onAction = (ae) => callback_general_options() },
       new MenuItem("Paper ...") { onAction = (ae) => callback_paper() },
+      startupTabMenu
       /* new MenuItem("Platforms ...") { disable = true; onAction = (ae) => not_implemented_info() },
       new SeparatorMenuItem,
       new CheckMenuItem("Expert options") { disable = true },
@@ -1415,6 +1456,27 @@ tlmgr>
 
   stage.width = 800
 
+  val selectedTab = props.getOrDefault("StartupTab", "packages")
+  StartTabPkgs.selected = true
+  StartTabUpds.selected = false
+  StartTabBcks.selected = false
+  var StartupTab = 0
+  selectedTab match {
+    case "packages" => {}
+    case "updates" => {
+      StartTabPkgs.selected = false
+      StartTabUpds.selected = true
+      StartupTab = 1
+    }
+    case "backups" => {
+      StartTabPkgs.selected = false
+      StartTabBcks.selected = true
+      StartupTab = 2
+    }
+    case _ => {
+      logger.warn(s"Unrecognized setting for StartupTab in config file: $selectedTab")
+    }
+  }
 
   var currentPromise = Promise[(String,Array[String])]()
   val pendingJobs = scala.collection.mutable.Queue[(String,(String, Array[String]) => Unit)]()
@@ -1567,6 +1629,7 @@ tlmgr>
       logger.debug("Before loading tlpdb")
       load_tlpdb_update_pkgs_view_no_json()
       logger.debug("after loading tlpdb")
+      pkgstabs.selectionModel().select(StartupTab)
     })
   }
 
