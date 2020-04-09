@@ -92,46 +92,41 @@ object ApplicationMain extends JFXApp with LazyLogging {
 
   logger.trace("starting program tlcockpit")
 
-  val javaVersion = System.getProperty("java.version")
+  val javaVersion = System.getProperty("java.specification.version")
   val javaVersionSplit: Array[String] = javaVersion.split('.')
   logger.debug(s"Got javaVersion ${javaVersion}")
-  if (javaVersionSplit.length == 1) {
-    logger.warn(s"Cannot find Java version from ${javaVersion}, continuing anyway!")
-  } else {
-    val major = toInt(javaVersionSplit(0))
-    val minor = toInt(javaVersionSplit(1))
-    major match {
-      case Some(i) =>
-        if (major.get == 1) {
-          minor match {
-            case Some(j) =>
-              if (minor.get < 8) {
-                logger.error(s"Java version ${javaVersion} too old, need >= 1.8, terminating!")
-                Platform.exit()
-                sys.exit(1)
-              } else if (minor.get == 8) {
-                if (BuildInfo.javaVersion != 8) {
-                  logger.warn(s"Build and run versions disagree: build: ${BuildInfo.javaVersion}, run: ${major.get}.${minor.get}, trying anyway!")
-                }
+  val major = toInt(javaVersionSplit(0))
+  major match {
+    case Some(i) =>
+      if (major.get == 1) {
+        val minor = toInt(javaVersionSplit(1))
+        minor match {
+          case Some(j) =>
+            if (minor.get < 8) {
+              logger.error(s"Java version ${javaVersion} too old, need >= 1.8, terminating!")
+              Platform.exit()
+              sys.exit(1)
+            } else if (minor.get == 8) {
+              if (BuildInfo.javaVersion != 8) {
+                logger.warn(s"Build and run versions disagree: build: ${BuildInfo.javaVersion}, run: ${major.get}.${minor.get}, trying anyway!")
               }
-            case None =>
-              logger.warn(s"Cannot find Java version from ${javaVersion}, continuing anyway!")
+            }
+          case None =>
+            logger.warn(s"Cannot find Java version from ${javaVersion}, continuing anyway!")
+        }
+      } else {
+        if (major.get > 9) {
+          if (major.get != BuildInfo.javaVersion) {
+            logger.warn(s"Build and run versions disagree: build: ${BuildInfo.javaVersion}, run: ${major.get}, trying anyway!")
           }
         } else {
-          if (major.get > 9) {
-            if (major.get != BuildInfo.javaVersion) {
-              logger.warn(s"Build and run versions disagree: build: ${BuildInfo.javaVersion}, run: ${major.get}, trying anyway!")
-            }
-          } else {
-            logger.warn(s"Strange version number, please report: ${javaVersion}, continuing anyway!")
-          }
+          logger.warn(s"Strange version number, please report: ${javaVersion}, continuing anyway!")
         }
-      case None =>
-        logger.warn(s"Cannot find Java version from ${javaVersion}, continuing anyway!")
-    }
-    // in all other cases just hope it is fine
-    logger.info(s"Running on Java Version ${javaVersion}")
+      }
+    case None =>
+      logger.warn(s"Cannot find Java version from ${javaVersion}, continuing anyway!")
   }
+  logger.info(s"Running on Java Version ${javaVersion}")
 
 
   val userHomeDirectory = System.getProperty("user.home")
