@@ -47,8 +47,8 @@ assemblyMergeStrategy in assembly := {
 
 mainClass in assembly := Some("TLCockpit.ApplicationMain")
 
-assemblyJarName in assembly := "tlcockpit-jdk14.jar"
-assemblyOutputPath in assembly := file("jar/tlcockpit-jdk14.jar")
+assemblyJarName in assembly := "tlcockpit.jar"
+assemblyOutputPath in assembly := file("jar/tlcockpit.jar")
 
 
 // for scalafx
