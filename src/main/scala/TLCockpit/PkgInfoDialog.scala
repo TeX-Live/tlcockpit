@@ -116,7 +116,7 @@ class PkgInfoDialog(tlp: TLPackage) extends Dialog {
   grid.columnConstraints = Seq(new ColumnConstraints(100, 200, 200), new ColumnConstraints(100, 400, 5000, Priority.Always, HPos.LEFT, true))
   dialog.dialogPane().content = grid
   dialog.width = 600
-  dialog.height = 1500
+  // dialog.height = 1500
   // dialog
 
   def showAndWait(): Unit = this.dialog.showAndWait()

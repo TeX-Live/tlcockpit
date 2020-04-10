@@ -109,7 +109,8 @@ class OptionsDialog(opts: List[TLOption]) extends LazyLogging  {
   grid.columnConstraints = Seq(new ColumnConstraints(300, 300, 500), new ColumnConstraints(200, 200, 5000, Priority.Always, HPos.LEFT, true))
   dialog.dialogPane().content = grid
   dialog.width = 500
-  dialog.height = 1500
+  // This seems to be necessary for some old versions of ScalaFX or JavaFX or Java??
+  // dialog.height = 1500
 
   dialog.resultConverter = dialogButton =>
     if (dialogButton == ButtonType.OK) {
