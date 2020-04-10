@@ -27,12 +27,9 @@ Debugging can be enabled by passing the option `-d` or, for more detailed debugg
 
 Requirements
 ------------
-You need at least `tlmgr` from after 2017-11-23, in TeX Live language at least
-version 45888  or `texlive.infra`.
-
-Currently TLCockpit is shipped with two jars, one for JDK8 and one for JDK11+.
+Currently TLCockpit is shipped with two jars, one for JDK8 and one for JDK9+.
 The JDK8 version does *not* contain the JavaFX as it is normally shipped together
-with the JDK. The JDK11 version contains JavaFX modules and thus should work
+with the JDK. The JDK9+ version contains JavaFX modules and thus should work
 without the need for additional installations.
 
 The default for TLCockpit shell wrapper (used on Unix and Mac) is to check for the
@@ -54,10 +51,14 @@ need to install some extra packages (Debian/Ubuntu: openjfx).
 HiDPI support
 -------------
 Depending on your JDK version and operating system, Java might not correctly
-detect the presence of a HiDPI screen. In this case setting the environment
-varialbe
+detect the presence of a HiDPI screen.
+
+Upgrading to JDK14 should help in this case.
+
+For other versions, you might be able to fix it by setting the environment
+variable
 ```
-GDK_SCALE=2
+export GDK_SCALE=2
 ```
 (or even `=3`) might help.
 
@@ -124,7 +125,7 @@ The Tools menu, as well as the expert and debug panes open
 Copyright and License
 ---------------------
 
-Copyright 2017-2019 Norbert Preining
+Copyright 2017-2020 Norbert Preining
 Licenced under the GNU General Public License, version 3 or any higher version
 (GPL3+)
 
