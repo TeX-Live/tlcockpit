@@ -3,7 +3,14 @@
 
 PROJECT=tlcockpit
 DIR=`pwd`/..
-VER=${VER:-`grep ^version build.sbt | awk -F\" '{print$2}'`}
+VERA=${VER:-`grep ^version build.sbt-jdk14 | awk -F\" '{print$2}'`}
+VERB=${VER:-`grep ^version build.sbt-jdk8 | awk -F\" '{print$2}'`}
+
+if [ ! $VERA = $VERB ] ; then
+  echo "Warning: versions in build.sbt-* don't agree, bailing out!" >&2
+  exit 1
+fi
+VER=${VER:-$VERA}
 
 TEMP=/tmp
 
