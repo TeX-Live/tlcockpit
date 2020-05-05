@@ -129,6 +129,13 @@ Copyright 2017-2020 Norbert Preining
 Licenced under the GNU General Public License, version 3 or any higher version
 (GPL3+)
 
+Contributor Code of Conduct
+---------------------------
+
+This project adheres to No Code of Conduct. We are all adults. 
+We accept anyone's contributions.  Nothing else matters.
+
+For more information please visit the [No Code of Conduct](https://nocodeofconduct.com) homepage.
 
 Author
 ------
