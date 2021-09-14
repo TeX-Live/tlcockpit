@@ -125,7 +125,7 @@ The Tools menu, as well as the expert and debug panes open
 Copyright and License
 ---------------------
 
-Copyright 2017-2020 Norbert Preining
+Copyright 2017-2021 Norbert Preining
 Licenced under the GNU General Public License, version 3 or any higher version
 (GPL3+)
 

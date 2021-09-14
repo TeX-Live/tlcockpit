@@ -1,5 +1,5 @@
 // TLCockpit
-// Copyright 2017-2018 Norbert Preining
+// Copyright 2017-2021 Norbert Preining
 // Licensed according to GPLv3+
 //
 // Front end for tlmgr
@@ -369,7 +369,7 @@ object ApplicationMain extends JFXApp with LazyLogging {
       title = "About TLCockpit"
       graphic = new ImageView(logoImage)
       headerText = "TLCockpit version " + version + "\n\nManage your TeX Live with speed!"
-      contentText = "Copyright 2017-2020 Norbert Preining\nLicense: GPL3+\nSources: https://github.com/TeX-Live/tlcockpit"
+      contentText = "Copyright 2017-2021 Norbert Preining\nLicense: GPL3+\nSources: https://github.com/TeX-Live/tlcockpit"
     }.showAndWait()
   }
 
@@ -847,7 +847,7 @@ tlmgr>
     }
     val localrev = fields(2)
     val serverrev = fields(3)
-    val size = if (fields(1) == "d") "0" else humanReadableByteSize(fields(4).toLong)
+    val size = if (fields(1) == "d" || fields(1) == "r") "0" else humanReadableByteSize(fields(4).toLong)
     val runtime = fields(5)
     val esttot = fields(6)
     val tag = fields(7)
