@@ -1,12 +1,9 @@
 #!/bin/bash
 # Public domain. Originally written by Norbert Preining and Karl Berry, 2018-2020.
+# Updated 2026: simplified to single JDK11+ jar.
 
 scriptname=`basename "$0"`
-javaVersion=$(java -version 2>&1 | head -1)
-case "$javaVersion" in
-  *"1.8"*) jar="$scriptname-jdk8".jar ;;
-  *) jar="$scriptname.jar" ;;
-esac
+jar="$scriptname.jar"
 jarpath=`kpsewhich --progname="$scriptname" --format=texmfscripts "$jar"`
 
 kernel=`uname -s 2>/dev/null`
@@ -17,4 +14,3 @@ if echo "$kernel" | grep CYGWIN >/dev/null; then
 fi
 
 exec java -jar "$jarpath" "$@"
-

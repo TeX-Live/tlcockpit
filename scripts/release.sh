@@ -3,14 +3,7 @@
 
 PROJECT=tlcockpit
 DIR=`pwd`/..
-VERA=${VER:-`grep ^version build.sbt-jdk14 | awk -F\" '{print$2}'`}
-VERB=${VER:-`grep ^version build.sbt-jdk8 | awk -F\" '{print$2}'`}
-
-if [ ! $VERA = $VERB ] ; then
-  echo "Warning: versions in build.sbt-* don't agree, bailing out!" >&2
-  exit 1
-fi
-VER=${VER:-$VERA}
+VER=${VER:-`grep ^version build.sbt-jdk14 | awk -F\" '{print$2}'`}
 
 TEMP=/tmp
 
@@ -32,14 +25,26 @@ fi
 echo
 git commit -m "Release $VER" --allow-empty
 git archive --format=tar --prefix=$PROJECT-$VER/ HEAD | (cd $TEMP && tar xf -)
-git --no-pager log --date=short --format='%ad  %aN  <%ae>%n%n%x09* %s%d [%h]%n' > $TEMP/$PROJECT-$VER/ChangeLog
+git --no-pager log --date=short --format='%ad  %aN  <%ae>%n%n%x009* %s%d [%h]%n' > $TEMP/$PROJECT-$VER/ChangeLog
 cd $TEMP
+
+# Build the deployment jar
+cd $DIR
+cp build.sbt-jdk14 build.sbt
+sbt assembly
+mv -f $DIR/jar/tlcockpit.jar $TEMP/$PROJECT-$VER/jar/tlcockpit.jar
+rm -f build.sbt
 # exclude unnecessary files for CTAN
 rm -f $PROJECT-$VER/.gitignore
 rm -rf $PROJECT-$VER/scripts/update-tl
 rm -rf $PROJECT-$VER/scripts/release.sh
+rm -rf $PROJECT-$VER/build.sbt-jdk8
+rm -rf $PROJECT-$VER/build.sbt
 
 tar zcf $DIR/$PROJECT-$VER.tar.gz $PROJECT-$VER
+echo
+echo "To install the desktop file on Linux:"
+echo "  sudo cp tlcockpit.desktop /usr/share/applications/"
 echo
 echo You should execute
 echo

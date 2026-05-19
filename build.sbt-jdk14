@@ -1,55 +1,41 @@
 name := "tlcockpit"
 
-version := "1.2"
+version := "1.3"
 
-scalaVersion := "2.12.11"
+scalaVersion := "2.12.20"
 
-val javaVersion:Int = 14
+// Java 21 (LTS) - bundled with JavaFX, no external dependencies needed
+val javaVersion = 21
 
-libraryDependencies += "io.spray" %%  "spray-json" % "1.3.3"
-libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.7.2"
-libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.2.3"
-libraryDependencies += "org.json4s" %% "json4s-native" % "3.6.0-M3"
-libraryDependencies += "org.json4s" %% "json4s-jackson" % "3.6.0-M3"
-
-// Add dependency on ScalaFX library
-// libraryDependencies += "org.scalafx" %% "scalafx" % "11-R16"
-libraryDependencies += "org.scalafx" % "scalafx_2.12" % "12.0.2-R18"
+libraryDependencies += "org.scalafx" %% "scalafx" % "21.0.0-R32"
+libraryDependencies += "io.spray" %%  "spray-json" % "1.3.6"
+libraryDependencies += "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5"
+libraryDependencies += "ch.qos.logback" % "logback-classic" % "1.5.6"
+libraryDependencies += "org.json4s" %% "json4s-native" % "3.7.2"
+libraryDependencies += "org.json4s" %% "json4s-jackson" % "3.7.2"
 
 lazy val root = (project in file(".")).
   enablePlugins(BuildInfoPlugin).
   settings(
     buildInfoKeys := Seq[BuildInfoKey](name, version, scalaVersion, sbtVersion, BuildInfoKey(("javaVersion", javaVersion))),
-    buildInfoPackage := "TLCockpit"
+    buildInfoPackage := "TLCockpit",
+    buildInfoOptions += sbtbuildinfo.BuildInfoOption.ToOnInit
   )
-
-
-// Determine OS version of JavaFX binaries
-lazy val osName = System.getProperty("os.name") match {
-  case n if n.startsWith("Linux")   => "linux"
-  case n if n.startsWith("Mac")     => "mac"
-  case n if n.startsWith("Windows") => "win"
-  case _ => throw new Exception("Unknown platform!")
-}
-
-lazy val javaFXModules = Seq("base", "controls", "fxml", "graphics", "media", "swing", "web")
-libraryDependencies ++= javaFXModules.map( m =>
-  // with this the modules will NOT be included in the fat jar!
-  // "org.openjfx" % s"javafx-$m" % javaVersion % "provided" classifier osName
-  "org.openjfx" % s"javafx-$m" % javaVersion.toString classifier osName
-)
-
-assemblyMergeStrategy in assembly := {
- case PathList("module-info.class", xs @ _*) => MergeStrategy.discard
- case PathList("META-INF", "MANIFEST.MF", xs @ _*) => MergeStrategy.discard
- case x => MergeStrategy.first
-}
 
 mainClass in assembly := Some("TLCockpit.ApplicationMain")
 
 assemblyJarName in assembly := "tlcockpit.jar"
 assemblyOutputPath in assembly := file("jar/tlcockpit.jar")
 
+// sbt-assembly 2.x merge strategy
+import AssemblyModule.MergeStrategy
+import sbtassembly.PathList
+assemblyMergeStrategy in assembly := {
+  case PathList("module-info.class", xs @ _*) => MergeStrategy.discard
+  case x =>
+    val oldStrategy = (assemblyMergeStrategy in assembly).value
+    oldStrategy(x)
+}
 
 // for scalafx
 fork := true
