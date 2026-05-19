@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=TLCockpit
+Comment=TeX Live Manager GUI frontend
+Exec=tlcockpit %f
+Icon=tlcockpit
+Type=Application
+Categories=Utility;Development;
+Terminal=false
+MimeType=text/x-tex;text/x-latex;application/x-texlive;

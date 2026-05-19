@@ -98,33 +98,15 @@ object ApplicationMain extends JFXApp with LazyLogging {
   val major = toInt(javaVersionSplit(0))
   major match {
     case Some(i) =>
-      if (major.get == 1) {
-        val minor = toInt(javaVersionSplit(1))
-        minor match {
-          case Some(j) =>
-            if (minor.get < 8) {
-              logger.error(s"Java version ${javaVersion} too old, need >= 1.8, terminating!")
-              Platform.exit()
-              sys.exit(1)
-            } else if (minor.get == 8) {
-              if (BuildInfo.javaVersion != 8) {
-                logger.warn(s"Build and run versions disagree: build: ${BuildInfo.javaVersion}, run: ${major.get}.${minor.get}, trying anyway!")
-              }
-            }
-          case None =>
-            logger.warn(s"Cannot find Java version from ${javaVersion}, continuing anyway!")
-        }
-      } else {
-        if (major.get > 9) {
-          if (major.get != BuildInfo.javaVersion) {
-            logger.warn(s"Build and run versions disagree: build: ${BuildInfo.javaVersion}, run: ${major.get}, trying anyway!")
-          }
-        } else {
-          logger.warn(s"Strange version number, please report: ${javaVersion}, continuing anyway!")
-        }
+      if (major.get < 11) {
+        logger.error(s"Java version ${javaVersion} too old, need >= 11, terminating!")
+        Platform.exit()
+        sys.exit(1)
+      } else if (major.get != BuildInfo.javaVersion) {
+        logger.debug(s"Run-time Java ${major.get} differs from build target ${BuildInfo.javaVersion}, trying anyway!")
       }
     case None =>
-      logger.warn(s"Cannot find Java version from ${javaVersion}, continuing anyway!")
+      logger.warn(s"Cannot determine Java major version from ${javaVersion}, continuing anyway!")
   }
   logger.info(s"Running on Java Version ${javaVersion}")
 
@@ -968,6 +950,35 @@ tlmgr>
       new MenuItem("Rebuild all formats ...") { onAction = (ae) => callback_run_external(Array("fmtutil --sys --all"), false) },
       new MenuItem("Update font map database ...") {
         onAction = (ae) => callback_run_external(Array("updmap --sys"))
+      },
+      new MenuItem("Show repositories ...") {
+        onAction = (ae) => {
+          tlmgr_send("option location --json", (_, lines) => {
+            try {
+              val jsonAst = lines.mkString("").parseJson
+              val repos: List[TLOption] = jsonAst.convertTo[List[TLOption]]
+              val reposText = repos.map(o => s"${o.name}: ${o.value.getOrElse(o.default)}").mkString("\n")
+              Platform.runLater {
+                new Alert(AlertType.Information) {
+                  initOwner(stage)
+                  title = "Current Repository Configuration"
+                  headerText = "Current repository configuration"
+                  contentText = if (reposText.isEmpty) "No repository configuration found." else reposText
+                }.showAndWait()
+              }
+            } catch {
+              case _: Exception =>
+                Platform.runLater {
+                  new Alert(AlertType.Warning) {
+                    initOwner(stage)
+                    title = "Warning"
+                    headerText = "Cannot read repository configuration"
+                    contentText = "Could not parse tlmgr output."
+                  }.showAndWait()
+                }
+            }
+          })
+        }
       }
     )
   }
@@ -1433,13 +1444,22 @@ tlmgr>
         val topBox = menuBar
         val centerBox = new VBox {
           padding = Insets(10)
-          children = List(pkgstabs, statusBox, expertPane, outerrpane)
+          children = List(pkgstabs, statusBox)
+        }
+        val debugBox = new VBox {
+          spacing = 0
+          children = List(expertPane, outerrpane)
+        }
+        val mainSplit = new SplitPane {
+          orientation = Orientation.Horizontal
+          items = List(centerBox, debugBox)
+          dividerPositions = 0.75
         }
         new BorderPane {
           // padding = Insets(20)
           top = topBox
           // left = leftBox
-          center = centerBox
+          center = mainSplit
           // bottom = bottomBox
         }
       }
@@ -1479,18 +1499,15 @@ tlmgr>
   def initialize_tlmgr(): TlmgrProcess = {
     tlmgrBusy.value = true
     actionLabel.text = "[initializing tlmgr]"
-    // create new sync vars for each process
-    val outputLine = new SyncVar[String]
-    val errorLine  = new SyncVar[String]
 
     val tt = new TlmgrProcess(
       (s: String) => {
-        logger.trace(s"outputline put ${s}")
-        outputLine.put(s)
+        logger.trace(s"outputline update: ${s}")
+        outputLineUpdate(s)
       },
       (s: String) => {
-        logger.trace(s"errorline put ${s}")
-        errorLine.put(s)
+        logger.trace(s"errorline update: ${s}")
+        errorLineUpdate(s)
       }
     )
     if (!tt.start_process()) {
@@ -1516,43 +1533,48 @@ tlmgr>
       var alive = true
       logger.debug("initialize tlmgr: starting stdout reader thread")
       while (alive) {
-        logger.trace("stdout reader before outputLine.take")
-        val s = outputLine.take
-        logger.trace("stdout reader after outputLine.take")
-        if (s == null) {
-          alive = false
-          logger.debug("got null from stdout, tlmgr seems to be terminated for restart")
-          if (!currentPromise.isCompleted) {
-            logger.debug(s"Fulfilling remaining open promise with ${tlmgrStatus} and ${tlmgrOutput.toArray.mkString}")
-            currentPromise.success((tlmgrStatus, tlmgrOutput.toArray))
-          }
-          tlmgrStatus = ""
-          tlmgrOutput.clear()
-          tlmgrBusy.value = false
-        } else {
-          logger.trace(s"DEBUG: got ==" + s + "==")
-          if (s == "OK") {
-            tlmgrStatus = s
-          } else if (s == "ERROR") {
-            tlmgrStatus = s
-          } else if (s == "tlmgr> ") {
-            logger.trace(s"Fulfilling current promise with ${tlmgrStatus} and ${tlmgrOutput.toArray.mkString}!")
-            if (!currentPromise.isCompleted) {
-              currentPromise.success((tlmgrStatus, tlmgrOutput.toArray))
+        // Use timed polling to detect tlmgr death
+        tt.takeOutput(500) match {
+          case Some(s) =>
+            logger.trace("stdout reader got: ==" + s + "==")
+            if (s == "OK") {
+              tlmgrStatus = s
+            } else if (s == "ERROR") {
+              tlmgrStatus = s
+            } else if (s == "tlmgr> ") {
+              logger.trace(s"Fulfilling current promise with ${tlmgrStatus} and ${tlmgrOutput.toArray.mkString}!")
+              if (!currentPromise.isCompleted) {
+                currentPromise.success((tlmgrStatus, tlmgrOutput.toArray))
+              }
+              tlmgrStatus = ""
+              tlmgrOutput.clear()
+              tlmgrBusy.value = false
+              if (pendingJobs.nonEmpty) {
+                logger.debug("pending Job found!")
+                val nextCmd = pendingJobs.dequeue()
+                logger.debug(s"running ${nextCmd._1}")
+                tlmgr_run_one_cmd(nextCmd._1, nextCmd._2)
+              }
+            } else {
+              tlmgrOutput += s
+              stdoutLineUpdateFunc(s)
             }
-            tlmgrStatus = ""
-            tlmgrOutput.clear()
-            tlmgrBusy.value = false
-            if (pendingJobs.nonEmpty) {
-              logger.debug("pending Job found!")
-              val nextCmd = pendingJobs.dequeue()
-              logger.debug(s"running ${nextCmd._1}")
-              tlmgr_run_one_cmd(nextCmd._1, nextCmd._2)
+          case None =>
+            // No output within timeout - check if tlmgr is still alive
+            if (!tt.isAlive()) {
+              logger.warn("tlmgr process has died unexpectedly, completing pending promise")
+              alive = false
+              if (!currentPromise.isCompleted) {
+                currentPromise.success(("Process died", tlmgrOutput.toArray))
+              }
+              tlmgrOutput.clear()
+              tlmgrBusy.value = false
+              Platform.runLater {
+                errorText += "tlmgr process died unexpectedly. Restarting..."
+                outerrpane.expanded = true
+                outerrtabs.selectionModel().select(2)
+              }
             }
-          } else {
-            tlmgrOutput += s
-            stdoutLineUpdateFunc(s)
-          }
         }
       }
       logger.debug("initialize tlmgr: finishing stdout reader thread")
@@ -1576,11 +1598,15 @@ tlmgr>
       var alive = true
       logger.debug("initialize tlmgr: starting stderr reader thread")
       while (alive) {
-        val s = errorLine.take
-        if (s == null)
-          alive = false
-        else
-          stderrLineUpdateFunc(s)
+        tt.takeError(500) match {
+          case Some(s) =>
+            stderrLineUpdateFunc(s)
+          case None =>
+            if (!tt.isAlive()) {
+              logger.warn("tlmgr stderr: process has died")
+              alive = false
+            }
+        }
       }
       logger.debug("initialize tlmgr: finishing stderr reader thread")
     }
@@ -1688,6 +1714,9 @@ tlmgr>
 
   def defaultStdoutLineUpdateFunc(l: String) : Unit = { logger.trace(s"DEBUG: got ==$l== from tlmgr") }
   def defaultStderrLineUpdateFunc(l: String) : Unit = { Platform.runLater { logText.append(l) } }
+
+  def outputLineUpdate(s: String): Unit = logger.trace(s"outputline update: $s")
+  def errorLineUpdate(s: String): Unit = logger.trace(s"errorline update: $s")
 
   var stdoutLineUpdateFunc: String => Unit = defaultStdoutLineUpdateFunc
   var stderrLineUpdateFunc: String => Unit = defaultStderrLineUpdateFunc

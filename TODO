@@ -1,3 +1,7 @@
 TODO
 ====
 
+- Translations (issue #14) - requires i18n framework, significant effort
+- Better error recovery on tlmgr failures during updates
+- Support for tlmgr 2024+ JSON output format changes
+- Package file list view improvements

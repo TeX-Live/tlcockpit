@@ -43,6 +43,9 @@ rm -rf $PROJECT-$VER/build.sbt
 
 tar zcf $DIR/$PROJECT-$VER.tar.gz $PROJECT-$VER
 echo
+echo "To install the desktop file on Linux:"
+echo "  sudo cp tlcockpit.desktop /usr/share/applications/"
+echo
 echo You should execute
 echo
 echo "  git push && git tag $VER && git push origin $VER"
