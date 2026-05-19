@@ -1,5 +1,5 @@
 // TLCockpit
-// Copyright 2017-2021 Norbert Preining
+// Copyright 2017-2026 Norbert Preining
 // Licensed according to GPLv3+
 //
 // Front end for tlmgr

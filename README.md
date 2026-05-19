@@ -27,36 +27,16 @@ Debugging can be enabled by passing the option `-d` or, for more detailed debugg
 
 Requirements
 ------------
-Currently TLCockpit is shipped with two jars, one for JDK8 and one for JDK9+.
-The JDK8 version does *not* contain the JavaFX as it is normally shipped together
-with the JDK. The JDK9+ version contains JavaFX modules and thus should work
-without the need for additional installations.
+TLCockpit requires Java 11 or later. The jar includes JavaFX modules bundled,
+so no additional JavaFX installation is needed.
 
-The default for TLCockpit shell wrapper (used on Unix and Mac) is to check for the
-version of Java (using `java -version`) and use the appropriate jar.
-
-If you are running Java 8 and see the following errors
-```
-Error: A JNI error has occurred, please check your installation and try again
-Exception in thread "main" java.lang.NoClassDefFoundError: javafx/event/EventTarget
-	at java.lang.ClassLoader.defineClass1(Native Method)
-	at java.lang.ClassLoader.defineClass(ClassLoader.java:763)
-...
-```
-that means that the Java installation does not provides JavaFX.
-
-On Windows the latest JRE from Oracle include JavaFX. On Linux one might
-need to install some extra packages (Debian/Ubuntu: openjfx).
+The default for TLCockpit shell wrapper (used on Unix and Mac) runs the jar
+directly with `java -jar`.
 
 HiDPI support
 -------------
-Depending on your JDK version and operating system, Java might not correctly
-detect the presence of a HiDPI screen.
-
-Upgrading to JDK14 should help in this case.
-
-For other versions, you might be able to fix it by setting the environment
-variable
+TLCockpit uses JavaFX which handles HiDPI automatically on most platforms.
+On Linux, if HiDPI is not detected, set the environment variable
 ```
 export GDK_SCALE=2
 ```
@@ -125,7 +105,7 @@ The Tools menu, as well as the expert and debug panes open
 Copyright and License
 ---------------------
 
-Copyright 2017-2021 Norbert Preining
+Copyright 2017-2026 Norbert Preining
 Licenced under the GNU General Public License, version 3 or any higher version
 (GPL3+)
 

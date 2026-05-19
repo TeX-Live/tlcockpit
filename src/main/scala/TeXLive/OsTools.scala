@@ -1,6 +1,6 @@
 package TeXLive
 // TLCockpit
-// Copyright 2017-2018 Norbert Preining
+// Copyright 2017-2026 Norbert Preining
 // Licensed according to GPLv3+
 //
 // Front end for tlmgr
